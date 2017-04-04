@@ -19,12 +19,6 @@ worker dir (Tar.Next e n) =
     _ -> worker dir n
 worker _ _ = return ()                          
 
--- createDirectoryIfNotExist dir = 
-
-{-
-storeFile dir filename bstr = do
--}
-  
 storeFile dir filename bstr = do
   let lst = splitOn "." filename
       typ = last lst
