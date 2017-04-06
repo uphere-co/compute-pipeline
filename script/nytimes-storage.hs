@@ -5,9 +5,10 @@
 import qualified Codec.Archive.Tar          as Tar
 import           Codec.Compression.GZip     as GZ
 import qualified Data.ByteString.Lazy.Char8 as BL
+import           Data.List.Split                      (splitOn)
 import           System.Directory
 import           System.Environment                   (getArgs)
-import           System.FilePath                      (splitFileName)
+import           System.FilePath                      (splitFileName, (<.>))
 
 worker dir (Tar.Next e n) =
   case Tar.entryContent e of
@@ -18,20 +19,18 @@ worker dir (Tar.Next e n) =
     _ -> worker dir n
 worker _ _ = return ()                          
 
--- createDirectoryIfNotExist dir = 
-
 storeFile dir filename bstr = do
+  let lst = splitOn "." filename
+      typ = last lst
+      hash = (last (init lst))
   cwd <- getCurrentDirectory 
   setCurrentDirectory dir
-  let prefix = take 2 filename
+  let prefix = take 2 hash
   createDirectoryIfMissing False prefix
   setCurrentDirectory prefix
-  -- createDirectoryIfMissing False "abc"
-  BL.writeFile filename bstr
+  BL.writeFile (hash <.> typ) bstr
   setCurrentDirectory cwd
 
-  
-  
 
 main :: IO ()
 main = do

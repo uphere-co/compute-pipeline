@@ -82,23 +82,24 @@ let
          }) {};
 
 
-      ygpdb = self.callPackage ../ygpdb {};
+      #ygpdb = self.callPackage ../ygpdb {};
     };
-    
-    newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
+
+    newhaskellPackages = haskellPackages;  # .override { overrides = hsconfig; };
 
     hsenv = newhaskellPackages.ghcWithPackages
               (p: with p;
                 [ cabal-install
-                  base64-bytestring
-		  either
-                  lens
-                  lens-aeson
-                  opaleye
-                  persistent-postgresql
-                  product-profunctors
+                  #base64-bytestring
+		  #either
+                  #lens
+                  #lens-aeson
+                  #opaleye
+                  #persistent-postgresql
+                  #product-profunctors
+                  split
 		  tar
-                  ygpdb
+                  #ygpdb
 		  zlib
                 ]);
 
