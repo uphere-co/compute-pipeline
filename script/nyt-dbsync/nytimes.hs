@@ -183,6 +183,19 @@ uploadArticle conn NYTArticle {..} = do
   runInsertMany conn T.table (map (T.newTag article_id) article_tag)
   return ()
 
+
+updateArticle :: PGS.Connection -> NYTArticle -> IO ()
+updateArticle conn NYTArticle {..} = do
+  runUpdate conn A.table (\(A.Article i _ _ _ _ _ _ _ _ _)  -> (A.newArticle article_id article_url article_modified article_published
+    article_top_level_section article_section article_section_url article_section_taxonomy_id article_collection) {A._id = Just i})
+    (\x -> (A._sha256 x) .== (constant article_id))
+  -- TO-DO : Implement runUpdateMany
+  -- Update policy for authors and tags will be determined later.
+  -- runInsertMany conn Au.table (map (Au.newAuthor article_id) article_author)
+  -- runInsertMany conn T.table (map (T.newTag article_id) article_tag)
+  return ()
+
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -194,13 +207,14 @@ main = do
     Right vs -> do
       let lst = map (\v -> mkNYTArticle v m) vs
           (ls,rs) = partitionEithers lst
-      print (length ls, length rs)
 
-      mapM_ print ls
+      -- print (length ls, length rs)
+      -- mapM_ print ls
 
-      let bstr  = "dbname=nytimes" 
+      let bstr  = "dbname=ygpdb host=192.168.1.102 port=5431 user=ygp" -- from bill
       conn <- PGS.connectPostgreSQL bstr
       
       mapM_ (uploadArticle conn) rs
+      -- mapM_ (updateArticle conn) rs -- for update
       PGS.close conn
 
