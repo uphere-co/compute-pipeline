@@ -47,14 +47,15 @@ main0 = do
   let bstr = encode testvector
   BL.writeFile "test.json" bstr 
 
-
-
 main1 = do
-  lbstr <- BL.readFile "test.json"
-  let mvs = decode lbstr :: Maybe [Value]
+  bstr <- BL.readFile "test.json"
+  let mvs = decode bstr :: Maybe (Vector Value)
   case mvs of
-    Nothing -> error "error in decode"
-    Just vs -> print (length vs)
+    Nothing -> error "fail parsing"
+    Just vs -> do
+      n <- randomRIO (0, giga `div` 100)
+      print (vs ! n)
+
   
 main2 = do
     c <- compact testvector
@@ -68,14 +69,15 @@ main2 = do
 
 main3 = do
     let fp = "compact.bin"
-    replicateM_ 10 $ do
+    -- replicateM_ 10 $ do
       -- bstr <- mmapFileByteString "compact.bin" Nothing
       -- h <- readHandle True (BL.fromStrict bstr)
       -- r <- hUnsafeGetCompact @(Vector Value) h
-      r <- unsafeReadCompact @(Vector Value) fp
-      c' <- case r of
-              Left err -> fail err
-              Right x -> return x
+    r <- unsafeReadCompact @(Vector Value) fp
+    c' <- case r of
+            Left err -> fail err
+            Right x -> return x
+    replicateM_ 10000 $ do
       n <- randomRIO (0,giga `div` 100)
       print ((getCompact c') ! n) 
 
@@ -92,15 +94,15 @@ main4 = do
         copyBytes (castPtr ptr) ptr' size 
 
 main5 = do
- replicateM_ 100 $ do
-  bstr <- mmapFileByteString "vector.bin" Nothing
-  -- print (B.length bstr)
-  -- print (B.elemIndex '9' bstr)
-  BU.unsafeUseAsCString bstr $ \cstr -> do
-    fptr <- newForeignPtr_ (castPtr cstr)
-    let vs = VS.unsafeFromForeignPtr0 fptr giga :: VS.Vector Int32
-    n <- randomRIO (0, giga)
-    print (vs VS.! n) 
+  replicateM_ 100 $ do
+    bstr <- mmapFileByteString "vector.bin" Nothing
+    -- print (B.length bstr)
+    -- print (B.elemIndex '9' bstr)
+    BU.unsafeUseAsCString bstr $ \cstr -> do
+      fptr <- newForeignPtr_ (castPtr cstr)
+      let vs = VS.unsafeFromForeignPtr0 fptr giga :: VS.Vector Int32
+      n <- randomRIO (0, giga)
+      print (vs VS.! n) 
     
   
   
