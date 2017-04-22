@@ -27,7 +27,9 @@ let hsconfig = import (uphere-nix-overlay + "/nix/haskell-modules/configuration-
                              cryptohash-sha256 = haskell.lib.doJailbreak super.cryptohash-sha256;
                              hackage-security = haskell.lib.dontCheck (haskell.lib.doJailbreak super.hackage-security);
                              #cabal-install = haskell.lib.doJailbreak super.cabal-install;
+
                              
+                             bytestring-handle = haskell.lib.doJailbreak super.bytestring-handle;                             
                            };
                          };
 
@@ -37,6 +39,8 @@ let hsconfig = import (uphere-nix-overlay + "/nix/haskell-modules/configuration-
               scientific
               attoparsec
               aeson
+              mmap
+              bytestring-handle
             ]);
             
 in stdenv.mkDerivation {
