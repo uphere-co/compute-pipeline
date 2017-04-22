@@ -41,6 +41,7 @@ let hsconfig = import (uphere-nix-overlay + "/nix/haskell-modules/configuration-
               aeson
               mmap
               bytestring-handle
+              random
             ]);
             
 in stdenv.mkDerivation {
