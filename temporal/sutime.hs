@@ -29,7 +29,7 @@ import           Language.Java         as J
 import           Options.Applicative
 import           System.Console.Haskeline
 import           System.Directory                 (getDirectoryContents)
-import           System.FilePath                  ((</>),takeExtensions)
+import           System.FilePath                  ((</>),takeExtensions,takeFileName)
 import           System.Environment               (getEnv,getArgs)
 import           Text.Printf 
 --
@@ -70,18 +70,20 @@ main = do
 process pp fp = do
   txt <- TIO.readFile fp
   r <- annotateTime pp txt "2017-04-17"
-  TIO.putStrLn r
+  -- TIO.putStrLn r
   case A.parseOnly (many (timetag <* A.skipSpace)) r of
     Left err -> print err
     Right xs -> do 
-      TIO.putStrLn txt
       putStrLn "==========================================================="
+      putStrLn $ "file: " ++ takeFileName fp 
+      putStrLn "-----------------------------------------------------------"
       mapM_ (TIO.putStrLn . format) xs
-      putStrLn "==========================================================="
+      putStrLn "-----------------------------------------------------------"
       let f ttag = ((), ttag^.coffbeg  + 1, ttag^.coffend)
           tagged = map f xs 
       let ann = (AnnotText . map (\(t,m)->(t,isJust m)) . tagText tagged) txt
           xss = lineSplitAnnot 80 ann
       flip mapM_ xss $ \xs -> mapM_ cutePrintAnnot xs
+      putStrLn "==========================================================="
  
 
