@@ -1,0 +1,14 @@
+<b>Ionizing Radiation</b>
+EPA regulates airborne emissions of hazardous air pollutants (HAPs) (including radionuclides) from a specific list of industrial sources called \
+―source categories.‖ Each source category that emits radionuclides in significant quantities must meet technology requirements to control them a\
+nd is required to meet specific regulatory limits. These standards are the National Emission Standards for Hazardous Air Pollutants for Radionuc\
+lides (Rad NESHAPs) and are found at 40 CFR Part 61  Specific NESHAPs applicable to radiation are:
+(1) Subpart B applicable to radon-222 emissions to the ambient air from underground uranium mines
+(2) Subpart H applicable to radionuclide emissions, other than radon, from Department of Energy facilities
+(3) Subpart I applicable to radionuclide emissions emitted by federal facilities that are not regulated elsewhere
+(4) Subpart K applicable to emissions of polonium-210 and lead-210 to the air from phosphorus plants
+(5) Subpart Q applicable to emissions of radon-222 to the ambient air from Department of Energy storage or disposal facilities for radium-contai\
+ning materials
+(6) Subpart R applicable to emissions of radon from phosphogypsum stacks
+(7) Subpart T applicable to radon-222 emissions from uranium mill tailings piles that are no longer operational
+(8) Subpart W applicable to emission of radon-222 from uranium mills and their associated tailings.
