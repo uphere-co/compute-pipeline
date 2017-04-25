@@ -112,11 +112,13 @@ let
             inline-java
             aeson
             attoparsec
+            base16-bytestring
             data-default
             haskeline
             lens
             monad-loops
             optparse-applicative
+            postgresql-simple
             transformers
             #p.autoencode
             p.textview
