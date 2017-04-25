@@ -1,9 +1,11 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}
+, ygp-webapp }:
 
 with pkgs;
 
-let 
-    hsconfig = self: super: { 
+let
+    hsconfig = self: super:
+    {
       "product-profunctors" = self.callPackage
          ({ mkDerivation, base, contravariant, profunctors, stdenv, tagged
           , template-haskell
@@ -80,9 +82,7 @@ let
            license = stdenv.lib.licenses.bsd3;
            doCheck = false;
          }) {};
-
-
-      ygpdb = self.callPackage ../ygpdb {};
+         ygpdb = self.callPackage (ygp-webapp + "/ygpdb") {};
     };
     
     newhaskellPackages = haskellPackages.override { overrides = hsconfig; };
