@@ -17,10 +17,10 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Either                          (partitionEithers)
 import qualified Data.HashMap.Strict        as HM
 import qualified Data.HashSet               as HS
-import           Data.List                            (foldl')
+import           Data.List                            (concat,foldl')
 import           Data.Text (Text)
 import qualified Data.Text                  as T
-import           Data.Text.Encoding                   (encodeUtf8)
+import           Data.Text.Encoding                   (decodeUtf8,encodeUtf8)
 import qualified Data.Text.IO               as TIO
 import           Data.Time.Clock
 import           Data.Time.Format
@@ -196,6 +196,21 @@ updateArticle conn NYTArticle {..} = do
   return ()
 
 
+updateArticleDB :: PGS.Connection -> NYTArticle -> IO ([Text])
+updateArticleDB conn NYTArticle {..} = do
+  (lst :: [ByteString]) <- runUpdateReturning conn A.table (\(A.Article i _ _ _ _ _ _ _ _ _)  -> (A.newArticle article_id article_url article_modified article_published
+    article_top_level_section article_section article_section_url article_section_taxonomy_id article_collection) {A._id = Just i})
+    (\x -> (A._sha256 x) .== (constant article_id))
+    (A._sha256)
+  -- TO-DO : Implement runUpdateMany
+  -- Update policy for authors and tags will be determined later.
+  -- runInsertMany conn Au.table (map (Au.newAuthor article_id) article_author)
+  -- runInsertMany conn T.table (map (T.newTag article_id) article_tag)
+  -- print (map B16.encode lst)
+  return (map (decodeUtf8 . B16.encode) lst)
+
+getRemaining rs updated = filter (\x -> Prelude.not $ (article_id_base16 x) `elem` updated) rs
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -211,10 +226,17 @@ main = do
       -- print (length ls, length rs)
       -- mapM_ print ls
 
-      let bstr  = "dbname=ygpdb host=192.168.1.102 port=5431 user=ygp" -- from bill
+      let bstr  = "dbname=ygpdb host=localhost user=modori" -- from bill
       conn <- PGS.connectPostgreSQL bstr
       
-      mapM_ (uploadArticle conn) rs
+      -- mapM_ (uploadArticle conn) rs
       -- mapM_ (updateArticle conn) rs -- for update
-      PGS.close conn
+      updated <- fmap concat $ mapM (updateArticleDB conn) rs
+      let remaining = getRemaining rs updated
+      mapM_ (uploadArticle conn) remaining
 
+      putStrLn ("Total number of article : " ++ (show (length rs)))
+      putStrLn ("Number of updated article : " ++ (show (length updated)))
+      putStrLn ("Number of uploaded article : " ++ (show (length remaining)))
+
+      PGS.close conn
