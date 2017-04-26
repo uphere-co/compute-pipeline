@@ -7,6 +7,7 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Loops
 import           Data.Attoparsec.Text
 import qualified Data.Attoparsec.Internal.Types as AT
+import           Data.Maybe          (isJust)
 import           Data.Text           (Text)
 import qualified Data.Text    as T
 import qualified Data.Text.IO as TIO
@@ -14,6 +15,9 @@ import           Data.Tree
 import           System.Console.Haskeline
 --
 import           SearchTree
+import           Type
+import           Util.Doc
+import           View
 
 testtxt = "Some people are deeply skeptical that creating a new hybrid class of devices will \
           \help stop the momentum of tablets from Apple and companies with devices based \
@@ -41,7 +45,7 @@ pTreeAdv forest = skipTill anyChar p
           b <- getPos
           x <- pTree forest []
           e <- getPos
-          return (b,e,x)
+          return (b+1,e,x)
   
 main :: IO ()
 main = do
@@ -51,7 +55,14 @@ main = do
 
   let forest = foldr addTreeItem [] nentities
 
-  putStrLn "---------------------------"
-  TIO.putStrLn testtxt
-  putStrLn "---------------------------"
-  print $ parseOnly (many (pTreeAdv forest)) testtxt
+  -- putStrLn "---------------------------"
+  -- TIO.putStrLn testtxt
+  -- putStrLn "---------------------------"
+  case parseOnly (many (pTreeAdv forest)) testtxt of
+    Left err -> print err
+    Right parsed -> do
+      let f (b,e,_) = ((),b,e)
+          tagged = map f parsed
+      let ann = (AnnotText . map (\(t,m)->(t,isJust m)) . tagText tagged) testtxt
+          xss = lineSplitAnnot 80 ann
+      sequence_ (concatMap (map cutePrintAnnot) xss)
