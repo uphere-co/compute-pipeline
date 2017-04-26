@@ -95,6 +95,7 @@ let
                   lens
                   lens-aeson
                   opaleye
+                  optparse-applicative
                   persistent-postgresql
                   product-profunctors
 		  tar
