@@ -1,6 +1,6 @@
 # temponym extraction viewer
 
-This program takes a directory as an input parameter and annotate temporal expressions in
+The program `sutime` takes a directory as an input parameter and annotate temporal expressions in
 all the text files with extension `.maintext`.
 
 Build
@@ -46,5 +46,26 @@ final weeks leading to Tuesday, more than twice the amount their Republican coun
 -----------            -------
 terparts have given.
                                                                              
+...
+```
+
+# Named Entity Tagger
+
+The program `ner` takes a directory (with `--dir` or `-d` option) and an entity list file
+(with `--entity` or `-e` option) and annotate all named entities listed in the entity list file
+in files with extension `.maintext` in the specified directory.
+
+Build
+-----
+The same as `sutime`
+
+Example use
+-----------
+```
+$ ./ner --dir ~/repo/workspace/nyt/00 --entity F7745.all_entities
+===========================================================
+file: 00b95845874f29f4ec61e16b7478b311c3334732e293a9a4be8d3180a93c07e4.maintext
+-----------------------------------------------------------
+Democrats in the House of Representatives have poured more than a half a million
 ...
 ```
