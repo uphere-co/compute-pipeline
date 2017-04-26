@@ -22,12 +22,15 @@ import           Type
 import           Util.Doc
 import           View
 
+
 {- 
 testtxt = "Some people are deeply skeptical that creating a new hybrid class of devices will \
           \help stop the momentum of tablets from Apple and companies with devices based \
           \on Google’s Android operating system. Marc Benioff, the chief executive of Salesforce.com \
           \and a frequent Microsoft antagonist, said customers had already shunned new types of devices, \
-          \like Microsoft’s Surface."
+          \like Microsoft’s Surface." 
+
+testtxt2 = "As a result, labor costs in Germany have barely budged in the past decade. The wage restraint helped German companies become more competitive on world markets, preventing the loss of manufacturing jobs to Eastern Europe or China. But it also created a bigger gap between rich and poor."
 -}
 
 getPos :: Parser Int
@@ -42,7 +45,7 @@ pTree forest acc = do
   case lst of
     [] -> return acc
     _ -> do
-      x <- satisfy (inClass lst)
+      x <- satisfy (\c -> c `elem` lst)
       pTree forest (acc++[x])
 
 pTreeAdv forest = skipTill anyChar p
@@ -57,8 +60,13 @@ prepareForest = do
   let lst = map ((\(a,b) -> (a,T.drop 1 b)) . T.breakOn "\t") . T.lines $ txt
       nentities = map (T.unpack . snd) lst
   return (foldr addTreeItem [] nentities)
-  
-        
+
+{- 
+main = do
+  forest <- prepareForest
+  print $ parseOnly (many (pTreeAdv forest)) testtxt2 
+-}
+
 main :: IO ()
 main = do
   forest <- prepareForest
