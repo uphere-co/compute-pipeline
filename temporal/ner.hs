@@ -3,6 +3,7 @@
 module Main where
 
 import           Control.Applicative
+import           Control.Monad                        (void)
 import           Control.Monad.IO.Class
 import           Control.Monad.Loops
 import           Data.Attoparsec.Text
@@ -42,10 +43,16 @@ skipTill :: Alternative f => f a -> f b -> f b
 skipTill p end = scan
   where scan = end <|> (p *> scan)
 
+tokencloser :: Parser ()
+tokencloser = void (satisfy (`elem` (" .,!?:;()-+=\"'`/\\|" :: String))) <|> endOfInput
+
 pTree forest acc = do
   let lst = searchForest acc forest
   case lst of
-    [] -> return acc
+    [] -> do
+      e <- getPos 
+      tokencloser
+      return (acc,e)
     _ -> do
       x <- satisfy (\c -> c `elem` lst)
       pTree forest (acc++[x])
@@ -53,8 +60,7 @@ pTree forest acc = do
 pTreeAdv forest = skipTill anyChar p
   where p = do
           b <- getPos
-          x <- pTree forest []
-          e <- getPos
+          (x,e) <- pTree forest []
           return (b+1,e,x)
 
 prepareForest fp = do
