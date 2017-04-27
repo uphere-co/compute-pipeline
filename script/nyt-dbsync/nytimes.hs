@@ -17,10 +17,10 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Either                          (partitionEithers)
 import qualified Data.HashMap.Strict        as HM
 import qualified Data.HashSet               as HS
-import           Data.List                            (foldl')
+import           Data.List                            (concat,foldl')
 import           Data.Text (Text)
 import qualified Data.Text                  as T
-import           Data.Text.Encoding                   (encodeUtf8)
+import           Data.Text.Encoding                   (decodeUtf8,encodeUtf8)
 import qualified Data.Text.IO               as TIO
 import           Data.Time.Clock
 import           Data.Time.Format
@@ -30,6 +30,8 @@ import qualified Database.PostgreSQL.Simple as PGS
 
 import           Opaleye                       hiding (constant)
 import qualified Opaleye.PGTypes               as P
+import           Options.Applicative
+import qualified Options.Applicative           as OA
 import           System.Environment                   (getArgs)
 import           System.IO.Unsafe                     (unsafePerformIO)
 -- 
@@ -105,6 +107,28 @@ data NYTArticle = NYTArticle
                   , article_collection :: Maybe Text
                   , article_tag :: [Text]
                   } deriving Show
+
+
+
+
+data NYTOption = NYTOption { _metaJson :: String
+                           , _hashUrl  :: String
+                           , _db       :: String
+                           , _host     :: String
+                           , _port     :: String
+                           , _user     :: String
+                           }
+
+pOptions :: Parser NYTOption
+pOptions = NYTOption <$> OA.argument str (metavar "json")
+           <*> OA.argument str (metavar "hashurl")
+           <*> strOption (long "db" <> short 'd' <> help "DB name")
+           <*> strOption (long "host" <> short 'h' <> help "Host name")
+           <*> strOption (long "port" <> short 'p' <> help "Port number")
+           <*> strOption (long "user" <> short 'u' <> help "User name")
+
+nytOption = info pOptions ( fullDesc <> progDesc "NYT DB sync App" <> header "options are meta JSON file, hash-url file, DB name, host name, port number and user name.")
+
 
 readT :: Text -> Either SomeException UTCTime
 readT txt =
@@ -196,11 +220,31 @@ updateArticle conn NYTArticle {..} = do
   return ()
 
 
+updateArticleDB :: PGS.Connection -> NYTArticle -> IO ([Text])
+updateArticleDB conn NYTArticle {..} = do
+  (lst :: [ByteString]) <- runUpdateReturning conn A.table (\(A.Article i _ _ _ _ _ _ _ _ _)  -> (A.newArticle article_id article_url article_modified article_published
+    article_top_level_section article_section article_section_url article_section_taxonomy_id article_collection) {A._id = Just i})
+    (\x -> (A._sha256 x) .== (constant article_id))
+    (A._sha256)
+  -- TO-DO : Implement runUpdateMany
+  -- Update policy for authors and tags will be determined later.
+  -- runInsertMany conn Au.table (map (Au.newAuthor article_id) article_author)
+  -- runInsertMany conn T.table (map (T.newTag article_id) article_tag)
+  -- print (map B16.encode lst)
+  return (map (decodeUtf8 . B16.encode) lst)
+
+getRemaining rs updated = filter (\x -> Prelude.not $ (article_id_base16 x) `elem` updated) rs
+
 main :: IO ()
 main = do
-  args <- getArgs
-  str <- BL.readFile (args !! 0)
-  m <- mkHashURLMap (args !! 1)
+  opt <- execParser nytOption
+  str <- BL.readFile (_metaJson opt)
+  m <- mkHashURLMap (_hashUrl opt)
+  let db   = _db opt
+      host = _host opt
+      port = _port opt
+      user = _user opt
+      
   let ev :: Either String [NYTMeta] = eitherDecode str
   case ev of
     Left err -> print err
@@ -211,10 +255,17 @@ main = do
       -- print (length ls, length rs)
       -- mapM_ print ls
 
-      let bstr  = "dbname=ygpdb host=192.168.1.102 port=5431 user=ygp" -- from bill
+      let bstr  = BL.toStrict . BL.pack $ "dbname=" ++ db ++ " host="++ host ++ " port="++ port ++ " user=" ++ user
       conn <- PGS.connectPostgreSQL bstr
       
-      mapM_ (uploadArticle conn) rs
+      -- mapM_ (uploadArticle conn) rs
       -- mapM_ (updateArticle conn) rs -- for update
-      PGS.close conn
+      updated <- fmap concat $ mapM (updateArticleDB conn) rs
+      let remaining = getRemaining rs updated
+      mapM_ (uploadArticle conn) remaining
 
+      putStrLn ("Total number of article : " ++ (show (length rs)))
+      putStrLn ("Number of updated article : " ++ (show (length updated)))
+      putStrLn ("Number of uploaded article : " ++ (show (length remaining)))
+
+      PGS.close conn
