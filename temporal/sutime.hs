@@ -1,36 +1,23 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Main where
 
 import           Control.Lens
-import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Foldable                    (toList)
-import           Data.Maybe                       (fromMaybe,isJust)
+import           Data.Maybe                       (isJust)
 import           Data.Monoid
 import qualified Database.PostgreSQL.Simple as PGS
-import qualified Database.PostgreSQL.Simple.Time as PGS
-import           Data.Text                        (Text)
 import qualified Data.Text                  as T
-import qualified Data.Text.Lazy             as TL
-import qualified Data.Text.Lazy.Encoding    as TLE
 import qualified Data.Text.IO               as TIO
-import           Data.Time.Format
-import           Data.Time.LocalTime              (zonedTimeToUTC)
 import           Language.Java         as J
 import           Options.Applicative
 import           System.Directory                 (getDirectoryContents)
 import           System.FilePath                  ((</>),takeBaseName,takeExtensions,takeFileName)
 import           System.Environment               (getEnv)
-import           Text.Printf
-import           Text.ProtocolBuffers.Basic       (Utf8, utf8)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           Type
@@ -38,9 +25,11 @@ import           Util.Doc
 import           View
 --
 import           CoreNLP.Simple
-import qualified CoreNLP.Proto.CoreNLPProtos.Timex as Tmx
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.HCoreNLPProto.TimexWithOffset as T
+--
+import           Annot.SUTime
+
 
 data ProgOption = ProgOption { dir :: FilePath } deriving Show
 
@@ -50,27 +39,6 @@ pOptions = ProgOption <$> strOption (long "dir" <> short 'd' <> help "Directory"
 progOption :: ParserInfo ProgOption 
 progOption = info pOptions (fullDesc <> progDesc "sutime")
 
-formatstr :: Int -> Text -> Text
-formatstr n x = T.pack (printf ("%" ++ show n ++ "s") x)
-
-format :: T.TimexWithOffset -> Text
-format x = T.pack (show (x ^. T.characterOffsetBegin)) <> "\t" <>
-           T.pack (show (x ^. T.characterOffsetEnd)) <> "\t" <>
-           formatstr 20 (cutf8 (x ^. T.timex . Tmx.text)) <> "\t" <>
-           cutf8 (x ^. T.timex . Tmx.value)
-
-cutf8 :: Maybe Utf8 -> Text
-cutf8 = TL.toStrict . TLE.decodeUtf8 . fromMaybe ""  . fmap utf8 
-           
-getArticlePubDay :: PGS.Connection -> B.ByteString -> IO String
-getArticlePubDay conn sha256 = do
-  let idbstr = fst (B16.decode sha256) 
-  [r] :: [Maybe (PGS.Only PGS.ZonedTimestamp)] <- PGS.query conn "select published from article where sha256 = ?" (PGS.Only (PGS.Binary idbstr))
-  case r of
-    Nothing -> return "2099-01-01"
-    Just (PGS.Only i) -> 
-      let PGS.Finite t = i
-      in return $ formatTime defaultTimeLocale "%F" (zonedTimeToUTC t)
 
 main :: IO ()
 main = do
