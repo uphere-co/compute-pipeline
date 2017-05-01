@@ -10,6 +10,8 @@ import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEith
 import           Data.Attoparsec.Text             (parseOnly)
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
+import           Data.Discrimination              (inner,outer,joining)
+import           Data.Discrimination.Grouping     (hashing)
 import           Data.Foldable                    (toList)
 import           Data.Maybe                       (catMaybes, fromJust)
 import           Data.Monoid
@@ -74,14 +76,12 @@ processAnnotation pp forest doc = runEitherT $ do
 
 getSentenceOffsets doc = 
   let sents = toListOf (D.sentence . traverse) doc
-  in zip [1..] $ flip map sents $ \s -> 
+  in zip ([1..] :: [Int]) $ flip map sents $ \s -> 
        let b = fromJust $ fromJust $ firstOf (S.token . traverse . TK.beginChar) s
            e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
        in (fromIntegral b+1,fromIntegral e)
 
 addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
-
-
 
 
 addTag lst (n,(b,e),txt) = (n,(b,e),txt,filter check lst)
@@ -92,19 +92,26 @@ addSUTime sents tmxs =
             , fromIntegral (t^.T.characterOffsetEnd)
             , t^. T.timex . Tmx.value
             )
-  in -- filter (\x -> not . null (x^._3)) $
-     map (addTag (map f (tmxs^..T.timexes.traverse))) sents
+  in filter (not.null.(^._4)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
                      
 
-addNER sents tags = map (addTag tags) sents
+addNER sents tags = filter (not.null.(^._4)) $ map (addTag tags) sents
 
-  
+combine sentswithtmx sentswithner = outer hashing joiner mtmx mner ftmx fner sentswithtmx sentswithner
+  where joiner (a1,a2,a3,a4) (b1,b2,b3,b4) = (a1,a2,a3,a4,b4)
+        mtmx (a1,a2,a3,a4) = (a1,a2,a3,a4,[])
+        mner (b1,b2,b3,b4) = (b1,b2,b3,[],b4)
+        ftmx (a1,a2,a3,a4) = a1
+        fner (b1,b2,b3,b4) = b1
+
+
+
 showHeader fp day = do
   putStrLn "==========================================================="
   putStrLn $ "file: " ++ takeFileName fp
   putStrLn $ "date: " ++ formatTime defaultTimeLocale "%F" day
 
-
+{- 
 showSUTime txt r = do
   let tmxs = toList (r^.T.timexes)
   mapM_ (TIO.putStrLn . format) tmxs
@@ -113,6 +120,7 @@ showSUTime txt r = do
   annotText (fmap f tmxs) txt 
 
 showNER txt parsed = annotText (map (\(b,e,_) -> ((),b,e)) parsed) txt
+-}
 
 process pgconn pp forest fp= do
   let sha256 = takeBaseName fp
@@ -129,9 +137,9 @@ process pgconn pp forest fp= do
           sents = map (addText txt) sentidxs
           sentswithtmx = addSUTime sents rsutime
           sentswithner = addNER sents rner
-      mapM_ print sentswithner -- sentswithtmx
-      putStrLn "-----------------------------------------------------------"
-      showNER txt rner
+      mapM_ print (combine sentswithtmx sentswithner) -- sentswithtmx
+      -- putStrLn "-----------------------------------------------------------"
+      -- showNER txt rner
       putStrLn "==========================================================="
 
 
@@ -149,11 +157,3 @@ main = do
     mapM_ (process pgconn pp forest) cnts'
   PGS.close pgconn
 
-{- 
-main :: IO ()
-main = do
-  let txt = "I think Microsoft will be the most successful in history."
-  opt <- execParser progOption
-  forest <- prepareForest (entityFile opt)
-  print (parseOnly (many (pTreeAdv forest)) txt)
--}
