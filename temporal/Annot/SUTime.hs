@@ -14,6 +14,8 @@ import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Lazy             as TL
 import qualified Data.Text.Lazy.Encoding    as TLE
+import           Data.Time.Calendar               (Day(..), fromGregorian)
+import           Data.Time.Clock                  (UTCTime(utctDay))
 import           Data.Time.Format
 import           Data.Time.LocalTime              (zonedTimeToUTC)
 import           Text.Printf
@@ -36,12 +38,13 @@ format x = T.pack (show (x ^. T.characterOffsetBegin)) <> "\t" <>
 cutf8 :: Maybe Utf8 -> Text
 cutf8 = TL.toStrict . TLE.decodeUtf8 . fromMaybe ""  . fmap utf8 
            
-getArticlePubDay :: PGS.Connection -> B.ByteString -> IO String
+getArticlePubDay :: PGS.Connection -> B.ByteString -> IO Day
 getArticlePubDay conn sha256 = do
   let idbstr = fst (B16.decode sha256) 
   [r] :: [Maybe (PGS.Only PGS.ZonedTimestamp)] <- PGS.query conn "select published from article where sha256 = ?" (PGS.Only (PGS.Binary idbstr))
   case r of
-    Nothing -> return "2099-01-01"
+    Nothing -> return (fromGregorian 2099 1 1)
     Just (PGS.Only i) -> 
       let PGS.Finite t = i
-      in return $ formatTime defaultTimeLocale "%F" (zonedTimeToUTC t)
+      in return (utctDay (zonedTimeToUTC t))
+        -- return $ formatTime defaultTimeLocale "%F" (zonedTimeToUTC t)
