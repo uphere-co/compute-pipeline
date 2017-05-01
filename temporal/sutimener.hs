@@ -15,7 +15,7 @@ import           Data.Discrimination.Grouping     (hashing)
 import           Data.Foldable                    (toList)
 import           Data.Function                    (on)
 import           Data.List                        (sort,sortBy)
-import           Data.Maybe                       (catMaybes, fromJust)
+import           Data.Maybe                       (catMaybes, fromJust, isJust)
 import           Data.Monoid
 import qualified Database.PostgreSQL.Simple as PGS
 import qualified Data.Text                  as T
@@ -27,6 +27,7 @@ import           Options.Applicative
 import           System.Directory                 (getDirectoryContents)
 import           System.FilePath                  ((</>),takeBaseName,takeExtensions,takeFileName)
 import           System.Environment               (getEnv)
+import           Text.ProtocolBuffers.Basic (Utf8)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           CoreNLP.Simple
@@ -38,9 +39,9 @@ import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.HCoreNLPProto.TimexWithOffset as T
 import           SearchTree
--- import           Type
-import           Util.Doc (slice)
--- import           View
+import           Type
+import           Util.Doc (slice,tagText)
+import           View
 --
 import           Annot.NER
 import           Annot.SUTime
@@ -106,9 +107,22 @@ combine sentswithtmx sentswithner = outer hashing joiner mtmx mner ftmx fner sen
         ftmx (a1,a2,a3,a4) = a1
         fner (b1,b2,b3,b4) = b1
 
-formatResult (a1,a2,a3,a4,a5) =
-  T.pack (show a1) <> "\t" <> a3 <> "\n" <> T.pack (show a4) <> "\n" <> T.pack (show a5) <> "\n" <>
-  "------------"
+underlineText (b0,e0) txt lst = do
+  let f (b,e,_) = ((),b-b0+1,e-b0+1)
+      tagged = map f lst
+      ann = (AnnotText . map (\(t,m)-> (t,isJust m)) . tagText tagged) txt
+      xss = lineSplitAnnot 80 ann
+  sequence_ (concatMap (map cutePrintAnnot) xss)
+
+formatResult :: (Int,(Int,Int),T.Text,[(Int,Int,Maybe Utf8)],[(Int,Int,String)]) -> IO ()
+formatResult (a1,a2,a3,a4,a5) = do 
+  TIO.putStrLn $ "Sentence " <> T.pack (show a1) 
+  underlineText a2 a3 a4
+  TIO.putStrLn "----------"
+  print a4
+  TIO.putStrLn "----------"
+  print a5
+  TIO.putStrLn "=========="
 
 
 showHeader fp day = do
@@ -142,7 +156,7 @@ process pgconn pp forest fp= do
           sents = map (addText txt) sentidxs
           sentswithtmx = addSUTime sents rsutime
           sentswithner = addNER sents rner
-      mapM_ (TIO.putStrLn . formatResult) . sortBy (compare `on` view _1) . concat $ combine sentswithtmx sentswithner
+      mapM_ formatResult . sortBy (compare `on` view _1) . concat $ combine sentswithtmx sentswithner
       -- putStrLn "-----------------------------------------------------------"
       -- showNER txt rner
       putStrLn "==========================================================="
