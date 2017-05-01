@@ -9,7 +9,7 @@ import           Data.Attoparsec.Text             (parseOnly)
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Foldable                    (toList)
-import           Data.Maybe                       (catMaybes, isJust, fromJust)
+import           Data.Maybe                       (catMaybes, fromJust)
 import           Data.Monoid
 import qualified Database.PostgreSQL.Simple as PGS
 import qualified Data.Text                  as T
@@ -30,12 +30,13 @@ import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.HCoreNLPProto.TimexWithOffset as T
-import           Type
-import           Util.Doc
-import           View
+-- import           Type
+-- import           Util.Doc
+-- import           View
 --
 import           Annot.NER
 import           Annot.SUTime
+import           Annot.Util
 
 data ProgOption = ProgOption { dir :: FilePath
                              , entityFile :: FilePath
@@ -47,8 +48,6 @@ pOptions = ProgOption <$> strOption (long "dir" <> short 'd' <> help "Directory"
 
 progOption :: ParserInfo ProgOption 
 progOption = info pOptions (fullDesc <> progDesc "Named Entity Recognition")
-
-
 
 
 process_sutime :: PGS.Connection -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> FilePath -> IO ()
@@ -71,12 +70,8 @@ process_sutime pgconn pp fp = do
       mapM_ (TIO.putStrLn . format) tmxs
       putStrLn "-----------------------------------------------------------"
       let f t = ((),fromIntegral (t^.T.characterOffsetBegin+1), fromIntegral (t^.T.characterOffsetEnd))
-          tagged = fmap f tmxs
-      let anntxt = (AnnotText . map (\(t,m)->(t,isJust m)) . tagText tagged) txt
-          xss = lineSplitAnnot 80 anntxt
-      sequence_ (concatMap (map cutePrintAnnot) xss)
+      annotText (fmap f tmxs) txt 
       putStrLn "==========================================================="
-
   
 
 process_ner :: Forest Char -> FilePath -> IO ()
@@ -88,11 +83,7 @@ process_ner forest fp = do
       putStrLn "==========================================================="
       putStrLn $ "file: " ++ takeFileName fp
       putStrLn "-----------------------------------------------------------"
-      let f (b,e,_) = ((),b,e)
-          tagged = map f parsed
-      let ann = (AnnotText . map (\(t,m)->(t,isJust m)) . tagText tagged) txt
-          xss = lineSplitAnnot 80 ann
-      sequence_ (concatMap (map cutePrintAnnot) xss)
+      annotText (map (\(b,e,_) -> ((),b,e)) parsed) txt
       putStrLn "==========================================================="
 
 process_doc pgconn pp fp= do
@@ -139,6 +130,6 @@ main = do
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     let pcfg = PPConfig True True True True
     pp <- prepare pcfg
-    mapM_ (process_doc pgconn pp) cnts'
-    --mapM_ (process_sutime pgconn pp <> process_ner forest) cnts'
+    -- mapM_ (process_doc pgconn pp) cnts'
+    mapM_ (process_sutime pgconn pp <> process_ner forest) cnts'
   PGS.close pgconn
