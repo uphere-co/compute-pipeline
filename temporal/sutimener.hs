@@ -70,47 +70,21 @@ processAnnotation pp forest doc = runEitherT $ do
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
 
-
-{- 
-process_sutime :: PGS.Connection -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> FilePath -> IO ()
-process_sutime pgconn pp fp = do
-  let sha256 = takeBaseName fp
-  day <- getArticlePubDay pgconn (B.pack sha256)
-  txt <- TIO.readFile fp
-  let doc = Document txt day
-  ann <- annotate pp doc
-  bstr <- serializeTimex ann
-  let lbstr = BL.fromStrict bstr
-  case (messageGet lbstr :: Either String (T.ListTimex,BL.ByteString)) of
-    Left err -> print err
-    Right (r,_lbstr') -> do
-  
-
-process_ner :: Forest Char -> FilePath -> IO ()
-process_ner forest fp = do
-  txt <- TIO.readFile fp  
-  case parseOnly (many (pTreeAdv forest)) txt of
-    Left err -> print err
--}
-
-showSUTime fp txt day r = do
-  let tmxs = toList (r^.T.timexes)
+showHeader fp day = do
   putStrLn "==========================================================="
   putStrLn $ "file: " ++ takeFileName fp
   putStrLn $ "date: " ++ formatTime defaultTimeLocale "%F" day
-  putStrLn "-----------------------------------------------------------"
+
+
+showSUTime txt r = do
+  let tmxs = toList (r^.T.timexes)
   mapM_ (TIO.putStrLn . format) tmxs
   putStrLn "-----------------------------------------------------------"
   let f t = ((),fromIntegral (t^.T.characterOffsetBegin+1), fromIntegral (t^.T.characterOffsetEnd))
   annotText (fmap f tmxs) txt 
-  putStrLn "==========================================================="
 
-showNER fp txt parsed = do
-  putStrLn "==========================================================="
-  putStrLn $ "file: " ++ takeFileName fp
-  putStrLn "-----------------------------------------------------------"
-  annotText (map (\(b,e,_) -> ((),b,e)) parsed) txt
-  putStrLn "==========================================================="
+showNER txt parsed = annotText (map (\(b,e,_) -> ((),b,e)) parsed) txt
+
 
 showDoc doc = do
   let sents = toListOf (D.sentence . traverse) doc
@@ -132,8 +106,6 @@ showDoc doc = do
         e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
     in (b,e)
 
-  -- print (traverse (D.sentence . S.token) rdoc)
-
 
 process pgconn pp forest fp= do
   let sha256 = takeBaseName fp
@@ -143,10 +115,16 @@ process pgconn pp forest fp= do
   r <- processAnnotation pp forest docu
   case r of
     Left err -> error err
-    Right (TaggedResult rsutime rner rdoc) -> do 
+    Right (TaggedResult rsutime rner rdoc) -> do
+      showHeader fp day
+      putStrLn "-----------------------------------------------------------"
       showDoc rdoc
-      showSUTime fp txt day rsutime 
-      showNER fp txt rner
+      putStrLn "-----------------------------------------------------------"
+      showSUTime txt rsutime
+      putStrLn "-----------------------------------------------------------"
+      showNER txt rner
+      putStrLn "==========================================================="
+
 
 main :: IO ()
 main = do
@@ -160,5 +138,4 @@ main = do
     let pcfg = PPConfig True True True True
     pp <- prepare pcfg
     mapM_ (process pgconn pp forest) cnts'
-    -- mapM_ (process_sutime pgconn pp <> process_ner forest) cnts'
   PGS.close pgconn
