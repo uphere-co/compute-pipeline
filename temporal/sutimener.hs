@@ -29,11 +29,12 @@ import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
+import qualified CoreNLP.Proto.CoreNLPProtos.Timex     as Tmx
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.HCoreNLPProto.TimexWithOffset as T
 -- import           Type
--- import           Util.Doc
+import           Util.Doc (slice)
 -- import           View
 --
 import           Annot.NER
@@ -70,6 +71,40 @@ processAnnotation pp forest doc = runEitherT $ do
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
 
+-- checkSentenceTagging ::
+
+getSentenceOffsets doc = 
+  let sents = toListOf (D.sentence . traverse) doc
+  in zip [1..] $ flip map sents $ \s -> 
+       let b = fromJust $ fromJust $ firstOf (S.token . traverse . TK.beginChar) s
+           e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
+       in (fromIntegral b+1,fromIntegral e)
+
+addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
+
+
+
+
+addTag lst (n,(b,e),txt) = (n,(b,e),txt,filter check lst)
+  where check (b',e',_) = b' >= b && e' <= e 
+
+addSUTime sents tmxs =
+  let f t = ( fromIntegral (t^.T.characterOffsetBegin) + 1
+            , fromIntegral (t^.T.characterOffsetEnd)
+            , t^. T.timex . Tmx.value
+            )
+  in -- filter (\x -> not . null (x^._3)) $
+     map (addTag (map f (tmxs^..T.timexes.traverse))) sents
+                     
+
+addNER sents tags = map (addTag tags) sents
+
+
+{-   let f t = (fromIntegral (t^.T.characterOffsetBegin), fromIntegral (t^.T.characterOffsetEnd))
+      lst = map listimex 
+ -}
+
+  
 showHeader fp day = do
   putStrLn "==========================================================="
   putStrLn $ "file: " ++ takeFileName fp
@@ -86,8 +121,8 @@ showSUTime txt r = do
 showNER txt parsed = annotText (map (\(b,e,_) -> ((),b,e)) parsed) txt
 
 
-showDoc doc = do
-  let sents = toListOf (D.sentence . traverse) doc
+showDoc txt doc = do
+  {- let sents = toListOf (D.sentence . traverse) doc
   putStrLn "show number of tokens per each sentence:"
   print $ map (lengthOf (S.token . traverse)) sents 
   putStrLn "show each token"
@@ -105,7 +140,10 @@ showDoc doc = do
     let b = fromJust $ fromJust $ firstOf (S.token . traverse . TK.beginChar) s
         e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
     in (b,e)
-
+  -- -}
+  let sentidxs = getSentenceOffsets doc
+  mapM_ print $ map (addText txt) sentidxs
+  
 
 process pgconn pp forest fp= do
   let sha256 = takeBaseName fp
@@ -118,9 +156,15 @@ process pgconn pp forest fp= do
     Right (TaggedResult rsutime rner rdoc) -> do
       showHeader fp day
       putStrLn "-----------------------------------------------------------"
-      showDoc rdoc
-      putStrLn "-----------------------------------------------------------"
-      showSUTime txt rsutime
+      let sentidxs = getSentenceOffsets rdoc
+          sents = map (addText txt) sentidxs
+          sentswithtmx = addSUTime sents rsutime
+          sentswithner = addNER sents rner
+      mapM_ print sentswithner -- sentswithtmx
+      
+      -- showDoc txt rdoc
+      -- putStrLn "-----------------------------------------------------------"
+      -- showSUTime txt rsutime
       putStrLn "-----------------------------------------------------------"
       showNER txt rner
       putStrLn "==========================================================="
