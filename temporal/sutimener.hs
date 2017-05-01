@@ -13,6 +13,8 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Discrimination              (inner,outer,joining)
 import           Data.Discrimination.Grouping     (hashing)
 import           Data.Foldable                    (toList)
+import           Data.Function                    (on)
+import           Data.List                        (sort,sortBy)
 import           Data.Maybe                       (catMaybes, fromJust)
 import           Data.Monoid
 import qualified Database.PostgreSQL.Simple as PGS
@@ -104,6 +106,9 @@ combine sentswithtmx sentswithner = outer hashing joiner mtmx mner ftmx fner sen
         ftmx (a1,a2,a3,a4) = a1
         fner (b1,b2,b3,b4) = b1
 
+formatResult (a1,a2,a3,a4,a5) =
+  T.pack (show a1) <> "\t" <> a3 <> "\n" <> T.pack (show a4) <> "\n" <> T.pack (show a5) <> "\n" <>
+  "------------"
 
 
 showHeader fp day = do
@@ -137,7 +142,7 @@ process pgconn pp forest fp= do
           sents = map (addText txt) sentidxs
           sentswithtmx = addSUTime sents rsutime
           sentswithner = addNER sents rner
-      mapM_ print (combine sentswithtmx sentswithner) -- sentswithtmx
+      mapM_ (TIO.putStrLn . formatResult) . sortBy (compare `on` view _1) . concat $ combine sentswithtmx sentswithner
       -- putStrLn "-----------------------------------------------------------"
       -- showNER txt rner
       putStrLn "==========================================================="
@@ -149,7 +154,7 @@ main = do
   opt <- execParser progOption
   forest <- prepareForest (entityFile opt)
   cnts <- getDirectoryContents (dir opt)
-  let cnts' = map (dir opt </>) $ filter (\p -> takeExtensions p == ".maintext") cnts
+  let cnts' = map (dir opt </>) $ sort $ filter (\p -> takeExtensions p == ".maintext") cnts
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     let pcfg = PPConfig True True True True
