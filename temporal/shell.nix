@@ -114,6 +114,8 @@ let
             attoparsec
             base16-bytestring
             data-default
+            discrimination
+            either
             haskeline
             lens
             monad-loops
