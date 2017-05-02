@@ -77,7 +77,11 @@ processAnnotation pp forest doc = runEitherT $ do
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
 
-getSentenceOffsets :: D.Document -> [(Int,(Int,Int))]
+type SentIdx = Int
+type CharIdx = Int
+type BeginEnd = (CharIdx,CharIdx)
+
+getSentenceOffsets :: D.Document -> [(SentIdx,BeginEnd)]
 getSentenceOffsets doc = 
   let sents = toListOf (D.sentence . traverse) doc
   in zip ([1..] :: [Int]) $ flip map sents $ \s -> 
@@ -85,14 +89,16 @@ getSentenceOffsets doc =
            e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
        in (fromIntegral b+1,fromIntegral e)
 
-addText :: Text -> (Int,(Int,Int)) -> (Int,(Int,Int),Text)
+addText :: Text -> (SentIdx,BeginEnd) -> (SentIdx,BeginEnd,Text)
 addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
 
-addTag :: [(Int,Int,a)] -> (Int,(Int,Int),Text) -> (Int,(Int,Int),Text,[(Int,Int,a)])
+addTag :: [(CharIdx,CharIdx,a)] -> (SentIdx,BeginEnd,Text)
+       -> (SentIdx,BeginEnd,Text,[(CharIdx,CharIdx,a)])
 addTag lst (n,(b,e),txt) = (n,(b,e),txt,filter check lst)
   where check (b',e',_) = b' >= b && e' <= e 
 
-addSUTime :: [(Int,(Int,Int),Text)] -> T.ListTimex -> [(Int,(Int,Int),Text,[(Int,Int,Maybe Utf8)])]
+addSUTime :: [(SentIdx,BeginEnd,Text)] -> T.ListTimex
+          -> [(SentIdx,BeginEnd,Text,[(CharIdx,CharIdx,Maybe Utf8)])]
 addSUTime sents tmxs =
   let f t = ( fromIntegral (t^.T.characterOffsetBegin) + 1
             , fromIntegral (t^.T.characterOffsetEnd)
@@ -100,10 +106,14 @@ addSUTime sents tmxs =
             )
   in filter (not.null.(^._4)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
                      
-addNER :: [(Int,(Int,Int),Text)] -> [(Int,Int,a)] -> [(Int,(Int,Int),Text,[(Int,Int,a)])]
+addNER :: [(SentIdx,BeginEnd,Text)]
+       -> [(CharIdx,CharIdx,a)]
+       -> [(SentIdx,BeginEnd,Text,[(CharIdx,CharIdx,a)])]
 addNER sents tags = filter (not.null.(^._4)) $ map (addTag tags) sents
 
-combine :: [(Int,(Int,Int),Text,[a])] -> [(Int,(Int,Int),Text,[b])] -> [(Int,(Int,Int),Text,[a],[b])]
+combine :: [(SentIdx,BeginEnd,Text,[a])]
+        -> [(SentIdx,BeginEnd,Text,[b])]
+        -> [(SentIdx,BeginEnd,Text,[a],[b])]
 combine sentswithtmx sentswithner = concat $ outer hashing joiner mtmx mner ftmx fner sentswithtmx sentswithner
   where joiner (a1,a2,a3,a4) (_b1,_b2,_b3,b4) = (a1,a2,a3,a4,b4)
         mtmx (a1,a2,a3,a4) = (a1,a2,a3,a4,[])
@@ -111,7 +121,7 @@ combine sentswithtmx sentswithner = concat $ outer hashing joiner mtmx mner ftmx
         ftmx (a1,_a2,_a3,_a4) = a1
         fner (b1,_b2,_b3,_b4) = b1
 
-underlineText :: (Int,Int) -> Text -> [(Int,Int,a)] -> IO ()
+underlineText :: BeginEnd -> Text -> [(CharIdx,CharIdx,a)] -> IO ()
 underlineText (b0,_e0) txt lst = do
   let f (b,e,_) = ((),b-b0+1,e-b0+1)
       tagged = map f lst
@@ -119,7 +129,7 @@ underlineText (b0,_e0) txt lst = do
       xss = lineSplitAnnot 80 ann
   sequence_ (concatMap (map cutePrintAnnot) xss)
 
-formatResult :: (Int,(Int,Int),T.Text,[(Int,Int,Maybe Utf8)],[(Int,Int,String)]) -> IO ()
+formatResult :: (SentIdx,BeginEnd,Text,[(CharIdx,CharIdx,Maybe Utf8)],[(CharIdx,CharIdx,String)]) -> IO ()
 formatResult (a1,a2,a3,a4,a5) = do 
   TIO.putStrLn $ "Sentence " <> T.pack (show a1) 
   underlineText a2 a3 a4
