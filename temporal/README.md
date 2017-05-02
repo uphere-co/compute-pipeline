@@ -13,7 +13,7 @@ $ ghc sutime.hs
 Example use
 -----------
 ```
-$ ./sutime --dir  ~/repo/workspace/nyt/00
+$ ./sutime --dir  ~/repo/workspace/nyt/00 --entity F7745.all_entities --dbname nytimes
 Loading POS tagger from edu/stanford/nlp/models/pos-tagger/english-left3words/english-left3words-distsim.tagger ... done [1.1 sec].
 Initializing JollyDayHoliday for SUTime from classpath edu/stanford/nlp/models/sutime/jollyday/Holidays_sutime.xml as sutime.binder.1.
 ===========================================================

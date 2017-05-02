@@ -49,11 +49,13 @@ import           Annot.SUTime
 
 data ProgOption = ProgOption { dir :: FilePath
                              , entityFile :: FilePath
+                             , dbname :: String
                              } deriving Show
 
 pOptions :: Parser ProgOption
 pOptions = ProgOption <$> strOption (long "dir" <> short 'd' <> help "Directory")
                       <*> strOption (long "entity" <> short 'e' <> help "Entity File")
+                      <*> strOption (long "dbname" <> short 's' <> help "DB name")
 
 progOption :: ParserInfo ProgOption 
 progOption = info pOptions (fullDesc <> progDesc "Named Entity Recognition")
@@ -171,8 +173,8 @@ process pgconn pp forest fp= do
 
 main :: IO ()
 main = do
-  pgconn <- PGS.connectPostgreSQL "dbname=nytimes"
   opt <- execParser progOption
+  pgconn <- PGS.connectPostgreSQL (B.pack ("dbname=" ++ dbname opt))
   forest <- prepareForest (entityFile opt)
   cnts <- getDirectoryContents (dir opt)
   let cnts' = map (dir opt </>) $ sort $ filter (\p -> takeExtensions p == ".maintext") cnts
