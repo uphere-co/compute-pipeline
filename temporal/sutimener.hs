@@ -81,6 +81,8 @@ type SentIdx = Int
 type CharIdx = Int
 type BeginEnd = (CharIdx,CharIdx)
 type TagPos a = (CharIdx,CharIdx,a)
+type SentItem = (SentIdx,BeginEnd,Text)
+
 
 getSentenceOffsets :: D.Document -> [(SentIdx,BeginEnd)]
 getSentenceOffsets doc = 
@@ -90,36 +92,34 @@ getSentenceOffsets doc =
            e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
        in (fromIntegral b+1,fromIntegral e)
 
-addText :: Text -> (SentIdx,BeginEnd) -> (SentIdx,BeginEnd,Text)
+addText :: Text -> (SentIdx,BeginEnd) -> SentItem
 addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
 
-addTag :: [TagPos a] -> (SentIdx,BeginEnd,Text) -> (SentIdx,BeginEnd,Text,[TagPos a])
-addTag lst (n,(b,e),txt) = (n,(b,e),txt,filter check lst)
+addTag :: [TagPos a] -> SentItem -> (SentItem,[TagPos a])
+addTag lst i@(_,(b,e),_) = (i,filter check lst)
   where check (b',e',_) = b' >= b && e' <= e 
 
-addSUTime :: [(SentIdx,BeginEnd,Text)] -> T.ListTimex
-          -> [(SentIdx,BeginEnd,Text,[TagPos (Maybe Utf8)])]
+addSUTime :: [SentItem] -> T.ListTimex
+          -> [(SentItem,[TagPos (Maybe Utf8)])]
 addSUTime sents tmxs =
   let f t = ( fromIntegral (t^.T.characterOffsetBegin) + 1
             , fromIntegral (t^.T.characterOffsetEnd)
             , t^. T.timex . Tmx.value
             )
-  in filter (not.null.(^._4)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
+  in filter (not.null.(^._2)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
                      
-addNER :: [(SentIdx,BeginEnd,Text)]
+addNER :: [SentItem]
        -> [TagPos String]
-       -> [(SentIdx,BeginEnd,Text,[TagPos String])]
-addNER sents tags = filter (not.null.(^._4)) $ map (addTag tags) sents
+       -> [(SentItem,[TagPos String])]
+addNER sents tags = filter (not.null.(^._2)) $ map (addTag tags) sents
 
-combine :: [(SentIdx,BeginEnd,Text,[a])]
-        -> [(SentIdx,BeginEnd,Text,[b])]
-        -> [(SentIdx,BeginEnd,Text,[a],[b])]
-combine sentswithtmx sentswithner = concat $ outer hashing joiner mtmx mner ftmx fner sentswithtmx sentswithner
-  where joiner (a1,a2,a3,a4) (_b1,_b2,_b3,b4) = (a1,a2,a3,a4,b4)
-        mtmx (a1,a2,a3,a4) = (a1,a2,a3,a4,[])
-        mner (b1,b2,b3,b4) = (b1,b2,b3,[],b4)
-        ftmx (a1,_a2,_a3,_a4) = a1
-        fner (b1,_b2,_b3,_b4) = b1
+combine :: [(SentItem,[a])] -> [(SentItem,[b])] -> [(SentItem,[a],[b])]
+combine lst1 lst2 = concat $ outer hashing joiner m1 m2 f1 f2 lst1 lst2
+  where joiner (a1,a2) (_b1,b2) = (a1,a2,b2)
+        m1 (a1,a2) = (a1,a2,[])
+        m2 (b1,b2) = (b1,[],b2)
+        f1 (a1,_) = a1^._1
+        f2 (b1,_) = b1^._1
 
 underlineText :: BeginEnd -> Text -> [TagPos a] -> IO ()
 underlineText (b0,_e0) txt lst = do
@@ -129,14 +129,14 @@ underlineText (b0,_e0) txt lst = do
       xss = lineSplitAnnot 80 ann
   sequence_ (concatMap (map cutePrintAnnot) xss)
 
-formatResult :: (SentIdx,BeginEnd,Text,[TagPos (Maybe Utf8)],[TagPos String]) -> IO ()
-formatResult (a1,a2,a3,a4,a5) = do 
-  TIO.putStrLn $ "Sentence " <> T.pack (show a1) 
-  underlineText a2 a3 a4
+formatResult :: (SentItem,[TagPos (Maybe Utf8)],[TagPos String]) -> IO ()
+formatResult (s,a,b) = do 
+  TIO.putStrLn $ "Sentence " <> T.pack (show (s^._1)) 
+  underlineText (s^._2) (s^._3) a
   TIO.putStrLn "----------"
-  print a4
+  print a
   TIO.putStrLn "----------"
-  print a5
+  print b
   TIO.putStrLn "=========="
 
 showHeader :: FilePath -> Day -> IO ()
@@ -165,7 +165,7 @@ process pgconn pp forest fp= do
           sents = map (addText txt) sentidxs
           sentswithtmx = addSUTime sents rsutime
           sentswithner = addNER sents rner
-      mapM_ formatResult . sortBy (compare `on` view _1) $ combine sentswithtmx sentswithner
+      mapM_ formatResult . sortBy (compare `on` view (_1._1)) $ combine sentswithtmx sentswithner
       putStrLn "==========================================================="
 
 
