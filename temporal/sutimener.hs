@@ -80,6 +80,7 @@ processAnnotation pp forest doc = runEitherT $ do
 type SentIdx = Int
 type CharIdx = Int
 type BeginEnd = (CharIdx,CharIdx)
+type TagPos a = (CharIdx,CharIdx,a)
 
 getSentenceOffsets :: D.Document -> [(SentIdx,BeginEnd)]
 getSentenceOffsets doc = 
@@ -92,13 +93,12 @@ getSentenceOffsets doc =
 addText :: Text -> (SentIdx,BeginEnd) -> (SentIdx,BeginEnd,Text)
 addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
 
-addTag :: [(CharIdx,CharIdx,a)] -> (SentIdx,BeginEnd,Text)
-       -> (SentIdx,BeginEnd,Text,[(CharIdx,CharIdx,a)])
+addTag :: [TagPos a] -> (SentIdx,BeginEnd,Text) -> (SentIdx,BeginEnd,Text,[TagPos a])
 addTag lst (n,(b,e),txt) = (n,(b,e),txt,filter check lst)
   where check (b',e',_) = b' >= b && e' <= e 
 
 addSUTime :: [(SentIdx,BeginEnd,Text)] -> T.ListTimex
-          -> [(SentIdx,BeginEnd,Text,[(CharIdx,CharIdx,Maybe Utf8)])]
+          -> [(SentIdx,BeginEnd,Text,[TagPos (Maybe Utf8)])]
 addSUTime sents tmxs =
   let f t = ( fromIntegral (t^.T.characterOffsetBegin) + 1
             , fromIntegral (t^.T.characterOffsetEnd)
@@ -107,8 +107,8 @@ addSUTime sents tmxs =
   in filter (not.null.(^._4)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
                      
 addNER :: [(SentIdx,BeginEnd,Text)]
-       -> [(CharIdx,CharIdx,a)]
-       -> [(SentIdx,BeginEnd,Text,[(CharIdx,CharIdx,a)])]
+       -> [TagPos String]
+       -> [(SentIdx,BeginEnd,Text,[TagPos String])]
 addNER sents tags = filter (not.null.(^._4)) $ map (addTag tags) sents
 
 combine :: [(SentIdx,BeginEnd,Text,[a])]
@@ -121,7 +121,7 @@ combine sentswithtmx sentswithner = concat $ outer hashing joiner mtmx mner ftmx
         ftmx (a1,_a2,_a3,_a4) = a1
         fner (b1,_b2,_b3,_b4) = b1
 
-underlineText :: BeginEnd -> Text -> [(CharIdx,CharIdx,a)] -> IO ()
+underlineText :: BeginEnd -> Text -> [TagPos a] -> IO ()
 underlineText (b0,_e0) txt lst = do
   let f (b,e,_) = ((),b-b0+1,e-b0+1)
       tagged = map f lst
@@ -129,7 +129,7 @@ underlineText (b0,_e0) txt lst = do
       xss = lineSplitAnnot 80 ann
   sequence_ (concatMap (map cutePrintAnnot) xss)
 
-formatResult :: (SentIdx,BeginEnd,Text,[(CharIdx,CharIdx,Maybe Utf8)],[(CharIdx,CharIdx,String)]) -> IO ()
+formatResult :: (SentIdx,BeginEnd,Text,[TagPos (Maybe Utf8)],[TagPos String]) -> IO ()
 formatResult (a1,a2,a3,a4,a5) = do 
   TIO.putStrLn $ "Sentence " <> T.pack (show a1) 
   underlineText a2 a3 a4
