@@ -131,7 +131,7 @@ stdenv.mkDerivation {
   name = "eventextractor-dev";
   buildInputs = [ hsenv jdk ];
   shellHook = ''
-    CLASSPATH=/home/wavewave/repo/workspace/corenlp/stanford-english-corenlp-2016-10-31-models.jar:/home/wavewave/repo/workspace/corenlp/stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0.jar:/home/wavewave/repo/workspace/corenlp/stanford-corenlp-full-2016-10-31/protobuf.jar:/home/wavewave/repo/workspace/corenlp/stanford-corenlp-full-2016-10-31/joda-time.jar:/home/wavewave/repo/workspace/corenlp/stanford-corenlp-full-2016-10-31/jollyday.jar
+    CLASSPATH="${corenlp_models}:${corenlp}/stanford-corenlp-3.7.0.jar:${corenlp}/protobuf.jar:${corenlp}/joda-time.jar:${corenlp}/jollyday.jar:${hsenv}/share/x86_64-linux-ghc-8.0.2/HCoreNLP-0.1.0.0/HCoreNLPProto.jar";
   '';
 }
 
