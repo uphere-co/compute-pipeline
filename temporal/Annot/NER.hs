@@ -2,17 +2,11 @@
 
 module Annot.NER where
 
-import           Control.Applicative
-import           Control.Monad                        (void)
-import           Data.Attoparsec.Text                 
-import qualified Data.Attoparsec.Internal.Types as AT (Parser(..),fromPos)
 import qualified Data.Text                      as T
 import qualified Data.Text.IO                   as TIO
 import           Data.Tree
 --
 import           SearchTree
-
-
 
 prepareForest :: FilePath -> IO (Forest (Maybe Char))
 prepareForest fp = do

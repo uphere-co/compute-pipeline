@@ -16,7 +16,6 @@ import qualified Data.Text.Lazy             as TL
 import qualified Data.Text.Lazy.Encoding    as TLE
 import           Data.Time.Calendar               (Day(..), fromGregorian)
 import           Data.Time.Clock                  (UTCTime(utctDay))
-import           Data.Time.Format
 import           Data.Time.LocalTime              (zonedTimeToUTC)
 import           Text.Printf
 import           Text.ProtocolBuffers.Basic       (Utf8, utf8)

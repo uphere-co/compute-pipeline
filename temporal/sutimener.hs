@@ -10,16 +10,17 @@ import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEith
 import           Data.Attoparsec.Text             (parseOnly)
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
-import           Data.Discrimination              (inner,outer,joining)
+import           Data.Discrimination              (outer)
 import           Data.Discrimination.Grouping     (hashing)
-import           Data.Foldable                    (toList)
 import           Data.Function                    (on)
 import           Data.List                        (sort,sortBy)
-import           Data.Maybe                       (catMaybes, fromJust, isJust)
+import           Data.Maybe                       (fromJust, isJust)
 import           Data.Monoid
 import qualified Database.PostgreSQL.Simple as PGS
+import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
+import           Data.Time.Calendar               (Day)
 import           Data.Time.Format                 (defaultTimeLocale, formatTime)
 import           Data.Tree
 import           Language.Java         as J
@@ -45,7 +46,6 @@ import           View
 --
 import           Annot.NER
 import           Annot.SUTime
-import           Annot.Util
 
 data ProgOption = ProgOption { dir :: FilePath
                              , entityFile :: FilePath
@@ -77,6 +77,7 @@ processAnnotation pp forest doc = runEitherT $ do
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
 
+getSentenceOffsets :: D.Document -> [(Int,(Int,Int))]
 getSentenceOffsets doc = 
   let sents = toListOf (D.sentence . traverse) doc
   in zip ([1..] :: [Int]) $ flip map sents $ \s -> 
@@ -84,12 +85,14 @@ getSentenceOffsets doc =
            e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
        in (fromIntegral b+1,fromIntegral e)
 
+addText :: Text -> (Int,(Int,Int)) -> (Int,(Int,Int),Text)
 addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
 
-
+addTag :: [(Int,Int,a)] -> (Int,(Int,Int),Text) -> (Int,(Int,Int),Text,[(Int,Int,a)])
 addTag lst (n,(b,e),txt) = (n,(b,e),txt,filter check lst)
   where check (b',e',_) = b' >= b && e' <= e 
 
+addSUTime :: [(Int,(Int,Int),Text)] -> T.ListTimex -> [(Int,(Int,Int),Text,[(Int,Int,Maybe Utf8)])]
 addSUTime sents tmxs =
   let f t = ( fromIntegral (t^.T.characterOffsetBegin) + 1
             , fromIntegral (t^.T.characterOffsetEnd)
@@ -97,17 +100,19 @@ addSUTime sents tmxs =
             )
   in filter (not.null.(^._4)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
                      
-
+addNER :: [(Int,(Int,Int),Text)] -> [(Int,Int,a)] -> [(Int,(Int,Int),Text,[(Int,Int,a)])]
 addNER sents tags = filter (not.null.(^._4)) $ map (addTag tags) sents
 
-combine sentswithtmx sentswithner = outer hashing joiner mtmx mner ftmx fner sentswithtmx sentswithner
-  where joiner (a1,a2,a3,a4) (b1,b2,b3,b4) = (a1,a2,a3,a4,b4)
+combine :: [(Int,(Int,Int),Text,[a])] -> [(Int,(Int,Int),Text,[b])] -> [(Int,(Int,Int),Text,[a],[b])]
+combine sentswithtmx sentswithner = concat $ outer hashing joiner mtmx mner ftmx fner sentswithtmx sentswithner
+  where joiner (a1,a2,a3,a4) (_b1,_b2,_b3,b4) = (a1,a2,a3,a4,b4)
         mtmx (a1,a2,a3,a4) = (a1,a2,a3,a4,[])
         mner (b1,b2,b3,b4) = (b1,b2,b3,[],b4)
-        ftmx (a1,a2,a3,a4) = a1
-        fner (b1,b2,b3,b4) = b1
+        ftmx (a1,_a2,_a3,_a4) = a1
+        fner (b1,_b2,_b3,_b4) = b1
 
-underlineText (b0,e0) txt lst = do
+underlineText :: (Int,Int) -> Text -> [(Int,Int,a)] -> IO ()
+underlineText (b0,_e0) txt lst = do
   let f (b,e,_) = ((),b-b0+1,e-b0+1)
       tagged = map f lst
       ann = (AnnotText . map (\(t,m)-> (t,isJust m)) . tagText tagged) txt
@@ -124,23 +129,17 @@ formatResult (a1,a2,a3,a4,a5) = do
   print a5
   TIO.putStrLn "=========="
 
-
+showHeader :: FilePath -> Day -> IO ()
 showHeader fp day = do
   putStrLn "==========================================================="
   putStrLn $ "file: " ++ takeFileName fp
   putStrLn $ "date: " ++ formatTime defaultTimeLocale "%F" day
 
-{- 
-showSUTime txt r = do
-  let tmxs = toList (r^.T.timexes)
-  mapM_ (TIO.putStrLn . format) tmxs
-  putStrLn "-----------------------------------------------------------"
-  let f t = ((),fromIntegral (t^.T.characterOffsetBegin+1), fromIntegral (t^.T.characterOffsetEnd))
-  annotText (fmap f tmxs) txt 
-
-showNER txt parsed = annotText (map (\(b,e,_) -> ((),b,e)) parsed) txt
--}
-
+process :: PGS.Connection
+        -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+        -> Forest (Maybe Char)
+        -> FilePath
+        -> IO ()
 process pgconn pp forest fp= do
   let sha256 = takeBaseName fp
   day <- getArticlePubDay pgconn (B.pack sha256)
@@ -156,9 +155,7 @@ process pgconn pp forest fp= do
           sents = map (addText txt) sentidxs
           sentswithtmx = addSUTime sents rsutime
           sentswithner = addNER sents rner
-      mapM_ formatResult . sortBy (compare `on` view _1) . concat $ combine sentswithtmx sentswithner
-      -- putStrLn "-----------------------------------------------------------"
-      -- showNER txt rner
+      mapM_ formatResult . sortBy (compare `on` view _1) $ combine sentswithtmx sentswithner
       putStrLn "==========================================================="
 
 
