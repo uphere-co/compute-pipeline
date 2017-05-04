@@ -10,12 +10,17 @@ import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEith
 import           Data.Attoparsec.Text             (parseOnly)
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
-import           Data.Foldable                    (toList)
-import           Data.Maybe                       (catMaybes, fromJust)
+import           Data.Discrimination              (outer)
+import           Data.Discrimination.Grouping     (hashing)
+import           Data.Function                    (on)
+import           Data.List                        (sort,sortBy)
+import           Data.Maybe                       (fromJust, isJust)
 import           Data.Monoid
 import qualified Database.PostgreSQL.Simple as PGS
+import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
+import           Data.Time.Calendar               (Day)
 import           Data.Time.Format                 (defaultTimeLocale, formatTime)
 import           Data.Tree
 import           Language.Java         as J
@@ -23,30 +28,34 @@ import           Options.Applicative
 import           System.Directory                 (getDirectoryContents)
 import           System.FilePath                  ((</>),takeBaseName,takeExtensions,takeFileName)
 import           System.Environment               (getEnv)
+import           Text.ProtocolBuffers.Basic (Utf8)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
+import qualified CoreNLP.Proto.CoreNLPProtos.Timex     as Tmx
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.HCoreNLPProto.TimexWithOffset as T
--- import           Type
--- import           Util.Doc
--- import           View
+import           SearchTree
+import           Type
+import           Util.Doc (slice,tagText)
+import           View
 --
 import           Annot.NER
 import           Annot.SUTime
-import           Annot.Util
 
 data ProgOption = ProgOption { dir :: FilePath
                              , entityFile :: FilePath
+                             , dbname :: String
                              } deriving Show
 
 pOptions :: Parser ProgOption
 pOptions = ProgOption <$> strOption (long "dir" <> short 'd' <> help "Directory")
                       <*> strOption (long "entity" <> short 'e' <> help "Entity File")
+                      <*> strOption (long "dbname" <> short 's' <> help "DB name")
 
 progOption :: ParserInfo ProgOption 
 progOption = info pOptions (fullDesc <> progDesc "Named Entity Recognition")
@@ -59,7 +68,7 @@ data TaggedResult = TaggedResult { resultSUTime :: T.ListTimex
 
 
 processAnnotation :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-                  -> Forest Char
+                  -> Forest (Maybe Char)
                   -> Document
                   -> IO (Either String TaggedResult)
 processAnnotation pp forest doc = runEitherT $ do
@@ -70,43 +79,79 @@ processAnnotation pp forest doc = runEitherT $ do
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
 
+type SentIdx = Int
+type CharIdx = Int
+type BeginEnd = (CharIdx,CharIdx)
+type TagPos a = (CharIdx,CharIdx,a)
+type SentItem = (SentIdx,BeginEnd,Text)
+
+
+getSentenceOffsets :: D.Document -> [(SentIdx,BeginEnd)]
+getSentenceOffsets doc = 
+  let sents = toListOf (D.sentence . traverse) doc
+  in zip ([1..] :: [Int]) $ flip map sents $ \s -> 
+       let b = fromJust $ fromJust $ firstOf (S.token . traverse . TK.beginChar) s
+           e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
+       in (fromIntegral b+1,fromIntegral e)
+
+addText :: Text -> (SentIdx,BeginEnd) -> SentItem
+addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
+
+addTag :: [TagPos a] -> SentItem -> (SentItem,[TagPos a])
+addTag lst i@(_,(b,e),_) = (i,filter check lst)
+  where check (b',e',_) = b' >= b && e' <= e 
+
+addSUTime :: [SentItem] -> T.ListTimex
+          -> [(SentItem,[TagPos (Maybe Utf8)])]
+addSUTime sents tmxs =
+  let f t = ( fromIntegral (t^.T.characterOffsetBegin) + 1
+            , fromIntegral (t^.T.characterOffsetEnd)
+            , t^. T.timex . Tmx.value
+            )
+  in filter (not.null.(^._2)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
+                     
+addNER :: [SentItem]
+       -> [TagPos String]
+       -> [(SentItem,[TagPos String])]
+addNER sents tags = filter (not.null.(^._2)) $ map (addTag tags) sents
+
+combine :: [(SentItem,[a])] -> [(SentItem,[b])] -> [(SentItem,[a],[b])]
+combine lst1 lst2 = concat $ outer hashing joiner m1 m2 f1 f2 lst1 lst2
+  where joiner (a1,a2) (_b1,b2) = (a1,a2,b2)
+        m1 (a1,a2) = (a1,a2,[])
+        m2 (b1,b2) = (b1,[],b2)
+        f1 (a1,_) = a1^._1
+        f2 (b1,_) = b1^._1
+
+underlineText :: BeginEnd -> Text -> [TagPos a] -> IO ()
+underlineText (b0,_e0) txt lst = do
+  let f (b,e,_) = ((),b-b0+1,e-b0+1)
+      tagged = map f lst
+      ann = (AnnotText . map (\(t,m)-> (t,isJust m)) . tagText tagged) txt
+      xss = lineSplitAnnot 80 ann
+  sequence_ (concatMap (map cutePrintAnnot) xss)
+
+formatResult :: (SentItem,[TagPos (Maybe Utf8)],[TagPos String]) -> IO ()
+formatResult (s,a,b) = do 
+  TIO.putStrLn $ "Sentence " <> T.pack (show (s^._1)) 
+  underlineText (s^._2) (s^._3) a
+  TIO.putStrLn "----------"
+  print a
+  TIO.putStrLn "----------"
+  print b
+  TIO.putStrLn "=========="
+
+showHeader :: FilePath -> Day -> IO ()
 showHeader fp day = do
   putStrLn "==========================================================="
   putStrLn $ "file: " ++ takeFileName fp
   putStrLn $ "date: " ++ formatTime defaultTimeLocale "%F" day
 
-
-showSUTime txt r = do
-  let tmxs = toList (r^.T.timexes)
-  mapM_ (TIO.putStrLn . format) tmxs
-  putStrLn "-----------------------------------------------------------"
-  let f t = ((),fromIntegral (t^.T.characterOffsetBegin+1), fromIntegral (t^.T.characterOffsetEnd))
-  annotText (fmap f tmxs) txt 
-
-showNER txt parsed = annotText (map (\(b,e,_) -> ((),b,e)) parsed) txt
-
-
-showDoc doc = do
-  let sents = toListOf (D.sentence . traverse) doc
-  putStrLn "show number of tokens per each sentence:"
-  print $ map (lengthOf (S.token . traverse)) sents 
-  putStrLn "show each token"
-  mapM_ print $ zip [1..] $ map (catMaybes . toListOf (S.token . traverse . TK.word)) sents
-  putStrLn "show each timex"
-  mapM_ print $ zip [1..] $ map (catMaybes . toListOf (S.token . traverse . TK.timexValue)) sents
-  putStrLn "show starting point"
-  mapM_ print $ zip [1..] $ map (fromJust . fromJust . firstOf (S.token . traverse . TK.beginChar)) sents
-  putStrLn "show ending point"
-  mapM_ print $ zip [1..] $ map (fromJust . fromJust . lastOf (S.token . traverse . TK.endChar)) sents
-  putStrLn "show the pair of (starting,ending)"
-   -- let  combine :: Lens' s a -> Lens' s b -> Lens' s (a,b)
-   --     combine l1 l2 = lens (\s -> (view l1 s, view l2 s)) (\s (x,y) -> set l1 x (set l2 y s))
-  mapM_ print $ zip [1..] $ flip map sents $ \s -> 
-    let b = fromJust $ fromJust $ firstOf (S.token . traverse . TK.beginChar) s
-        e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
-    in (b,e)
-
-
+process :: PGS.Connection
+        -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+        -> Forest (Maybe Char)
+        -> FilePath
+        -> IO ()
 process pgconn pp forest fp= do
   let sha256 = takeBaseName fp
   day <- getArticlePubDay pgconn (B.pack sha256)
@@ -118,24 +163,25 @@ process pgconn pp forest fp= do
     Right (TaggedResult rsutime rner rdoc) -> do
       showHeader fp day
       putStrLn "-----------------------------------------------------------"
-      showDoc rdoc
-      putStrLn "-----------------------------------------------------------"
-      showSUTime txt rsutime
-      putStrLn "-----------------------------------------------------------"
-      showNER txt rner
+      let sentidxs = getSentenceOffsets rdoc
+          sents = map (addText txt) sentidxs
+          sentswithtmx = addSUTime sents rsutime
+          sentswithner = addNER sents rner
+      mapM_ formatResult . sortBy (compare `on` view (_1._1)) $ combine sentswithtmx sentswithner
       putStrLn "==========================================================="
 
 
 main :: IO ()
 main = do
-  pgconn <- PGS.connectPostgreSQL "dbname=nytimes"
   opt <- execParser progOption
+  pgconn <- PGS.connectPostgreSQL (B.pack ("dbname=" ++ dbname opt))
   forest <- prepareForest (entityFile opt)
   cnts <- getDirectoryContents (dir opt)
-  let cnts' = map (dir opt </>) $ filter (\p -> takeExtensions p == ".maintext") cnts
+  let cnts' = map (dir opt </>) $ sort $ filter (\p -> takeExtensions p == ".maintext") cnts
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     let pcfg = PPConfig True True True True
     pp <- prepare pcfg
     mapM_ (process pgconn pp forest) cnts'
   PGS.close pgconn
+
