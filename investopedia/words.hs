@@ -16,13 +16,33 @@ import Text.Taggy.Lens
 
 extract c = c^.attr "data-label"
 
-lst = [("a",13)
+lst' = [("a",13)
       ,("b",11)
       ,("c",18)
       ,("d",9)
       ,("e",7)
       ,("f",9)
       ,("g",5)]
+
+lst = [("h",4)
+      ,("i",8)
+      ,("j",2)
+      ,("k",1)
+      ,("l",6)
+      ,("m",9)
+      ,("n",6)
+      ,("o",4)
+      ,("p",10)
+      ,("q",2)
+      ,("r",8)
+      ,("s",16)
+      ,("t",8)
+      ,("u",4)
+      ,("x",1)
+      ,("y",1)
+      ,("z",1)
+      ,("1",1)]
+
 
 main = flip mapM_ lst $ \(l,n) -> do
          flip mapM_ ([1..n] :: [Int]) $ \i -> process l i >> threadDelay 1000000
