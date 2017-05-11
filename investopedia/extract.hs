@@ -25,34 +25,37 @@ hasPrefix p = nearly "" (p `T.isPrefixOf`)
 
                          
 getContent :: Node -> T.Text
-getContent (NodeContent txt) = txt --  Prelude.concatMap (x ^.. children.traverse.content)
+getContent (NodeContent txt) = txt
 getContent (NodeElement e) = T.concat (e ^.. children.traverse.content)
 
 main = do
   dir <- (!! 0) <$> getArgs
   dirtarget <- (!! 1) <$> getArgs
-  -- txt <- TLIO.readFile "goingpublic.asp"
-  -- txt <- TLIO.readFile "spinoff.asp"
   contents0 <- getDirectoryContents dir
   let contents = sort $ filter (\f -> takeExtensions f == ".asp") contents0
-  forM_ contents $ \f -> do
-    let fullpath = dir </> f
-        target = dirtarget </> takeBaseName f <.> "txt"
-    process fullpath target
-    -- mapM_ print contents
+  withFile "failed.log" WriteMode $ \fh -> do
+    forM_ contents $ \f -> do
+      let fullpath = dir </> f
+          target = dirtarget </> takeBaseName f <.> "txt"
+      process fh fullpath target
 
-process fp tfp = do
-  withFile tfp WriteMode $ \h -> do
-    putStrLn fp
-    txt <- TLIO.readFile fp
-    let body = Prelude.head (txt ^.. html . allNamed (only "body"))
-        layoutbody = body ^.. allAttributed (ix "class" . hasPrefix "layout-body ")
+
+process fh fp tfp = do
+    withFile tfp WriteMode $ \h -> do
+      putStrLn fp
+      txt <- TLIO.readFile fp
+      case convert txt of
+        Left err -> putStrLn err >> hPutStrLn fh tfp >> hFlush fh
+        Right result -> TIO.hPutStrLn h result
+    
+
+convert txt = 
+    let 
         xs = do
-          l <- layoutbody
-          y <- l ^.. allNamed ((only "h2") `failing` (only "p"))
+          body <- txt ^.. html . allNamed (only "body")
+          layoutbody <- body ^.. allAttributed (ix "class" . hasPrefix "layout-body ") 
+          y <- layoutbody ^.. allNamed ((only "h2") `failing` (only "p"))
           z <- join (y ^.. children)
           return (getContent z)
-    let result = T.intercalate "\n" xs
-    TIO.hPutStrLn h result
-    
-  -- mapM_ TIO.putStrLn xs
+    in if null xs then Left "error" else Right (T.intercalate "\n" xs)
+
