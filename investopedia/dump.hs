@@ -30,21 +30,8 @@ main = do
   let lines = Prelude.concat $ Prelude.map (\x-> Prelude.map Prelude.last $ Prelude.map (T.split (=='|')) $ Prelude.filter (\x -> T.length x > 0) $ T.lines x) txt
       url = Prelude.map (T.append "http://www.investopedia.com") (Prelude.map (T.drop 1) lines)
   flip mapM_ (Prelude.map T.unpack url) $ \u -> do
-      {-
-      str <- readProcess "wget" [u] []
-      let txt = TL.pack str
-          div = txt ^.. html . allNamed (only "div") . allAttributed (folded. only "content-box content-box-term")
-      --          contents = body ^.. allAttributed (ix "data-cat" . only "content_list")
-      -- print (i,div)
-      -}
       let file = Prelude.last $ DLS.splitOn "/" u
       print file
       filechk <- doesFileExist file
       if filechk then (return ()) else ((callCommand $ "wget " ++ u) >> threadDelay 500000)
-
-      -- body = Prelude.head (txt ^.. html)
-      -- TIO.writeFile "txt" $ T.unlines $ mapMaybe extract contents
-                                          
-  -- mapM_ print url
-  return ()
   
