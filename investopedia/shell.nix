@@ -7,7 +7,11 @@ let
 
   hsenv = haskellPackages.ghcWithPackages (p: with p; [
             lens
-            taggy-lens
+            split
+            http-client
+              http-client-tls
+                            http-conduit
+                        taggy-lens
           ]);
 
 in
