@@ -206,30 +206,6 @@ convertToken t = do
   l <- cutf8' <$> (t^.TK.lemma)
   return (Token (b,e) w p l)
 
-getProtoSents :: D.Document -> [S.Sentence]
-getProtoSents doc = toListOf (D.sentence . traverse) doc
-
-convertProtoSents :: [S.Sentence] -> D.Document -> [Sentence]
-convertProtoSents psents doc =
-  let Just newsents = mapM (convertSentence doc) psents
-  in newsents
-
-getSents :: D.Document -> [Sentence]
-getSents doc = convertProtoSents (getProtoSents doc) doc
-
--- Get tokens from ProtoSents.
-getTokens :: [S.Sentence] -> [Token]
-getTokens psents =
-  let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ psents
-  in toklst
-
-getProtoDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO D.Document
-getProtoDoc ann = do
-  bstr <- serializeDoc ann
-  let lbstr = BL.fromStrict bstr
-  case (messageGet lbstr :: Either String (D.Document,BL.ByteString)) of
-    Left  err     -> error err
-    Right (doc,_) -> return doc
 
 processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([Sentence], [Token])
 processDoc ann = do
@@ -262,3 +238,37 @@ getDoc txt = do
 
 mkUkbInput :: [Token] -> [(Text,Text)]
 mkUkbInput r2 = filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
+
+
+
+getProtoSents :: D.Document -> [S.Sentence]
+getProtoSents doc = toListOf (D.sentence . traverse) doc
+
+convertProtoSents :: [S.Sentence] -> D.Document -> [Sentence]
+convertProtoSents psents doc =
+  let Just newsents = mapM (convertSentence doc) psents
+  in newsents
+
+getSents :: D.Document -> [Sentence]
+getSents doc = convertProtoSents (getProtoSents doc) doc
+
+-- Get tokens from ProtoSents.
+getTokens :: [S.Sentence] -> [Token]
+getTokens psents =
+  let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ psents
+  in toklst
+
+getProtoDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO D.Document
+getProtoDoc ann = do
+  bstr <- serializeDoc ann
+  let lbstr = BL.fromStrict bstr
+  case (messageGet lbstr :: Either String (D.Document,BL.ByteString)) of
+    Left  err     -> error err
+    Right (doc,_) -> return doc
+
+getTemporal doc ann = do
+  lbstr_sutime <- BL.fromStrict <$> serializeTimex ann
+  let er = messageGet lbstr_sutime
+  case (er :: Either String (T.ListTimex,BL.ByteString)) of
+    Left _  -> print ""
+    Right r -> print (T._timexes $ fst r)

@@ -28,6 +28,7 @@ run = do
     pp <- prepare (PPConfig True True True True True)
     forM_ (take 1 filelist) $ \a' -> do
       txt <- getDescription a'
+      let txt' = "Today is Friday"
       doc <- getDoc txt
       ann <- annotate pp doc
       pdoc <- getProtoDoc ann
@@ -38,4 +39,5 @@ run = do
       print $ mkUkbInput tokens
       process pp forest a'
       TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
+      getTemporal doc ann
   putStrLn "Program is finished!"
