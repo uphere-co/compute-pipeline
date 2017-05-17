@@ -180,7 +180,7 @@ main = do
   let cnts' = map (dir opt </>) $ sort $ filter (\p -> takeExtensions p == ".maintext") cnts
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    let pcfg = PPConfig True True True True
+    let pcfg = PPConfig True True True True True
     pp <- prepare pcfg
     mapM_ (process pgconn pp forest) cnts'
   PGS.close pgconn
