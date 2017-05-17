@@ -208,25 +208,34 @@ convertToken t = do
   l <- cutf8' <$> (t^.TK.lemma)
   return (Token (b,e) w p l)
 
-getSents sents doc =
-  let Just newsents = mapM (convertSentence doc) sents
+
+getProtoSents doc = toListOf (D.sentence . traverse) doc
+
+convertProtoSents psents doc =
+  let Just newsents = mapM (convertSentence doc) psents
   in newsents
 
-getTokens sents =
-  let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ sents
+getSents doc = convertProtoSents (getProtoSents doc) doc
+
+-- Get tokens from ProtoSents.
+getTokens psents =
+  let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ psents
   in toklst
 
-processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([Sentence], [Token])
-processDoc ann = do
+getProtoDoc ann = do
   bstr <- serializeDoc ann
   let lbstr = BL.fromStrict bstr
   case (messageGet lbstr :: Either String (D.Document,BL.ByteString)) of
-    Left err -> print err >> return ([],[])
-    Right (doc,lbstr') -> do
-      let sents = toListOf (D.sentence . traverse) doc
-          newsents = getSents sents doc
-          toklst = getTokens sents
-      return (newsents,toklst)
+    Left  err          -> error "Error!"
+    Right (doc,lbstr') -> return doc
+
+processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([Sentence], [Token])
+processDoc ann = do
+  pdoc <- getProtoDoc ann
+  let sents = getProtoSents pdoc
+      newsents = convertProtoSents sents pdoc
+      toklst = getTokens sents
+  return (newsents,toklst)
 
 myaction :: InputT IO (Maybe String)
 myaction = do
