@@ -11,7 +11,7 @@
 module Pipeline.Util where
 
 import           Control.Lens
-import           Control.Monad                    (forM_,join)
+import           Control.Monad                    (join)
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEither)
@@ -26,7 +26,6 @@ import           Data.Function                    (on)
 import           Data.List                        (sort,sortBy)
 import           Data.Maybe                       (fromJust, isJust)
 import           Data.Monoid
-import qualified Database.PostgreSQL.Simple as PGS
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Lazy             as TL
@@ -38,10 +37,8 @@ import           Data.Time.Clock                  (getCurrentTime,UTCTime(..))
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
-import           System.Directory                 (getDirectoryContents)
-import           System.Directory.Tree
-import           System.FilePath                  ((</>),takeBaseName,takeExtensions,takeFileName)
-import           System.Environment               (getEnv)
+import           System.Directory.Tree            (dirTree,readDirectoryWith)
+import           System.FilePath                  (takeBaseName,takeFileName)
 import           Text.ProtocolBuffers.Basic (Utf8,utf8)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
@@ -59,14 +56,9 @@ import           Type
 import           Util.Doc (slice,tagText)
 import           View
 --
-import           Annot.NER
-import           Annot.SUTime
---
 import           Intrinio.Type
 import           NLP.Type.PennTreebankII
 import           System.Console.Haskeline
---
-import           YAML.Builder
 
 
 data ProgOption = ProgOption { dir :: FilePath
@@ -174,7 +166,7 @@ process :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
         -> FilePath
         -> IO ()
 process pp forest fp = do
-  let sha256 = takeBaseName fp
+  -- let sha256 = takeBaseName fp
   -- day <- getArticlePubDay pgconn (B.pack sha256)
   let day = fromGregorian 2099 1 1
   txt <- TIO.readFile fp
@@ -199,7 +191,6 @@ getFileList fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . F.toList $ dirTree list'
   return filelist
-  
 
 getDescription f = do
   bstr <- B.readFile f -- "/data/groups/uphere/intrinio/Articles/bloomberg/ffe077729d0ff0ec02fd2b7af537bcf37015171698f99689d96482b2c791c21c"
