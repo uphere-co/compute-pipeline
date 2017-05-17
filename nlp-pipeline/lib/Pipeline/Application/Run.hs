@@ -34,6 +34,7 @@ run2 = do
       let psents = getProtoSents pdoc
           sents  = convertProtoSents psents pdoc
           tokens = getTokens psents
+      print $ sents
       print $ mkUkbInput tokens
       process pp forest a'
       TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
