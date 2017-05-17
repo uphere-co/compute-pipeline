@@ -45,6 +45,7 @@ library
                   nlp-types,
                   yayaml
   exposed-modules: Pipeline.Util
+                   Pipeline.Application.Run
                    Annot.NER
                    Annot.SUTime
   other-extensions: TemplateHaskell

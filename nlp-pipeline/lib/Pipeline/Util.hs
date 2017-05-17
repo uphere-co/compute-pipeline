@@ -214,26 +214,6 @@ getFileList fp = do
   let filelist = sort . F.toList $ dirTree list'
   return filelist
   
-run2 :: IO ()
-run2 = do
-  filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
-  forest <- prepareForest "/data/groups/uphere/F7745.all_entities" -- (entityFile opt)    
-  clspath <- getEnv "CLASSPATH"
-  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    let pcfg = PPConfig True True True True True
-    pp <- prepare pcfg
-
-    forM_ (take 1 filelist) $ \a' -> do
-      txt <- getDescription a'
-      parseSen txt pp
-
-      let doc = Document txt (fromGregorian 2017 4 17) 
-      ann <- annotate pp doc
-      (r1, r2) <- processDoc ann
-      return ()
-      -- print $ filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
-      -- process pp forest a'
-  putStrLn "Program is finished!"
 
 getDescription f = do
   bstr <- B.readFile f -- "/data/groups/uphere/intrinio/Articles/bloomberg/ffe077729d0ff0ec02fd2b7af537bcf37015171698f99689d96482b2c791c21c"

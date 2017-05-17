@@ -1,8 +1,7 @@
 module Main where
 
 --
-import Pipeline.Util
-
+import Pipeline.Application.Run
 
 main :: IO ()
 main = do
