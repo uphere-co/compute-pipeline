@@ -1,10 +1,10 @@
 { pkgs ? import <nixpkgs> {}
-, fetchfin
-, nlp-types
-, symbolic
-, textview
-, uphere-nix-overlay
-, HCoreNLP
+, fetchfin ? <fetchfin>
+, nlp-types ? <nlp-types>
+, symbolic ? <symbolic>
+, textview ? <textview>
+, uphere-nix-overlay ? <uphere-nix-overlay>
+, HCoreNLP ? <HCoreNLP>
 }:
 
 with pkgs;
@@ -114,6 +114,7 @@ let
             aeson
             attoparsec
             base16-bytestring
+            cabal-install
             data-default
             discrimination
             either
