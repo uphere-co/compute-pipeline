@@ -10,6 +10,7 @@ import           Control.Monad                    (forM_)
 import qualified Data.ByteString.Char8      as B
 import           Language.Java         as J
 import           System.Environment               (getEnv)
+import qualified Data.Text.Lazy.IO          as TLIO
 import Pipeline.Util
 import Pipeline.Type
 --
@@ -24,7 +25,10 @@ import           System.Directory                 (getDirectoryContents)
 --
 import           NLP.Type.PennTreebankII
 --
+import qualified Data.Text.Lazy.Builder     as TLB (toLazyText)
 import           Pipeline.Source.NewsAPI.Article
+import           Pipeline.View.YAML.YAYAML
+import           YAML.Builder
 
 run :: IO ()
 run = do
@@ -60,4 +64,5 @@ run2 = do
       (r1, r2) <- processDoc ann
       print $ filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
       process pp forest a'
+      TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 r2))
   putStrLn "Program is finished!"
