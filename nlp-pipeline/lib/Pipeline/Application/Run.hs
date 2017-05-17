@@ -11,6 +11,7 @@ import qualified Data.ByteString.Char8      as B
 import           Language.Java         as J
 import           System.Environment               (getEnv)
 import Pipeline.Util
+import Pipeline.Type
 --
 import Annot.NER
 --
@@ -22,7 +23,8 @@ import           Data.Time.Calendar               (fromGregorian,Day)
 import           System.Directory                 (getDirectoryContents)
 --
 import           NLP.Type.PennTreebankII
-
+--
+import           Pipeline.Source.NewsAPI.Article
 
 run :: IO ()
 run = do

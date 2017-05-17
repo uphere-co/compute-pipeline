@@ -56,30 +56,11 @@ import           Type
 import           Util.Doc (slice,tagText)
 import           View
 --
-import           Intrinio.Type
+import           Pipeline.Type
+--
 import           NLP.Type.PennTreebankII
 import           System.Console.Haskeline
-
-
-data ProgOption = ProgOption { dir :: FilePath
-                             , entityFile :: FilePath
-                             , dbname :: String
-                             } deriving Show
-
-pOptions :: Parser ProgOption
-pOptions = ProgOption <$> strOption (long "dir" <> short 'd' <> help "Directory")
-                      <*> strOption (long "entity" <> short 'e' <> help "Entity File")
-                      <*> strOption (long "dbname" <> short 's' <> help "DB name")
-
-progOption :: ParserInfo ProgOption 
-progOption = info pOptions (fullDesc <> progDesc "Named Entity Recognition")
-
-
-data TaggedResult = TaggedResult { resultSUTime :: T.ListTimex
-                                 , resultNER :: [(Int,Int,String)]
-                                 , resultDoc :: D.Document
-                                 }
-
+--
 
 processAnnotation :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                   -> Forest (Maybe Char)
@@ -92,13 +73,6 @@ processAnnotation pp forest doc = runEitherT $ do
   TaggedResult <$> (fst <$> hoistEither (messageGet lbstr_sutime))
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
-
-type SentIdx = Int
-type CharIdx = Int
-type BeginEnd = (CharIdx,CharIdx)
-type TagPos a = (CharIdx,CharIdx,a)
-type SentItem = (SentIdx,BeginEnd,Text)
-
 
 getSentenceOffsets :: D.Document -> [(SentIdx,BeginEnd)]
 getSentenceOffsets doc = 
@@ -191,13 +165,6 @@ getFileList fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . F.toList $ dirTree list'
   return filelist
-
-getDescription f = do
-  bstr <- B.readFile f -- "/data/groups/uphere/intrinio/Articles/bloomberg/ffe077729d0ff0ec02fd2b7af537bcf37015171698f99689d96482b2c791c21c"
-  let ea = eitherDecodeStrict bstr :: Either String SourceArticles
-  case ea of
-    Left  _ -> return ""
-    Right a -> return (maybe "" id (_description a)) 
 
 simpleMap :: POSTag -> Text
 simpleMap p = case p of

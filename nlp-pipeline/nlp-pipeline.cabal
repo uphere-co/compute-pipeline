@@ -47,6 +47,7 @@ library
   exposed-modules: Pipeline.Util
                    Pipeline.Application.Run
                    Pipeline.Type
+                   Pipeline.Source.NewsAPI.Article
                    Annot.NER
                    Annot.SUTime
   other-extensions: TemplateHaskell

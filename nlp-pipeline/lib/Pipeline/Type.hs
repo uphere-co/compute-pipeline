@@ -3,9 +3,16 @@ module Pipeline.Type where
 
 import           Options.Applicative
 import           Data.Monoid                                ((<>))
+import           Data.Text                        (Text)
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 --
+
+type SentIdx = Int
+type CharIdx = Int
+type BeginEnd = (CharIdx,CharIdx)
+type TagPos a = (CharIdx,CharIdx,a)
+type SentItem = (SentIdx,BeginEnd,Text)
 
 
 data ProgOption = ProgOption { dir :: FilePath
