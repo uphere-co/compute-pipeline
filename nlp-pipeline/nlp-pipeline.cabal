@@ -46,6 +46,7 @@ library
                   yayaml
   exposed-modules: Pipeline.Util
                    Pipeline.Application.Run
+                   Pipeline.Type
                    Annot.NER
                    Annot.SUTime
   other-extensions: TemplateHaskell

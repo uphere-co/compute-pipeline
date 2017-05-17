@@ -3,6 +3,9 @@
 module Pipeline.Application.Run where
 
 --
+import           Options.Applicative
+import           Data.List                        (sort)
+import           System.FilePath                  ((</>),takeExtensions)
 import           Control.Monad                    (forM_)
 import qualified Data.ByteString.Char8      as B
 import           Language.Java         as J
@@ -15,6 +18,22 @@ import           CoreNLP.Simple.Type     (PipelineConfig(PPConfig),Document(..))
 import           CoreNLP.Simple          (annotate,prepare)
 
 import           Data.Time.Calendar               (fromGregorian,Day)
+import           System.Directory                 (getDirectoryContents)
+
+run :: IO ()
+run = do
+  filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
+  opt <- execParser progOption
+  -- pgconn <- PGS.connectPostgreSQL (B.pack ("dbname=" ++ dbname opt))
+  forest <- prepareForest (entityFile opt)
+  cnts <- getDirectoryContents (dir opt)
+  let cnts' = map (dir opt </>) $ sort $ filter (\p -> takeExtensions p == ".maintext") cnts
+  clspath <- getEnv "CLASSPATH"
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    let pcfg = PPConfig True True True True True
+    pp <- prepare pcfg
+    mapM_ (process pp forest) filelist -- cnts'
+  -- PGS.close pgconn
 
 
 run2 :: IO ()
