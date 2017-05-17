@@ -41,7 +41,9 @@ library
                   transformers,
                   HCoreNLP,
                   intrinio,
-                  nlp-types
+                  yaml,
+                  nlp-types,
+                  yayaml
   exposed-modules: Pipeline.Util
                    Annot.NER
                    Annot.SUTime

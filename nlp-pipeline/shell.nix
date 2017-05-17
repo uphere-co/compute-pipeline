@@ -125,6 +125,8 @@ let
             optparse-applicative
             postgresql-simple
             transformers
+            yaml
+            yayaml
             p.intrinio
             p.nlp-types
             p.textview

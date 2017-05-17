@@ -65,6 +65,9 @@ import           Annot.SUTime
 import           Intrinio.Type
 import           NLP.Type.PennTreebankII
 import           System.Console.Haskeline
+--
+import           YAML.Builder
+
 
 data ProgOption = ProgOption { dir :: FilePath
                              , entityFile :: FilePath
@@ -223,9 +226,11 @@ run2 = do
     forM_ (take 1 filelist) $ \a' -> do
       txt <- getDescription a'
       parseSen txt pp
-      -- let doc = Document txt (fromGregorian 2017 4 17) 
-      -- ann <- annotate pp doc
-      -- (r1, r2) <- processDoc ann
+
+      let doc = Document txt (fromGregorian 2017 4 17) 
+      ann <- annotate pp doc
+      (r1, r2) <- processDoc ann
+      return ()
       -- print $ filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
       -- process pp forest a'
   putStrLn "Program is finished!"
@@ -308,10 +313,10 @@ myaction = do
 
 -- parseSen :: Text -> Result
 parseSen st pp = do
-  day <- getCurrentTime
-  let doc = Document st (utctDay day) -- (fromGregorian 2017 4 17)
+  day <- fmap utctDay getCurrentTime
+  let doc = Document st day -- (fromGregorian 2017 4 17)
   ann <- annotate pp doc
   (r1, r2) <- processDoc ann
-  
+
   return ()
 
