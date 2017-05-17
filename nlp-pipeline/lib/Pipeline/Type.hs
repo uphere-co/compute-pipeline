@@ -14,7 +14,6 @@ type BeginEnd = (CharIdx,CharIdx)
 type TagPos a = (CharIdx,CharIdx,a)
 type SentItem = (SentIdx,BeginEnd,Text)
 
-
 data ProgOption = ProgOption { dir :: FilePath
                              , entityFile :: FilePath
                              , dbname :: String

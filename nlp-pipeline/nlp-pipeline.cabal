@@ -48,6 +48,7 @@ library
                    Pipeline.Application.Run
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article
+                   Pipeline.View.YAML.YAYAML
                    Annot.NER
                    Annot.SUTime
   other-extensions: TemplateHaskell
