@@ -1,17 +1,27 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
+
 
 module Pipeline.Util where
 
 import           Control.Lens
+import           Control.Monad                    (forM_,join)
 import           Control.Monad.IO.Class           (liftIO)
+import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEither)
+import           Data.Aeson                       (eitherDecodeStrict)
 import           Data.Attoparsec.Text             (parseOnly)
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Discrimination              (outer)
 import           Data.Discrimination.Grouping     (hashing)
+import qualified Data.Foldable              as F
 import           Data.Function                    (on)
 import           Data.List                        (sort,sortBy)
 import           Data.Maybe                       (fromJust, isJust)
@@ -19,20 +29,24 @@ import           Data.Monoid
 import qualified Database.PostgreSQL.Simple as PGS
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
+import qualified Data.Text.Lazy             as TL
+import qualified Data.Text.Lazy.Encoding    as TLE
 import qualified Data.Text.IO               as TIO
-import           Data.Time.Calendar               (Day)
+import           Data.Time.Calendar               (fromGregorian,Day)
 import           Data.Time.Format                 (defaultTimeLocale, formatTime)
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
 import           System.Directory                 (getDirectoryContents)
+import           System.Directory.Tree
 import           System.FilePath                  ((</>),takeBaseName,takeExtensions,takeFileName)
 import           System.Environment               (getEnv)
-import           Text.ProtocolBuffers.Basic (Utf8)
+import           Text.ProtocolBuffers.Basic (Utf8,utf8)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
+import           CoreNLP.Simple.Type.Simplified
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.CoreNLPProtos.Timex     as Tmx
@@ -46,6 +60,10 @@ import           View
 --
 import           Annot.NER
 import           Annot.SUTime
+--
+import           Intrinio.Type
+import           NLP.Type.PennTreebankII
+import           System.Console.Haskeline
 
 data ProgOption = ProgOption { dir :: FilePath
                              , entityFile :: FilePath
@@ -184,3 +202,94 @@ run = do
     mapM_ (process pgconn pp forest) cnts'
   PGS.close pgconn
 
+getFileList :: FilePath -> IO ([FilePath])
+getFileList fp = do
+  list' <- readDirectoryWith return fp
+  let filelist = sort . F.toList $ dirTree list'
+  return filelist
+  
+run2 :: IO ()
+run2 = do
+  filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
+    
+  clspath <- getEnv "CLASSPATH"
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    let pcfg = PPConfig True True True True True
+    pp <- prepare pcfg
+
+    forM_ filelist $ \a' -> do
+      txt <- getDescription a'
+      let doc = Document txt (fromGregorian 2017 4 17) 
+      ann <- annotate pp doc
+      (r1, r2) <- processDoc ann
+      print $ filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
+    
+  putStrLn "Program is finished!"
+
+getDescription f = do
+  bstr <- B.readFile f -- "/data/groups/uphere/intrinio/Articles/bloomberg/ffe077729d0ff0ec02fd2b7af537bcf37015171698f99689d96482b2c791c21c"
+  let ea = eitherDecodeStrict bstr :: Either String SourceArticles
+  case ea of
+    Left  _ -> return ""
+    Right a -> return (maybe "" id (_description a)) 
+
+simpleMap :: POSTag -> Text
+simpleMap p = case p of
+  NN   -> "N"
+  NNS  -> "N"
+  NNP  -> "N"
+  NNPS -> "N"
+  VB   -> "V"  
+  VBZ  -> "V"
+  VBP  -> "V"
+  VBD  -> "V"
+  VBN  -> "V"
+  VBG  -> "V"
+  JJ   -> "A"
+  JJR  -> "A"
+  JJS  -> "A"
+  RB   -> "R"
+  RBR  -> "R"
+  RBS  -> "R"
+  RP   -> "R"
+  _    -> "U"
+
+
+cutf8' :: Utf8 -> Text
+cutf8' = TL.toStrict . TLE.decodeUtf8 . utf8 
+
+convertSentence :: D.Document -> S.Sentence -> Maybe Sentence
+convertSentence d s = do
+  i <- fromIntegral <$> s^.S.sentenceIndex
+  b <- fromIntegral <$> join (firstOf (S.token . traverse . TK.beginChar) s)
+  e <- fromIntegral <$> join (lastOf  (S.token . traverse . TK.endChar) s)
+  return (Sentence i (b,e) 
+            (fromIntegral (s^.S.tokenOffsetBegin),fromIntegral (s^.S.tokenOffsetEnd)))
+
+convertToken :: TK.Token -> Maybe Token
+convertToken t = do
+  (b',e') <- (,) <$> t^.TK.tokenBeginIndex <*> t^.TK.tokenEndIndex
+  let (b,e) = (fromIntegral b',fromIntegral e')
+  w <- cutf8' <$> (t^.TK.originalText)
+  p <- identifyPOS . cutf8' <$> (t^.TK.pos)
+  l <- cutf8' <$> (t^.TK.lemma)
+  return (Token (b,e) w p l)
+
+processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([Sentence], [Token])
+processDoc ann = do
+  bstr <- serializeDoc ann
+  let lbstr = BL.fromStrict bstr
+  case (messageGet lbstr :: Either String (D.Document,BL.ByteString)) of
+    Left err -> print err >> return ([],[])
+    Right (doc,lbstr') -> do
+      let sents = toListOf (D.sentence . traverse) doc
+          Just newsents = mapM (convertSentence doc) sents
+      mapM_ print newsents
+      let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ sents
+      return (newsents,toklst)
+
+myaction :: InputT IO (Maybe String)
+myaction = do
+  str <- getInputLine "Input Sentence : "
+  lift (print str)
+  return str

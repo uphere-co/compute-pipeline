@@ -19,14 +19,17 @@ library
   hs-source-dirs: lib
   build-depends:  base,
                   --
+                  aeson,
                   attoparsec,
                   base16-bytestring,
                   bytestring,
                   containers,
                   directory,
+                  directory-tree,
                   discrimination,
                   either,
                   filepath,
+                  haskeline,
                   jvm,
                   lens,
                   optparse-applicative,
@@ -35,7 +38,10 @@ library
                   text,
                   textview,
                   time,
-                  HCoreNLP
+                  transformers,
+                  HCoreNLP,
+                  intrinio,
+                  nlp-types
   exposed-modules: Pipeline.Util
                    Annot.NER
                    Annot.SUTime

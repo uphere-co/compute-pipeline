@@ -116,6 +116,7 @@ let
             base16-bytestring
             cabal-install
             data-default
+            directory-tree
             discrimination
             either
             haskeline
@@ -124,6 +125,7 @@ let
             optparse-applicative
             postgresql-simple
             transformers
+            p.intrinio
             p.nlp-types
             p.textview
             p.HCoreNLP
