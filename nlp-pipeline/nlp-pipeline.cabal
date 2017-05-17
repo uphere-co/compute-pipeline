@@ -15,14 +15,40 @@ build-type:          Simple
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
+library
+  hs-source-dirs: lib
+  build-depends:  base,
+                  --
+                  attoparsec,
+                  base16-bytestring,
+                  bytestring,
+                  containers,
+                  directory,
+                  discrimination,
+                  either,
+                  filepath,
+                  jvm,
+                  lens,
+                  optparse-applicative,
+                  postgresql-simple,
+                  protocol-buffers,
+                  text,
+                  textview,
+                  time,
+                  HCoreNLP
+  exposed-modules: Util
+                   Annot.NER
+                   Annot.SUTime
+  other-extensions: TemplateHaskell
+  ghc-prof-options: -fprof-auto
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+
 executable nlp-pipeline
   hs-source-dirs:      app
   main-is:             main.hs
   -- other-modules:       
-  -- other-extensions:    
   build-depends:       base,
                        --
                        text
-                       
-  -- hs-source-dirs:      
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
