@@ -6,5 +6,5 @@ import Pipeline.Util
 
 main :: IO ()
 main = do
-  run
+  run2
 

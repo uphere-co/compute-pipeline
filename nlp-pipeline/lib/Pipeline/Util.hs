@@ -34,6 +34,7 @@ import qualified Data.Text.Lazy.Encoding    as TLE
 import qualified Data.Text.IO               as TIO
 import           Data.Time.Calendar               (fromGregorian,Day)
 import           Data.Time.Format                 (defaultTimeLocale, formatTime)
+import           Data.Time.Clock                  (getCurrentTime,UTCTime(..))
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
@@ -179,6 +180,7 @@ process pp forest fp = do
   case r of
     Left err -> error err
     Right (TaggedResult rsutime rner rdoc) -> do
+      print (T._timexes rsutime)
       showHeader fp day
       putStrLn "-----------------------------------------------------------"
       let sentidxs = getSentenceOffsets rdoc
@@ -212,19 +214,20 @@ getFileList fp = do
 run2 :: IO ()
 run2 = do
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
-    
+  forest <- prepareForest "/data/groups/uphere/F7745.all_entities" -- (entityFile opt)    
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     let pcfg = PPConfig True True True True True
     pp <- prepare pcfg
 
-    forM_ filelist $ \a' -> do
+    forM_ (take 1 filelist) $ \a' -> do
       txt <- getDescription a'
-      let doc = Document txt (fromGregorian 2017 4 17) 
-      ann <- annotate pp doc
-      (r1, r2) <- processDoc ann
-      print $ filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
-    
+      parseSen txt pp
+      -- let doc = Document txt (fromGregorian 2017 4 17) 
+      -- ann <- annotate pp doc
+      -- (r1, r2) <- processDoc ann
+      -- print $ filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
+      -- process pp forest a'
   putStrLn "Program is finished!"
 
 getDescription f = do
@@ -276,6 +279,14 @@ convertToken t = do
   l <- cutf8' <$> (t^.TK.lemma)
   return (Token (b,e) w p l)
 
+getSents sents doc =
+  let Just newsents = mapM (convertSentence doc) sents
+  in newsents
+
+getTokens sents =
+  let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ sents
+  in toklst
+
 processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([Sentence], [Token])
 processDoc ann = do
   bstr <- serializeDoc ann
@@ -284,9 +295,8 @@ processDoc ann = do
     Left err -> print err >> return ([],[])
     Right (doc,lbstr') -> do
       let sents = toListOf (D.sentence . traverse) doc
-          Just newsents = mapM (convertSentence doc) sents
-      mapM_ print newsents
-      let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ sents
+          newsents = getSents sents doc
+          toklst = getTokens sents
       return (newsents,toklst)
 
 myaction :: InputT IO (Maybe String)
@@ -294,3 +304,14 @@ myaction = do
   str <- getInputLine "Input Sentence : "
   lift (print str)
   return str
+
+
+-- parseSen :: Text -> Result
+parseSen st pp = do
+  day <- getCurrentTime
+  let doc = Document st (utctDay day) -- (fromGregorian 2017 4 17)
+  ann <- annotate pp doc
+  (r1, r2) <- processDoc ann
+  
+  return ()
+
