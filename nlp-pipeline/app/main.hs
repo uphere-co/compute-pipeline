@@ -1,11 +1,13 @@
 module Main where
 
 --
-import Util
+import Pipeline.Util
 
 
 main :: IO ()
 main = do
+  return ()
+  {-
   opt <- execParser progOption
   pgconn <- PGS.connectPostgreSQL (B.pack ("dbname=" ++ dbname opt))
   forest <- prepareForest (entityFile opt)
@@ -17,5 +19,5 @@ main = do
     pp <- prepare pcfg
     mapM_ (process pgconn pp forest) cnts'
   PGS.close pgconn
-
+  -}
 

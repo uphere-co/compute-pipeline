@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Util where
+module Pipeline.Util where
 
 import           Control.Lens
 import           Control.Monad.IO.Class           (liftIO)

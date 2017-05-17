@@ -36,7 +36,7 @@ library
                   textview,
                   time,
                   HCoreNLP
-  exposed-modules: Util
+  exposed-modules: Pipeline.Util
                    Annot.NER
                    Annot.SUTime
   other-extensions: TemplateHaskell
@@ -49,6 +49,8 @@ executable nlp-pipeline
   -- other-modules:       
   build-depends:       base,
                        --
-                       text
+                       text,
+                       --
+                       nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
