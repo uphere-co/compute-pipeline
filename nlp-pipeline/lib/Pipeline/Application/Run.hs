@@ -19,8 +19,8 @@ import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 
-run2 :: IO ()
-run2 = do
+run :: IO ()
+run = do
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
   forest <- prepareForest "/data/groups/uphere/F7745.all_entities" -- (entityFile opt)    
   clspath <- getEnv "CLASSPATH"
