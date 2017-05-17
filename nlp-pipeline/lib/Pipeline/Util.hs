@@ -234,7 +234,6 @@ myaction = do
   lift (print str)
   return str
 
-
 -- parseSen :: Text -> Result
 parseSen st pp = do
   day <- fmap utctDay getCurrentTime
@@ -244,3 +243,10 @@ parseSen st pp = do
 
   return ()
 
+getDoc :: Text -> IO Document
+getDoc txt = do
+  day <- fmap utctDay getCurrentTime
+  return $ Document txt day
+
+mkUkbInput :: [Token] -> [(Text,Text)]
+mkUkbInput r2 = filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)

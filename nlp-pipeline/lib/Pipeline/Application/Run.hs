@@ -52,17 +52,13 @@ run2 = do
   forest <- prepareForest "/data/groups/uphere/F7745.all_entities" -- (entityFile opt)    
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    let pcfg = PPConfig True True True True True
-    pp <- prepare pcfg
-
+    pp <- prepare (PPConfig True True True True True)
     forM_ filelist $ \a' -> do
       txt <- getDescription a'
-      parseSen txt pp
-
-      let doc = Document txt (fromGregorian 2017 4 17) 
+      doc <- getDoc txt
       ann <- annotate pp doc
       (r1, r2) <- processDoc ann
-      print $ filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
+      print $ mkUkbInput r2
       process pp forest a'
       TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 r2))
   putStrLn "Program is finished!"
