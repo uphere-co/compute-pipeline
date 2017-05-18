@@ -7,8 +7,11 @@ import           Data.Text           (Text)
 import qualified Data.Text    as T
 import qualified Data.Text.IO as TIO
 
-data Predicate = Predicate { idLang            :: Text -- id:cat , id:eng , id:eus , id:spa
-                           , idPOS             :: Text -- id:v , id:n
+data Lang = Cat | Eng | Eus | Spa deriving (Eq,Show)
+data POS  = Verb | Noun deriving (Eq,Show)
+
+data Predicate = Predicate { idLang            :: Lang -- id:cat , id:eng , id:eus , id:spa
+                           , idPOS             :: POS -- id:v , id:n
                            , idPred            :: Text -- id: , id:x.y.z
                            , idRole            :: Text -- id:x
                            , vnClass           :: Text -- vn:x.y.z
@@ -36,8 +39,18 @@ data Predicate = Predicate { idLang            :: Text -- id:cat , id:eng , id:e
                            , esoRole           :: Text
                            } deriving (Show)
 
-mkPred x = Predicate { idLang            = (x !! 0)
-                     , idPOS             = (x !! 1)
+getLang x = case x of
+  "id:cat" -> Cat
+  "id:eng" -> Eng
+  "id:eus" -> Eus
+  "id:spa" -> Spa  
+
+getPOS x = case x of
+  "id:n" -> Noun
+  "id:v" -> Verb
+
+mkPred x = Predicate { idLang            = getLang (x !! 0)
+                     , idPOS             = getPOS (x !! 1)
                      , idPred            = (x !! 2)
                      , idRole            = (x !! 3)
                      , vnClass           = (x !! 4)
@@ -75,7 +88,10 @@ main = do
       items = map T.words lines
 
   let totalmat = map (\x -> mkPred x) items
-      enmat = filter (\x -> idLang x == "id:eng") totalmat
+      enmat = filter (\x -> idLang x == Eng) totalmat
+
+  print (take 10 enmat)
+  
   {-
   print $ take' 10 $ S.fromList $ map idLang totalmat
   print $ take' 10 $ S.fromList $ map idPOS totalmat
