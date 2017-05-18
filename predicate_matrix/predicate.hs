@@ -2,26 +2,26 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
-
+import qualified Data.Set     as S
 import           Data.Text           (Text)
 import qualified Data.Text    as T
 import qualified Data.Text.IO as TIO
 
-data Predicate = Predicate { idLang            :: Text
-                           , idPOS             :: Text -- id:v or id:n
-                           , idPred            :: Text
-                           , idRole            :: Text
-                           , vnClass           :: Text
-                           , vnClassNumber     :: Text
-                           , vnSubclass        :: Text
-                           , vnSubclassNumber  :: Text
-                           , vnLema            :: Text
-                           , vnRole            :: Text
-                           , wnSense           :: Text
+data Predicate = Predicate { idLang            :: Text -- id:cat , id:eng , id:eus , id:spa
+                           , idPOS             :: Text -- id:v , id:n
+                           , idPred            :: Text -- id: , id:x.y.z
+                           , idRole            :: Text -- id:x
+                           , vnClass           :: Text -- vn:x.y.z
+                           , vnClassNumber     :: Text -- vn:x.y.z
+                           , vnSubclass        :: Text -- vn:x.y.z-1
+                           , vnSubclassNumber  :: Text -- vn:x.y.z-1
+                           , vnLema            :: Text -- vn:w
+                           , vnRole            :: Text -- vn:w
+                           , wnSense           :: Text -- 
                            , mcrIliOffset      :: Text
                            , fnFrame           :: Text
                            , fnLe              :: Text
-                           , fnFrame_Element   :: Text
+                           , fnFrameElement    :: Text
                            , pbRoleset         :: Text
                            , pbArg             :: Text
                            , mcrBC             :: Text
@@ -50,7 +50,7 @@ mkPred x = Predicate { idLang            = (x !! 0)
                      , mcrIliOffset      = (x !! 11)
                      , fnFrame           = (x !! 12)
                      , fnLe              = (x !! 13)
-                     , fnFrame_Element   = (x !! 14)
+                     , fnFrameElement    = (x !! 14)
                      , pbRoleset         = (x !! 15)
                      , pbArg             = (x !! 16)
                      , mcrBC             = (x !! 17)
@@ -65,6 +65,8 @@ mkPred x = Predicate { idLang            = (x !! 0)
                      , esoRole           = (x !! 26)
                      }
 
+take' n = S.fromList . take n . S.toList
+
 main :: IO ()
 main = do
 
@@ -74,12 +76,42 @@ main = do
 
   let totalmat = map (\x -> mkPred x) items
       enmat = filter (\x -> idLang x == "id:eng") totalmat
-
-  print $ length totalmat
+  {-
+  print $ take' 10 $ S.fromList $ map idLang totalmat
+  print $ take' 10 $ S.fromList $ map idPOS totalmat
+  print $ take' 10 $ S.fromList $ map idPred totalmat
+  print $ take' 10 $ S.fromList $ map idRole totalmat
+  print $ take' 10 $ S.fromList $ map vnClass totalmat
+  print $ take' 10 $ S.fromList $ map vnClassNumber totalmat
+  print $ take' 10 $ S.fromList $ map vnSubclass totalmat
+  print $ take' 10 $ S.fromList $ map vnSubclassNumber totalmat
+  print $ take' 10 $ S.fromList $ map vnLema totalmat
+  print $ take' 10 $ S.fromList $ map vnRole totalmat
+  print $ take' 50 $ S.fromList $ map wnSense totalmat
+  print $ take' 10 $ S.fromList $ map mcrIliOffset totalmat
+  print $ take' 10 $ S.fromList $ map fnFrame totalmat
+  print $ take' 10 $ S.fromList $ map fnLe totalmat
+  print $ take' 10 $ S.fromList $ map fnFrameElement totalmat
+  print $ take' 10 $ S.fromList $ map pbRoleset totalmat
+  print $ take' 10 $ S.fromList $ map pbArg totalmat
+  print $ take' 10 $ S.fromList $ map mcrBC totalmat
+  print $ take' 10 $ S.fromList $ map mcrDomain totalmat
+  print $ take' 10 $ S.fromList $ map mcrSUMO totalmat
+  print $ take' 10 $ S.fromList $ map mcrTO totalmat
+  print $ take' 10 $ S.fromList $ map mcrLexname totalmat
+  print $ take' 10 $ S.fromList $ map mcrBLC totalmat
+  print $ take' 10 $ S.fromList $ map wnSensefrec totalmat
+  print $ take' 10 $ S.fromList $ map wnSynsetRelNum totalmat
+  print $ take' 10 $ S.fromList $ map esoClass totalmat
+  print $ take' 10 $ S.fromList $ map esoRole totalmat
+  -}
+  
+  {-
+  PRINT $ length totalmat
   print $ length $ filter (\x -> idPOS x == "id:v") totalmat 
   print $ length $ filter (\x -> idPOS x == "id:n") totalmat
   print $ length enmat
   print $ length $ filter (\x -> idPOS x == "id:v") enmat 
   print $ length $ filter (\x -> idPOS x == "id:n") enmat
-
+  -}
   return ()

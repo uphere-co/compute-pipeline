@@ -16,6 +16,7 @@ let hsconfig = import
               aeson
               aeson-pretty
               cabal-install
+              containers
               text
             ]);
 in stdenv.mkDerivation {
