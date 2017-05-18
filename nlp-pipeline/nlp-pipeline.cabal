@@ -44,7 +44,9 @@ library
                   intrinio,
                   yaml,
                   nlp-types,
-                  yayaml
+                  yayaml,
+                  HUKB,
+                  HUKB-driver
   exposed-modules: Pipeline.Util
                    Pipeline.Application.Run
                    Pipeline.Type

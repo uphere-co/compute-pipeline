@@ -6,7 +6,7 @@
 , uphere-nix-overlay ? <uphere-nix-overlay>
 , HCoreNLP ? <HCoreNLP>
 , HWordNet ? <HWordNet>
-, HUKB
+, HUKB ? <HUKB>
 }:
 
 with pkgs;
