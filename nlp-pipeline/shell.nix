@@ -5,6 +5,7 @@
 , textview ? <textview>
 , uphere-nix-overlay ? <uphere-nix-overlay>
 , HCoreNLP ? <HCoreNLP>
+, HWordNet ? <HWordNet>
 }:
 
 with pkgs;
@@ -35,6 +36,7 @@ let
       "textview" = self.callPackage (import textview) {};
       "intrinio" = self.callPackage (import (fetchfin + "/intrinio")) {};
       "HCoreNLP" = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
+      "HWordNet" = self.callPackage (import HWordNet) {};
        
       "inline-java" = self.callPackage
         ({ mkDerivation, base, binary, bytestring, Cabal, containers
@@ -131,6 +133,7 @@ let
             p.nlp-types
             p.textview
             p.HCoreNLP
+            p.HWordNet
           ]);
 
 in

@@ -60,6 +60,7 @@ import           Pipeline.Type
 --
 import           NLP.Type.PennTreebankII
 import           System.Console.Haskeline
+import           WordNet.Type
 --
 
 processAnnotation :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -166,26 +167,26 @@ getFileList fp = do
   let filelist = sort . F.toList $ dirTree list'
   return filelist
 
-simpleMap :: POSTag -> Text
+simpleMap :: POSTag -> Maybe POS
 simpleMap p = case p of
-  NN   -> "N"
-  NNS  -> "N"
-  NNP  -> "N"
-  NNPS -> "N"
-  VB   -> "V"  
-  VBZ  -> "V"
-  VBP  -> "V"
-  VBD  -> "V"
-  VBN  -> "V"
-  VBG  -> "V"
-  JJ   -> "A"
-  JJR  -> "A"
-  JJS  -> "A"
-  RB   -> "R"
-  RBR  -> "R"
-  RBS  -> "R"
-  RP   -> "R"
-  _    -> "U"
+  NN   -> Just POS_N
+  NNS  -> Just POS_N
+  NNP  -> Just POS_N
+  NNPS -> Just POS_N
+  VB   -> Just POS_V  
+  VBZ  -> Just POS_V
+  VBP  -> Just POS_V
+  VBD  -> Just POS_V
+  VBN  -> Just POS_V
+  VBG  -> Just POS_V
+  JJ   -> Just POS_A
+  JJR  -> Just POS_A
+  JJS  -> Just POS_A
+  RB   -> Just POS_R
+  RBR  -> Just POS_R
+  RBS  -> Just POS_R
+  RP   -> Just POS_R
+  _    -> Nothing
 
 
 cutf8' :: Utf8 -> Text
@@ -257,5 +258,5 @@ getDoc txt = do
   day <- fmap utctDay getCurrentTime
   return $ Document txt day
 
-mkUkbInput :: [Token] -> [(Text,Text)]
-mkUkbInput r2 = filter (\(_,y) -> y /= "U") $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
+mkUkbInput :: [Token] -> [(Text,Maybe POS)]
+mkUkbInput r2 = filter (\(_,y) -> isJust y) $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
