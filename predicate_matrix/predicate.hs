@@ -7,9 +7,8 @@ import           Data.Text           (Text)
 import qualified Data.Text    as T
 import qualified Data.Text.IO as TIO
 
-
 data Predicate = Predicate { idLang            :: Text
-                           , idPOS             :: Text
+                           , idPOS             :: Text -- id:v or id:n
                            , idPred            :: Text
                            , idRole            :: Text
                            , vnClass           :: Text
@@ -66,18 +65,21 @@ mkPred x = Predicate { idLang            = (x !! 0)
                      , esoRole           = (x !! 26)
                      }
 
-checkData txtss = do
-  let len = map length txtss
-  print len
-
 main :: IO ()
 main = do
 
   txt <- TIO.readFile "PredicateMatrix.v1.3.txt" 
-  let lines = T.lines txt
+  let lines = drop 1 $ T.lines txt
       items = map T.words lines
 
-  let mat = map (\x -> mkPred x) items
+  let totalmat = map (\x -> mkPred x) items
+      enmat = filter (\x -> idLang x == "id:eng") totalmat
 
-  print mat
-  putStrLn "Predicate!"
+  print $ length totalmat
+  print $ length $ filter (\x -> idPOS x == "id:v") totalmat 
+  print $ length $ filter (\x -> idPOS x == "id:n") totalmat
+  print $ length enmat
+  print $ length $ filter (\x -> idPOS x == "id:v") enmat 
+  print $ length $ filter (\x -> idPOS x == "id:n") enmat
+
+  return ()
