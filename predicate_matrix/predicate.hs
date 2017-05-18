@@ -7,37 +7,45 @@ import           Data.Text           (Text)
 import qualified Data.Text    as T
 import qualified Data.Text.IO as TIO
 
+
+
 data Lang = Cat | Eng | Eus | Spa deriving (Eq,Show)
 data POS  = Verb | Noun deriving (Eq,Show)
 
-data Predicate = Predicate { idLang            :: Lang -- id:cat , id:eng , id:eus , id:spa
-                           , idPOS             :: POS -- id:v , id:n
-                           , idPred            :: Text -- id: , id:x.y.z
-                           , idRole            :: Text -- id:x
-                           , vnClass           :: Text -- vn:x.y.z
-                           , vnClassNumber     :: Text -- vn:x.y.z
-                           , vnSubclass        :: Text -- vn:x.y.z-1
-                           , vnSubclassNumber  :: Text -- vn:x.y.z-1
-                           , vnLema            :: Text -- vn:w
-                           , vnRole            :: Text -- vn:w
-                           , wnSense           :: Text -- 
-                           , mcrIliOffset      :: Text
-                           , fnFrame           :: Text
-                           , fnLe              :: Text
-                           , fnFrameElement    :: Text
-                           , pbRoleset         :: Text
-                           , pbArg             :: Text
-                           , mcrBC             :: Text
-                           , mcrDomain         :: Text
-                           , mcrSUMO           :: Text
-                           , mcrTO             :: Text
-                           , mcrLexname        :: Text
-                           , mcrBLC            :: Text
-                           , wnSensefrec       :: Text
-                           , wnSynsetRelNum    :: Text
-                           , esoClass          :: Text
-                           , esoRole           :: Text
-                           } deriving (Show)
+type Predicate = Text
+type Role      = Text
+
+
+
+
+data PredicateMatrix = PM { idLang            :: Lang      -- id:cat , id:eng , id:eus , id:spa
+                          , idPOS             :: POS       -- id:v , id:n
+                          , idPred            :: Predicate -- id: , id:x.y.z
+                          , idRole            :: Role      -- id:x
+                          , vnClass           :: Text      -- vn:x.y.z
+                          , vnClassNumber     :: Text      -- vn:x.y.z
+                          , vnSubclass        :: Text      -- vn:x.y.z-1
+                          , vnSubclassNumber  :: Text      -- vn:x.y.z-1
+                          , vnLema            :: Text      -- vn:w
+                          , vnRole            :: Text      -- vn:w
+                          , wnSense           :: Text      -- 
+                          , mcrIliOffset      :: Text
+                          , fnFrame           :: Text
+                          , fnLe              :: Text
+                          , fnFrameElement    :: Text
+                          , pbRoleset         :: Text
+                          , pbArg             :: Text
+                          , mcrBC             :: Text
+                          , mcrDomain         :: Text
+                          , mcrSUMO           :: Text
+                          , mcrTO             :: Text
+                          , mcrLexname        :: Text
+                          , mcrBLC            :: Text
+                          , wnSensefrec       :: Text
+                          , wnSynsetRelNum    :: Text
+                          , esoClass          :: Text
+                          , esoRole           :: Text
+                          } deriving (Show)
 
 getLang x = case x of
   "id:cat" -> Cat
@@ -49,35 +57,41 @@ getPOS x = case x of
   "id:n" -> Noun
   "id:v" -> Verb
 
-mkPred x = Predicate { idLang            = getLang (x !! 0)
-                     , idPOS             = getPOS (x !! 1)
-                     , idPred            = (x !! 2)
-                     , idRole            = (x !! 3)
-                     , vnClass           = (x !! 4)
-                     , vnClassNumber     = (x !! 5)
-                     , vnSubclass        = (x !! 6)
-                     , vnSubclassNumber  = (x !! 7)
-                     , vnLema            = (x !! 8)
-                     , vnRole            = (x !! 9)
-                     , wnSense           = (x !! 10)
-                     , mcrIliOffset      = (x !! 11)
-                     , fnFrame           = (x !! 12)
-                     , fnLe              = (x !! 13)
-                     , fnFrameElement    = (x !! 14)
-                     , pbRoleset         = (x !! 15)
-                     , pbArg             = (x !! 16)
-                     , mcrBC             = (x !! 17)
-                     , mcrDomain         = (x !! 18)
-                     , mcrSUMO           = (x !! 19)
-                     , mcrTO             = (x !! 20)
-                     , mcrLexname        = (x !! 21)
-                     , mcrBLC            = (x !! 22)
-                     , wnSensefrec       = (x !! 23)
-                     , wnSynsetRelNum    = (x !! 24)
-                     , esoClass          = (x !! 25)
-                     , esoRole           = (x !! 26)
-                     }
+getPredicate :: Text -> Predicate
+getPredicate = T.drop 3
 
+getRole :: Text -> Role
+getRole = T.drop 3 
+
+mkPred x = PM { idLang            = getLang (x !! 0)
+              , idPOS             = getPOS (x !! 1)
+              , idPred            = getPredicate (x !! 2)
+              , idRole            = getRole (x !! 3)
+              , vnClass           = (x !! 4)
+              , vnClassNumber     = (x !! 5)
+              , vnSubclass        = (x !! 6)
+              , vnSubclassNumber  = (x !! 7)
+              , vnLema            = (x !! 8)
+              , vnRole            = (x !! 9)
+              , wnSense           = (x !! 10)
+              , mcrIliOffset      = (x !! 11)
+              , fnFrame           = (x !! 12)
+              , fnLe              = (x !! 13)
+              , fnFrameElement    = (x !! 14)
+              , pbRoleset         = (x !! 15)
+              , pbArg             = (x !! 16)
+              , mcrBC             = (x !! 17)
+              , mcrDomain         = (x !! 18)
+              , mcrSUMO           = (x !! 19)
+              , mcrTO             = (x !! 20)
+              , mcrLexname        = (x !! 21)
+              , mcrBLC            = (x !! 22)
+              , wnSensefrec       = (x !! 23)
+              , wnSynsetRelNum    = (x !! 24)
+              , esoClass          = (x !! 25)
+              , esoRole           = (x !! 26)
+              }
+  
 take' n = S.fromList . take n . S.toList
 
 main :: IO ()
@@ -90,7 +104,11 @@ main = do
   let totalmat = map (\x -> mkPred x) items
       enmat = filter (\x -> idLang x == Eng) totalmat
 
-  print (take 10 enmat)
+  
+  print $ S.fromList $ map idRole totalmat
+
+
+  -- print (take 10 enmat)
   
   {-
   print $ take' 10 $ S.fromList $ map idLang totalmat
