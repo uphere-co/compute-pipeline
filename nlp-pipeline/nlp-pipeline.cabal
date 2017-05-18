@@ -62,7 +62,10 @@ executable nlp-pipeline
   -- other-modules:       
   build-depends:       base,
                        --
+                       filepath,
                        text,
+                       HUKB,
+                       HUKB-driver,                  
                        --
                        nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2

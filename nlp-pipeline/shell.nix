@@ -6,6 +6,7 @@
 , uphere-nix-overlay ? <uphere-nix-overlay>
 , HCoreNLP ? <HCoreNLP>
 , HWordNet ? <HWordNet>
+, HUKB
 }:
 
 with pkgs;
@@ -106,9 +107,14 @@ let
            hydraPlatforms = stdenv.lib.platforms.none;
          }) {jdk = pkgs.jdk;};
   };
-
+  ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
+  config3 = import (HUKB + "/HUKB-driver/config.nix") { inherit pkgs uphere-nix-overlay ukb; };
+  config4 =
+    self: super: {
+      "HUKB-driver" = self.callPackage (import (HUKB + "/HUKB-driver")) {}; 
+    };  
   myhaskellpkgs = haskell.packages.ghc802.override {
-    overrides = self: super: config1 self super // config2 self super;
+    overrides = self: super: config1 self super // config2 self super // config3 self super // config4 self super;
   }; 
 
   hsenv = myhaskellpkgs.ghcWithPackages (p: with p; [
@@ -134,13 +140,14 @@ let
             p.textview
             p.HCoreNLP
             p.HWordNet
+            HUKB-driver
           ]);
 
 in
 
 stdenv.mkDerivation {
   name = "eventextractor-dev";
-  buildInputs = [ hsenv jdk ];
+  buildInputs = [ hsenv jdk ukb ];
   shellHook = ''
     CLASSPATH="${corenlp_models}:${corenlp}/stanford-corenlp-3.7.0.jar:${corenlp}/protobuf.jar:${corenlp}/joda-time.jar:${corenlp}/jollyday.jar:${hsenv}/share/x86_64-linux-ghc-8.0.2/HCoreNLP-0.1.0.0/HCoreNLPProto.jar";
   '';
