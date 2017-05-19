@@ -17,6 +17,7 @@ import           CoreNLP.Simple                  (annotate,prepare)
 -- import           NLP.Type.PennTreebankII
 import           HUKB.PPR
 import           YAML.Builder
+import           WordNet.API.Query
 --
 import           Annot.NER
 import           Pipeline.Source.NewsAPI.Article
@@ -26,8 +27,11 @@ import           Pipeline.Util
 runPPR :: String -> IO ()
 runPPR txt = do
   let dir = "/nix/store/c61cbi65n9ifia3xinxcq5r5jqd1gbyn-ukb-3.0/share/data"
-  ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
+  result <- ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
+  print result
 
+
+  
 run :: IO ()
 run = do
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
@@ -35,7 +39,7 @@ run = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True)
-    forM_ filelist $ \a' -> do
+    forM_ (take 1 filelist) $ \a' -> do
       txt <- getDescription a'
       doc <- getDoc txt
       ann <- annotate pp doc
@@ -49,4 +53,6 @@ run = do
       process pp forest a'
       TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
       getTemporal ann
+      db <- loadDB "/scratch/wavewave/wordnet/WordNet-3.0/dict"
+      runSingleQuery "love" db
   putStrLn "Program is finished!"
