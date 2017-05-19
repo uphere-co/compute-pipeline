@@ -19,6 +19,7 @@ import           CoreNLP.Simple                  (annotate,prepare)
 import           HUKB.PPR
 import           YAML.Builder
 import           WordNet.API.Query
+import           WordNet.Type
 --
 import           Annot.NER
 import           Pipeline.Source.NewsAPI.Article
@@ -62,6 +63,5 @@ run = do
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
       db <- loadDB "/scratch/wavewave/wordnet/WordNet-3.0/dict"
       forM_ xs $ \x -> do
-        print (x ^. _3)
-        runSingleQuery (B.unpack $ (x ^. _3)) db
+        runSingleQuery (B.unpack $ (x ^. _3)) POS_V db
   putStrLn "Program is finished!"
