@@ -2,6 +2,7 @@
 
 module Pipeline.Application.Run where
 
+import           Control.Lens                    ((^.),_3)
 import           Control.Monad                   (forM_)
 import qualified Data.ByteString.Char8  as B
 import qualified Data.Text              as T
@@ -30,7 +31,12 @@ runPPR txt = do
   result <- ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
   print result
 
-
+getPPR :: String
+       -> IO (B.ByteString,[(B.ByteString, B.ByteString, B.ByteString, B.ByteString)])
+getPPR txt = do
+  let dir = "/nix/store/c61cbi65n9ifia3xinxcq5r5jqd1gbyn-ukb-3.0/share/data"
+  result <- ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
+  return result
   
 run :: IO ()
 run = do
@@ -47,12 +53,15 @@ run = do
       let psents = getProtoSents pdoc
           sents  = convertProtoSents psents pdoc
           tokens = getTokens psents
-      print $ sents
-      print $ mkUkbInput tokens
-      runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      process pp forest a'
-      TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
-      getTemporal ann
+      -- print $ sents
+      -- print $ mkUkbInput tokens
+      -- runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
+      -- process pp forest a'
+      -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
+      -- getTemporal ann
+      (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
       db <- loadDB "/scratch/wavewave/wordnet/WordNet-3.0/dict"
-      runSingleQuery "love" db
+      forM_ xs $ \x -> do
+        print (x ^. _3)
+        runSingleQuery (B.unpack $ (x ^. _3)) db
   putStrLn "Program is finished!"
