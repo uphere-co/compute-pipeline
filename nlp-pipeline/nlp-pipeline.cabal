@@ -44,7 +44,9 @@ library
                   intrinio,
                   yaml,
                   nlp-types,
-                  yayaml
+                  yayaml,
+                  HUKB,
+                  HUKB-driver
   exposed-modules: Pipeline.Util
                    Pipeline.Application.Run
                    Pipeline.Type
@@ -62,7 +64,10 @@ executable nlp-pipeline
   -- other-modules:       
   build-depends:       base,
                        --
+                       filepath,
                        text,
+                       HUKB,
+                       HUKB-driver,                  
                        --
                        nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
