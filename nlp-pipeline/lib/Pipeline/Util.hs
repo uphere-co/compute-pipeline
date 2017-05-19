@@ -242,8 +242,9 @@ mkUkbInput r2 = filter (\(_,y) -> isJust y) $ zip (map _token_lemma r2) (map sim
 
 mkUkbTextInput :: [(Text,Maybe POS)] -> Text
 mkUkbTextInput r = let jr = map (\(t,mp) -> (t,fromJust mp)) r
-                       mkTaggedWord i t p = T.concat [t,if (p == POS_N) then "#n" else if (p == POS_R) then "#r" else if (p == POS_A) then "#a" else "#v", T.append "#w" (T.pack $ show i), "#1"]
-                       rt = T.intercalate " " $ map (\(i,(t,p)) -> mkTaggedWord i t p) (zip [1..] jr)
+                       ptow p = if (p == POS_N) then "#n" else if (p == POS_R) then "#r" else if (p == POS_A) then "#a" else "#v"
+                       mkTaggedWord i t p = T.concat [t,ptow p,T.append "#w" (T.pack $ show i),"#1"]
+                       rt = T.intercalate " " $ map (\(i,(t,p)) -> mkTaggedWord i t p) (zip [(1 :: Int)..] jr)
                    in rt
 
 getProtoSents :: D.Document -> [S.Sentence]
@@ -271,9 +272,10 @@ getProtoDoc ann = do
     Left  err     -> error err
     Right (doc,_) -> return doc
 
-getTemporal doc ann = do
+getTemporal :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ()
+getTemporal ann = do
   lbstr_sutime <- BL.fromStrict <$> serializeTimex ann
   let er = messageGet lbstr_sutime
   case (er :: Either String (T.ListTimex,BL.ByteString)) of
-    Left _  -> print ""
+    Left _  -> print ("" :: Text)
     Right r -> print (T._timexes $ fst r)
