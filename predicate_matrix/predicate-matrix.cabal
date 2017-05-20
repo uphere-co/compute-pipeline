@@ -19,6 +19,9 @@ executable predicate-matrix
   main-is:             predicate.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.9 && <4.10
+  build-depends:       base,
+                       --
+                       containers,
+                       text
   -- hs-source-dirs:      
   default-language:    Haskell2010

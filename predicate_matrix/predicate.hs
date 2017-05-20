@@ -61,7 +61,6 @@ data POS  = Verb | Noun deriving (Eq,Show,Ord)
 type Predicate = Text
 type Role      = Text
 
-
 getLang x = case x of
   "id:cat" -> Cat
   "id:eng" -> Eng
@@ -111,6 +110,12 @@ id5 x = (idPOS x, idPred x, idRole x, mcrIliOffset x, pbArg x)
 id6 x = (idPOS x, idPred x, idRole x, mcrIliOffset x, pbArg x, pbRoleset x)
 
 
+createPM :: [PredicateMatrix] -> M.Map Text [(Text,Text)]
+createPM mat = fmap (map (\x -> (pbRoleset x, pbArg x))) $ foldl' (\acc x -> M.insertWith' (++) (mcrIliOffset x) [x] acc) M.empty mat
+
+query :: Text -> M.Map Text [(Text,Text)] -> Maybe [(Text,Text)]
+query txt pm = M.lookup txt pm
+
 main :: IO ()
 main = do
   txt <- TIO.readFile "PredicateMatrix.v1.3.txt" 
@@ -121,7 +126,8 @@ main = do
       enmat = filter (\x -> idLang x == Eng) totalmat
       enmat100 = take 100 enmat
 
-
+  let pm = createPM enmat
+  print $ query (T.concat ["mcr:ili-30-","00203213-v"]) pm
   {-
   let mm = M.empty
 

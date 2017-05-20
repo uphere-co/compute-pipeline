@@ -56,7 +56,7 @@ run = do
           tokens = getTokens psents
       -- print $ sents
       -- print $ mkUkbInput tokens
-      -- runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
+      runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
       -- process pp forest a'
       -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
       -- getTemporal ann

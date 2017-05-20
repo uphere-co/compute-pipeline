@@ -57,8 +57,8 @@ import           View
 import           Pipeline.Type
 --
 import           NLP.Type.PennTreebankII
+import           NLP.Type.WordNet
 import           System.Console.Haskeline
-import           WordNet.Type
 --
 
 processAnnotation :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
