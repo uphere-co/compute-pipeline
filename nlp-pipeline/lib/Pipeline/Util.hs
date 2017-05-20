@@ -279,3 +279,10 @@ getTemporal ann = do
   case (er :: Either String (T.ListTimex,BL.ByteString)) of
     Left _  -> print ("" :: Text)
     Right r -> print (T._timexes $ fst r)
+
+convStrToPOS :: String -> POS
+convStrToPOS str = case (last str) of 
+  'n' -> POS_N
+  'v' -> POS_V
+  'a' -> POS_A
+  'r' -> POS_R

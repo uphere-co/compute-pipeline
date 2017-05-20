@@ -2,7 +2,7 @@
 
 module Pipeline.Application.Run where
 
-import           Control.Lens                    ((^.),_3)
+import           Control.Lens                    ((^.),_2,_3)
 import           Control.Monad                   (forM_)
 import qualified Data.ByteString.Char8  as B
 import qualified Data.Text              as T
@@ -63,5 +63,5 @@ run = do
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
       db <- loadDB "/scratch/wavewave/wordnet/WordNet-3.0/dict"
       forM_ xs $ \x -> do
-        runSingleQuery (B.unpack $ (x ^. _3)) POS_V db
+        runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
   putStrLn "Program is finished!"
