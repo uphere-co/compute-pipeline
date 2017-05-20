@@ -9,12 +9,16 @@ import qualified Data.Text    as T
 import qualified Data.Text.IO as TIO
 
 
-mkPred x = let {[ idLang , idPOS , idPred , idRole
+mkPred x = let {[ idLang' , idPOS' , idPred , idRole
                 , vnClass , vnClassNumber , vnSubclass , vnSubclassNumber , vnLema , vnRole
-                , wnSense , mcrIliOffset , fnFrame , fnLe , fnFrame_Element
+                , wnSense , mcrIliOffset , fnFrame , fnLe , fnFrameElement
                 , pbRoleset , pbArg , mcrBC , mcrDomain , mcrSUMO , mcrTO , mcrLexname , mcrBLC
-                , wnSensefrec , wnSynsetRelNum , esoClass , esoRole ] = x}
-           in Predicate {..}
+                , wnSensefrec , wnSynsetRelNum , esoClass , esoRole ] = x;
+                idLang = getLang idLang';
+                idPOS  = getPOS  idPOS';
+                
+                }
+           in PM {..}
 
 checkData txtss = do
   let len = map length txtss
