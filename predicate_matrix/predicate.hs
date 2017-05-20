@@ -80,31 +80,30 @@ getPredicate txt = last $ T.splitOn ":" txt
 getRole :: Text -> Role
 getRole txt = last $ T.splitOn ":" txt
 
-
+getVNClass :: Text -> Text
 getVNClass txt = last $ T.splitOn ":" txt
 
-
+getVNClassNumber :: Text -> Text
 getVNClassNumber txt = last $ T.splitOn ":" txt
 
-
+getVNSubclass :: Text -> Text
 getVNSubclass txt = last $ T.splitOn ":" txt
 
+getVnSubclassNumber :: Text -> Text
+getVnSubclassNumber txt = last $ T.splitOn ":" txt
 
-getVNSubclassNumber txt = last $ T.splitOn ":" txt
-
-
+getVNLema :: Text -> Text
 getVNLema txt = last $ T.splitOn ":" txt
 
-
+getVNRole :: Text -> Text
 getVNRole txt = last $ T.splitOn ":" txt
 
-
+getWord :: Text -> Text
 getWord txt = last $ T.splitOn ":" txt
   
 
+
 take' n = S.fromList . take n . S.toList
-
-
 idTriple x = (idPOS x, idPred x, idRole x)
 idQuad x = (idPOS x, idPred x, idRole x, mcrIliOffset x)
 id4 x = (idPOS x, idPred x, idRole x, pbArg x)
@@ -121,6 +120,9 @@ main = do
   let totalmat = map (\x -> mkPred x) items
       enmat = filter (\x -> idLang x == Eng) totalmat
       enmat100 = take 100 enmat
+
+
+  {-
   let mm = M.empty
 
   let dm = foldl' (\acc x -> M.insertWith' (++) (idTriple x) [x] acc) M.empty enmat100
@@ -139,7 +141,7 @@ main = do
       dm5' = fmap length dm5
 
   print dm5'
-
+  -}
 
   -- print $ length $ S.fromList $ map mcrIliOffset enmat
   -- print $ length $ enmat
