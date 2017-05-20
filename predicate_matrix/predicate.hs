@@ -4,6 +4,8 @@
 
 module Main where
 import qualified Data.Set     as S
+import           Data.List           (foldl')
+import qualified Data.Map     as M
 import           Data.Text           (Text)
 import qualified Data.Text    as T
 import qualified Data.Text.IO as TIO
@@ -54,7 +56,7 @@ checkData txtss = do
   print len
 
 data Lang = Cat | Eng | Eus | Spa deriving (Eq,Show)
-data POS  = Verb | Noun deriving (Eq,Show)
+data POS  = Verb | Noun deriving (Eq,Show,Ord)
 
 type Predicate = Text
 type Role      = Text
@@ -70,38 +72,83 @@ getPOS x = case x of
   "id:n" -> Noun
   "id:v" -> Verb
 
+
+
 getPredicate :: Text -> Predicate
 getPredicate txt = last $ T.splitOn ":" txt
 
 getRole :: Text -> Role
 getRole txt = last $ T.splitOn ":" txt
 
+
 getVNClass txt = last $ T.splitOn ":" txt
+
+
 getVNClassNumber txt = last $ T.splitOn ":" txt
+
+
 getVNSubclass txt = last $ T.splitOn ":" txt
+
+
 getVNSubclassNumber txt = last $ T.splitOn ":" txt
+
+
 getVNLema txt = last $ T.splitOn ":" txt
+
+
 getVNRole txt = last $ T.splitOn ":" txt
+
 
 getWord txt = last $ T.splitOn ":" txt
   
+
 take' n = S.fromList . take n . S.toList
+
+
+idTriple x = (idPOS x, idPred x, idRole x)
+idQuad x = (idPOS x, idPred x, idRole x, mcrIliOffset x)
+id4 x = (idPOS x, idPred x, idRole x, pbArg x)
+id5 x = (idPOS x, idPred x, idRole x, mcrIliOffset x, pbArg x)
+id6 x = (idPOS x, idPred x, idRole x, mcrIliOffset x, pbArg x, pbRoleset x)
+
 
 main :: IO ()
 main = do
-
   txt <- TIO.readFile "PredicateMatrix.v1.3.txt" 
   let lines = drop 1 $ T.lines txt
       items = map T.words lines
 
   let totalmat = map (\x -> mkPred x) items
       enmat = filter (\x -> idLang x == Eng) totalmat
+      enmat100 = take 100 enmat
+  let mm = M.empty
 
+  let dm = foldl' (\acc x -> M.insertWith' (++) (idTriple x) [x] acc) M.empty enmat100
+      dm' = fmap length dm
+
+  let dm2 = foldl' (\acc x -> M.insertWith' (++) (idQuad x) [x] acc) M.empty enmat100
+      dm2' = fmap length dm2
+
+  let dm3 = foldl' (\acc x -> M.insertWith' (++) (id4 x) [x] acc) M.empty enmat100
+      dm3' = fmap length dm3
+
+  let dm4 = foldl' (\acc x -> M.insertWith' (++) (id5 x) [x] acc) M.empty enmat100
+      dm4' = fmap length dm4
   
-  print $ S.fromList $ map idRole totalmat
+  let dm5 = foldl' (\acc x -> M.insertWith' (++) (id6 x) [x] acc) M.empty enmat100
+      dm5' = fmap length dm5
+
+  print dm5'
 
 
-  print (take 10 enmat)
+  -- print $ length $ S.fromList $ map mcrIliOffset enmat
+  -- print $ length $ enmat
+  
+  -- print dm'
+  -- print $ length $ S.fromList $ map (\x-> (idPred x, idRole x, idPOS x)) enmat
+  -- print $ length $ enmat
+
+  -- print (take 10 enmat)
 
   
 
