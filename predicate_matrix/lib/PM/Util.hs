@@ -3,6 +3,8 @@
 
 module PM.Util where
 
+import           Data.List           (foldl')
+import qualified Data.Map     as M
 import qualified Data.Set     as S
 import Data.Text       (Text)
 import qualified Data.Text    as T
@@ -66,3 +68,10 @@ id4 x = (idPOS x, idPred x, idRole x, pbArg x)
 id5 x = (idPOS x, idPred x, idRole x, mcrIliOffset x, pbArg x)
 id6 x = (idPOS x, idPred x, idRole x, mcrIliOffset x, pbArg x, pbRoleset x)
 
+
+
+createPM :: [PredicateMatrix] -> M.Map Text [(Text,Text)]
+createPM mat = fmap (map (\x -> (pbRoleset x, pbArg x))) $ foldl' (\acc x -> M.insertWith' (++) (mcrIliOffset x) [x] acc) M.empty mat
+
+query :: Text -> M.Map Text [(Text,Text)] -> Maybe [(Text,Text)]
+query txt pm = M.lookup txt pm

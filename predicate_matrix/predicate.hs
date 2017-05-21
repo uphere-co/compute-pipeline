@@ -13,12 +13,6 @@ import qualified Data.Text.IO as TIO
 import           PM.Type
 import           PM.Util
 
-createPM :: [PredicateMatrix] -> M.Map Text [(Text,Text)]
-createPM mat = fmap (map (\x -> (pbRoleset x, pbArg x))) $ foldl' (\acc x -> M.insertWith' (++) (mcrIliOffset x) [x] acc) M.empty mat
-
-query :: Text -> M.Map Text [(Text,Text)] -> Maybe [(Text,Text)]
-query txt pm = M.lookup txt pm
-
 main :: IO ()
 main = do
   txt <- TIO.readFile "PredicateMatrix.v1.3.txt" 

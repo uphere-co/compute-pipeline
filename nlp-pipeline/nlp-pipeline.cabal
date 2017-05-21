@@ -46,7 +46,8 @@ library
                   nlp-types,
                   yayaml,
                   HUKB,
-                  HUKB-driver
+                  HUKB-driver,
+                  predicate-matrix
   exposed-modules: Pipeline.Util
                    Pipeline.Application.Run
                    Pipeline.Type
