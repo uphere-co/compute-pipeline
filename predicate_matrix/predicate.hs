@@ -82,63 +82,17 @@ getVNSubclass txt = last $ T.splitOn ":" txt
 getVNSubclassNumber txt = last $ T.splitOn ":" txt
 getVNLema txt = last $ T.splitOn ":" txt
 getVNRole txt = last $ T.splitOn ":" txt
-
 getWord txt = last $ T.splitOn ":" txt
-  
+
 take' n = S.fromList . take n . S.toList
 
 main :: IO ()
 main = do
-
   txt <- TIO.readFile "PredicateMatrix.v1.3.txt" 
   let lines = drop 1 $ T.lines txt
       items = map T.words lines
-
   let totalmat = map (\x -> mkPred x) items
       enmat = filter (\x -> idLang x == Eng) totalmat
-
-  
   print $ S.fromList $ map idRole totalmat
-
-
   print (take 10 enmat)
-
-  
-
-  {-
-  print $ take' 50 $ S.fromList $ map idPred totalmat
-  print $ take' 50 $ S.fromList $ map idRole totalmat
-  print $ take' 50 $ S.fromList $ map vnClass totalmat
-  print $ take' 50 $ S.fromList $ map vnClassNumber totalmat
-  print $ take' 50 $ S.fromList $ map vnSubclass totalmat
-  print $ take' 50 $ S.fromList $ map vnSubclassNumber totalmat
-  print $ take' 50 $ S.fromList $ map vnLema totalmat
-  print $ take' 50 $ S.fromList $ map vnRole totalmat
-  print $ take' 50 $ S.fromList $ map wnSense totalmat
-  print $ take' 50 $ S.fromList $ map mcrIliOffset totalmat
-  print $ take' 50 $ S.fromList $ map fnFrame totalmat
-  print $ take' 50 $ S.fromList $ map fnLe totalmat
-  print $ take' 50 $ S.fromList $ map fnFrameElement totalmat
-  print $ take' 50 $ S.fromList $ map pbRoleset totalmat
-  print $ take' 50 $ S.fromList $ map pbArg totalmat
-  print $ take' 50 $ S.fromList $ map mcrBC totalmat
-  print $ take' 50 $ S.fromList $ map mcrDomain totalmat
-  print $ take' 50 $ S.fromList $ map mcrSUMO totalmat
-  print $ take' 50 $ S.fromList $ map mcrTO totalmat
-  print $ take' 50 $ S.fromList $ map mcrLexname totalmat
-  print $ take' 50 $ S.fromList $ map mcrBLC totalmat
-  print $ take' 50 $ S.fromList $ map wnSensefrec totalmat
-  print $ take' 50 $ S.fromList $ map wnSynsetRelNum totalmat
-  print $ take' 50 $ S.fromList $ map esoClass totalmat
-  print $ take' 50 $ S.fromList $ map esoRole totalmat
-  -}
-  
-  {-
-  PRINT $ length totalmat
-  print $ length $ filter (\x -> idPOS x == "id:v") totalmat 
-  print $ length $ filter (\x -> idPOS x == "id:n") totalmat
-  print $ length enmat
-  print $ length $ filter (\x -> idPOS x == "id:v") enmat 
-  print $ length $ filter (\x -> idPOS x == "id:n") enmat
-  -}
   return ()
