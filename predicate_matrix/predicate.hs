@@ -15,16 +15,10 @@ import           PM.Util
 
 main :: IO ()
 main = do
-  txt <- TIO.readFile "PredicateMatrix.v1.3.txt" 
-  let lines = drop 1 $ T.lines txt
-      items = map T.words lines
 
-  let totalmat = map (\x -> mkPred x) items
-      enmat = filter (\x -> idLang x == Eng) totalmat
-      enmat100 = take 100 enmat
-
-  let pm = createPM enmat
-  print $ query (T.concat ["mcr:ili-30-","00203213-v"]) pm
+  
+  -- let pm = createPM enmat
+  -- print $ query (T.concat ["mcr:ili-30-","00203213-v"]) pm
   {-
   let mm = M.empty
 
