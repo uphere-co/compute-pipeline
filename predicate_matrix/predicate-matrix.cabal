@@ -22,8 +22,12 @@ Library
 
   ghc-prof-options: -auto-all
   exposed-modules:  PM.API.Query
-  build-depends:    base
+                    PM.Type
+                    PM.Util
+  build-depends:    base,
                     --
+                    containers,
+                    text
   ghc-options:      -Wall -O2 -funbox-strict-fields -fno-warn-unused-do-bind
 
 executable predicate-matrix
