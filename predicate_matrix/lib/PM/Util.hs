@@ -3,10 +3,7 @@
 
 module PM.Util where
 
-import           Data.List           (foldl')
-import qualified Data.Map     as M
-import qualified Data.Set     as S
-import Data.Text       (Text)
+import           Data.Text         (Text)
 import qualified Data.Text    as T
 --
 import           PM.Type
