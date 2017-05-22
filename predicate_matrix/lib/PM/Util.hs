@@ -11,13 +11,14 @@ import qualified Data.Text    as T
 --
 import           PM.Type
 
-
+getLang :: Text -> Lang 
 getLang x = case x of
   "id:cat" -> Cat
   "id:eng" -> Eng
   "id:eus" -> Eus
   "id:spa" -> Spa
 
+getPOS :: Text -> POS
 getPOS x = case x of
   "id:n" -> Noun
   "id:v" -> Verb
@@ -49,6 +50,7 @@ getVNRole txt = last $ T.splitOn ":" txt
 getWord :: Text -> Text
 getWord txt = last $ T.splitOn ":" txt
 
+mkPred :: [Text] -> PredicateMatrix
 mkPred x = let {[ idLang' , idPOS' , idPred , idRole
                 , vnClass , vnClassNumber , vnSubclass , vnSubclassNumber , vnLema , vnRole
                 , wnSense , mcrIliOffset , fnFrame , fnLe , fnFrameElement
@@ -58,13 +60,3 @@ mkPred x = let {[ idLang' , idPOS' , idPred , idRole
                 idPOS  = getPOS  idPOS';
                 }
            in PM {..}
-
-
-
-take' n = S.fromList . take n . S.toList
-idTriple x = (idPOS x, idPred x, idRole x)
-idQuad x = (idPOS x, idPred x, idRole x, mcrIliOffset x)
-id4 x = (idPOS x, idPred x, idRole x, pbArg x)
-id5 x = (idPOS x, idPred x, idRole x, mcrIliOffset x, pbArg x)
-id6 x = (idPOS x, idPred x, idRole x, mcrIliOffset x, pbArg x, pbRoleset x)
-
