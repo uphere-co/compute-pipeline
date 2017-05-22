@@ -63,8 +63,8 @@ run = do
       -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
       -- getTemporal ann
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      db <- loadDB "/scratch/wavewave/wordnet/WordNet-3.0/dict"
-      pmdata <- loadPM "PredicateMatrix.v1.3.txt"
+      db <- loadDB "/data/groups/uphere/data/NLP/dict"
+      pmdata <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
       let pm = createPM pmdata
       forM_ xs $ \x -> do
         runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db

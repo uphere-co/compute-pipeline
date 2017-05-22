@@ -15,7 +15,4 @@ import           PM.Util
 
 main :: IO ()
 main = do  
-  -- let pm = createPM enmat
-  -- print $ query (T.concat ["mcr:ili-30-","00203213-v"]) pm
-
-  return ()
+  putStrLn "Predicate Matrix App"
