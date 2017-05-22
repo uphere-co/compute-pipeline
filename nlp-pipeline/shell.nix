@@ -38,6 +38,7 @@ let
       "intrinio" = self.callPackage (import (fetchfin + "/intrinio")) {};
       "HCoreNLP" = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
       "HWordNet" = self.callPackage (import HWordNet) {};
+      "predicate-matrix" = self.callPackage ../predicate_matrix {};
        
       "inline-java" = self.callPackage
         ({ mkDerivation, base, binary, bytestring, Cabal, containers
@@ -140,6 +141,7 @@ let
             p.textview
             p.HCoreNLP
             p.HWordNet
+            p.predicate-matrix
             HUKB-driver
           ]);
 

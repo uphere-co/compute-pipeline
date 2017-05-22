@@ -20,6 +20,8 @@ import           HUKB.PPR
 import           YAML.Builder
 import           WordNet.API.Query
 import           WordNet.Type
+-- import           PM.Type
+import           PM.API.Query
 --
 import           Annot.NER
 import           Pipeline.Source.NewsAPI.Article
@@ -56,12 +58,15 @@ run = do
           tokens = getTokens psents
       -- print $ sents
       -- print $ mkUkbInput tokens
-      -- runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
+      runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
       -- process pp forest a'
       -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
       -- getTemporal ann
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      db <- loadDB "/scratch/wavewave/wordnet/WordNet-3.0/dict"
+      db <- loadDB "/data/groups/uphere/data/NLP/dict"
+      pmdata <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+      let pm = createPM pmdata
       forM_ xs $ \x -> do
         runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
+        print $ query (T.pack $ B.unpack $ (x ^. _3)) pm
   putStrLn "Program is finished!"
