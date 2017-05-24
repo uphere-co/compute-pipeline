@@ -29,6 +29,7 @@ import           WordNet.Type
 import           PM.API.Query
 import           Generic.SearchTree
 import           ParserCustom
+import           PropBank
 
 runPPR :: String -> IO ()
 runPPR txt = do
@@ -48,10 +49,21 @@ run = do
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
   forest <- prepareForest "/data/groups/uphere/F7745.all_entities"
   clspath <- getEnv "CLASSPATH"
+
+  pmdata <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+  let pm = createPM pmdata
+  db <- loadDB "/data/groups/uphere/data/NLP/dict"
+  forest <- loadIdiom "/data/groups/uphere/data/NLP/idiom.txt"
+
+
+  pdb <- constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
+  let rdb = constructRoleSetDB pdb
+  
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True)
     forM_ filelist $ \a' -> do
       txt <- getDescription a'
+      {-
       doc <- getDoc txt
       ann <- annotate pp doc
       pdoc <- getProtoDoc ann
@@ -65,10 +77,7 @@ run = do
       -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
       -- getTemporal ann
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      db <- loadDB "/data/groups/uphere/data/NLP/dict"
-      pmdata <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
-      let pm = createPM pmdata
-      forest <- loadIdiom "/data/groups/uphere/data/NLP/idiom.txt"
+      -}
       let s = runState (runEitherT (many $ pTreeAdvG forest)) (map T.unpack $ T.words txt) -- ["as","long","as","possible","take","care","of","away","from"]
       print s
       {-
