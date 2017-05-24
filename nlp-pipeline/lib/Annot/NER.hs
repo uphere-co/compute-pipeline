@@ -6,6 +6,7 @@ import qualified Data.Text                      as T
 import qualified Data.Text.IO                   as TIO
 import           Data.Tree
 --
+import           Generic.SearchTree
 import           SearchTree
 
 prepareForest :: FilePath -> IO (Forest (Maybe Char))
