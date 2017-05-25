@@ -46,24 +46,28 @@ getPPR txt = do
   
 run :: IO ()
 run = do
-  filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
-  forest <- prepareForest "/data/groups/uphere/F7745.all_entities"
   clspath <- getEnv "CLASSPATH"
 
+  filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
+  forest <- prepareForest "/data/groups/uphere/F7745.all_entities"
   pmdata <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
   let pm = createPM pmdata
   db <- loadDB "/data/groups/uphere/data/NLP/dict"
-  forest <- loadIdiom "/data/groups/uphere/data/NLP/idiom.txt"
-
+  forestIdiom <- loadIdiom "/data/groups/uphere/data/NLP/idiom.txt"
 
   pdb <- constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
   let rdb = constructRoleSetDB pdb
+
+  let input = "take.01"
+  case T.split (== '.') input of
+    (x:n:_) -> queryRoleSet rdb input
+    (x:[])  -> queryPredicate pdb input
+    [] -> putStrLn "query is not recognized."
   
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True)
     forM_ filelist $ \a' -> do
       txt <- getDescription a'
-      {-
       doc <- getDoc txt
       ann <- annotate pp doc
       pdoc <- getProtoDoc ann
@@ -71,18 +75,18 @@ run = do
           sents  = convertProtoSents psents pdoc
           tokens = getTokens psents
       print $ sents
-      -- print $ mkUkbInput tokens
-      -- runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      -- process pp forest a'
-      -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
-      -- getTemporal ann
+      print $ mkUkbInput tokens
+      runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
+      process pp forest a'
+      TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
+      getTemporal ann
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      -}
-      let s = runState (runEitherT (many $ pTreeAdvG forest)) (map T.unpack $ T.words txt) -- ["as","long","as","possible","take","care","of","away","from"]
+      
+      let s = runState (runEitherT (many $ pTreeAdvG forestIdiom)) (map T.unpack $ T.words txt)
       print s
-      {-
+      
       forM_ xs $ \x -> do
         runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
         print $ query (T.pack $ B.unpack $ (x ^. _3)) pm
-      -}
+      
   putStrLn "Program is finished!"

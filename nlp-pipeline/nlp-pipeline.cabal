@@ -48,7 +48,8 @@ library
                   yayaml,
                   HUKB,
                   HUKB-driver,
-                  predicate-matrix
+                  predicate-matrix,
+                  PropBank
   exposed-modules: Pipeline.Util
                    Pipeline.Application.Run
                    Pipeline.Type
