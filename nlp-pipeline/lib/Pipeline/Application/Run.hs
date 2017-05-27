@@ -69,7 +69,7 @@ run = do
     [] -> putStrLn "query is not recognized."
   
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    pp <- prepare (PPConfig True True True True True)
+    pp <- prepare (PPConfig True True True True True True True True)
     forM_ (take 1 filelist) $ \a' -> do
       txt <- getDescription a'
       doc <- getDoc txt
