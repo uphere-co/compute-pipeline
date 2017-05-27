@@ -8,6 +8,7 @@ import           Control.Monad                   (forM_)
 import           Control.Monad.Trans.Either      (EitherT(..),left,right,hoistEither)
 import           Control.Monad.State.Lazy
 import qualified Data.ByteString.Char8  as B
+import           Data.List
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy.Builder as TLB   (toLazyText)
 import qualified Data.Text.Lazy.IO      as TLIO
@@ -43,9 +44,12 @@ getPPR txt = do
   let dir = "/nix/store/c61cbi65n9ifia3xinxcq5r5jqd1gbyn-ukb-3.0/share/data"
   result <- ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
   return result
-  
+
+findSubstring pat str = findIndex (isPrefixOf pat) (tails str) 
+
 run :: IO ()
 run = do
+
   clspath <- getEnv "CLASSPATH"
 
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
@@ -66,7 +70,7 @@ run = do
   
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True)
-    forM_ filelist $ \a' -> do
+    forM_ (take 1 filelist) $ \a' -> do
       txt <- getDescription a'
       doc <- getDoc txt
       ann <- annotate pp doc
@@ -82,8 +86,11 @@ run = do
       getTemporal ann
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
       
-      let s = runState (runEitherT (many $ pTreeAdvG forestIdiom)) (map T.unpack $ T.words txt)
-      print s
+      let (Right s,_) = runState (runEitherT (many $ pTreeAdvG forestIdiom)) ["such","as","I","live"] -- (map T.unpack $ T.words txt)
+
+      forM_ s $ \x'' -> do
+        print x''
+
       
       forM_ xs $ \x -> do
         runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
