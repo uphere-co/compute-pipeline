@@ -158,13 +158,6 @@ process pp forest fp = do
       mapM_ formatResult . sortBy (compare `on` view (_1._1)) $ combine sentswithtmx sentswithner
       putStrLn "==========================================================="
 
-
-getFileList :: FilePath -> IO ([FilePath])
-getFileList fp = do
-  list' <- readDirectoryWith return fp
-  let filelist = sort . F.toList $ dirTree list'
-  return filelist
-
 simpleMap :: POSTag -> Maybe POS
 simpleMap p = case p of
   NN   -> Just POS_N

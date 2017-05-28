@@ -51,9 +51,10 @@ library
                   predicate-matrix,
                   PropBank
   exposed-modules: Pipeline.Util
-                   Pipeline.API.UKB
-                   Pipeline.API.Util
-                   Pipeline.API
+                   Pipeline.Run.PredicateMatrix
+                   Pipeline.Run.UKB
+                   Pipeline.Run.Util
+                   Pipeline.Run
                    Pipeline.Application.Run
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article

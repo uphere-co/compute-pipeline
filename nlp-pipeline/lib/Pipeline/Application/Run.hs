@@ -5,7 +5,7 @@ module Pipeline.Application.Run where
 import           Control.Applicative
 import           Control.Lens                    ((^.),_2,_3)
 import           Control.Monad                   (forM_)
-import           Control.Monad.Trans.Either      (EitherT(..),left,right,hoistEither)
+import           Control.Monad.Trans.Either      (EitherT(..))
 import           Control.Monad.State.Lazy
 import qualified Data.ByteString.Char8  as B
 import           Data.List
@@ -14,42 +14,27 @@ import qualified Data.Text.Lazy.Builder as TLB   (toLazyText)
 import qualified Data.Text.Lazy.IO      as TLIO
 import           Language.Java          as J
 import           System.Environment              (getEnv)
-import           System.FilePath                 ((</>))
 --
 import           Annot.NER
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
+import           Pipeline.Run
 --
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple                  (annotate,prepare)
-import           HUKB.PPR
 import           YAML.Builder
 import           WordNet.API.Query
-import           WordNet.Type
 import           PM.API.Query
 import           Generic.SearchTree
 import           ParserCustom
 import           PropBank
 
-runPPR :: String -> IO ()
-runPPR txt = do
-  let dir = "/nix/store/c61cbi65n9ifia3xinxcq5r5jqd1gbyn-ukb-3.0/share/data"
-  result <- ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
-  print result
-
-getPPR :: String
-       -> IO (B.ByteString,[(B.ByteString, B.ByteString, B.ByteString, B.ByteString)])
-getPPR txt = do
-  let dir = "/nix/store/c61cbi65n9ifia3xinxcq5r5jqd1gbyn-ukb-3.0/share/data"
-  result <- ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
-  return result
-
+findSubstring :: Eq a => [a] -> [a] -> Maybe Int
 findSubstring pat str = findIndex (isPrefixOf pat) (tails str) 
 
 run :: IO ()
 run = do
-
   clspath <- getEnv "CLASSPATH"
 
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
