@@ -51,6 +51,7 @@ library
                   predicate-matrix,
                   PropBank
   exposed-modules: Pipeline.Util
+                   Pipeline.Run.Idiom
                    Pipeline.Run.PredicateMatrix
                    Pipeline.Run.UKB
                    Pipeline.Run.Util

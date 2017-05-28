@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.Application.Run where
 
@@ -6,7 +7,6 @@ import           Control.Applicative
 import           Control.Lens                    ((^.),_2,_3)
 import           Control.Monad                   (forM_)
 import           Control.Monad.Trans.Either      (EitherT(..))
-import           Control.Monad.State.Lazy
 import qualified Data.ByteString.Char8  as B
 import           Data.List
 import qualified Data.Text              as T
@@ -25,8 +25,6 @@ import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple                  (annotate,prepare)
 import           YAML.Builder
 import           PM.API.Query
-import           Generic.SearchTree
-import           ParserCustom
 import           PropBank
 
 findSubstring :: Eq a => [a] -> [a] -> Maybe Int
@@ -69,8 +67,8 @@ run = do
       TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
       getTemporal ann
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      
-      let (Right s,_) = runState (runEitherT (many $ pTreeAdvG forestIdiom)) ["such","as","I","live"] -- (map T.unpack $ T.words txt)
+
+      let (Right s,_) = findIdiom ["such","as","I","live"] forestIdiom
 
       forM_ s $ \x'' -> do
         print x''
