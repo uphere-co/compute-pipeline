@@ -51,6 +51,7 @@ library
                   predicate-matrix,
                   PropBank
   exposed-modules: Pipeline.Util
+                   Pipeline.Run.CompanyNER
                    Pipeline.Run.Idiom
                    Pipeline.Run.PredicateMatrix
                    Pipeline.Run.UKB
@@ -60,7 +61,6 @@ library
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.View.YAML.YAYAML
-                   Annot.NER
                    Annot.SUTime
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto

@@ -15,7 +15,6 @@ import qualified Data.Text.Lazy.IO      as TLIO
 import           Language.Java          as J
 import           System.Environment              (getEnv)
 --
-import           Annot.NER
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util

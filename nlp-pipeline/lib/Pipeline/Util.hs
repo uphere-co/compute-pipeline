@@ -279,3 +279,11 @@ convStrToPOS str = case (last str) of
   'v' -> POS_V
   'a' -> POS_A
   'r' -> POS_R
+
+defaultPath = ( "/data/groups/uphere/intrinio/Articles/bloomberg"
+              , "/data/groups/uphere/F7745.all_entities"
+              , "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+              , "/data/groups/uphere/data/NLP/idiom.txt"
+              , "/data/groups/uphere/data/NLP/dict"
+              , "/data/groups/uphere/data/NLP/frames"
+              )
