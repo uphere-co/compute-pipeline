@@ -24,7 +24,6 @@ import           Pipeline.Run
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple                  (annotate,prepare)
 import           YAML.Builder
-import           PM.API.Query
 import           PropBank
 
 findSubstring :: Eq a => [a] -> [a] -> Maybe Int
@@ -36,11 +35,10 @@ run = do
 
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
   forest <- prepareForest "/data/groups/uphere/F7745.all_entities"
-  pmdata <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
-  let pm = createPM pmdata
+  pm <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
   forestIdiom <- loadIdiom "/data/groups/uphere/data/NLP/idiom.txt"
-  db <- loadDB "/data/groups/uphere/data/NLP/dict"
 
+  db <- loadDB "/data/groups/uphere/data/NLP/dict"
   pdb <- constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
   let rdb = constructRoleSetDB pdb
 
@@ -69,10 +67,8 @@ run = do
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
 
       let (Right s,_) = findIdiom ["such","as","I","live"] forestIdiom
-
       forM_ s $ \x'' -> do
         print x''
-
       
       forM_ xs $ \x -> do
         runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
