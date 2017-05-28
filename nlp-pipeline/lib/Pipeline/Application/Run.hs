@@ -24,7 +24,6 @@ import           Pipeline.Run
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple                  (annotate,prepare)
 import           YAML.Builder
-import           WordNet.API.Query
 import           PM.API.Query
 import           Generic.SearchTree
 import           ParserCustom
@@ -41,8 +40,8 @@ run = do
   forest <- prepareForest "/data/groups/uphere/F7745.all_entities"
   pmdata <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
   let pm = createPM pmdata
-  db <- loadDB "/data/groups/uphere/data/NLP/dict"
   forestIdiom <- loadIdiom "/data/groups/uphere/data/NLP/idiom.txt"
+  db <- loadDB "/data/groups/uphere/data/NLP/dict"
 
   pdb <- constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
   let rdb = constructRoleSetDB pdb
