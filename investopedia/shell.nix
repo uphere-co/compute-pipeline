@@ -5,6 +5,7 @@ with pkgs;
 
 let
 hsenv = haskellPackages.ghcWithPackages (p: with p; [
+          cassava
           lens
           split
           http-client
