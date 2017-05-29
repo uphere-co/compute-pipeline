@@ -1,25 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 
-import           Control.Concurrent
-import           Control.Lens       hiding (children,element)
 import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.Csv           as Csv
 import           Data.List                 (sortOn)
-import qualified Data.List.Split    as DLS
-import           Data.Maybe                (mapMaybe)
 import qualified Data.Text.IO       as TIO
 import           Data.Text                 (Text)
 import qualified Data.Text          as T
-import           Data.Text.Lazy     as TL
-import           System.Directory          (doesFileExist, listDirectory)
-import           System.Environment
+import           System.Directory          (listDirectory)
 import           System.FilePath           (takeBaseName)
-import           System.IO
---
-import qualified Data.Csv           as Csv
-
 
 main :: IO ()
 main = do
