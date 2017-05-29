@@ -41,6 +41,7 @@ library
                   time,
                   transformers,
                   HCoreNLP,
+                  HCoreNLP-Proto,
                   HWordNet,
                   intrinio,
                   yaml,

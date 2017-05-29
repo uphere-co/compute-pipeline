@@ -24,10 +24,10 @@ let
       "textview" = self.callPackage (import textview) {};
       "intrinio" = self.callPackage (import (fetchfin + "/intrinio")) {};
       "HCoreNLP" = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
+      "HCoreNLP-Proto" = self.callPackage (import (HCoreNLP + "/HCoreNLP-Proto")) {};       
       "HWordNet" = self.callPackage (import HWordNet) {};
       "predicate-matrix" = self.callPackage ../predicate_matrix {};
       "PropBank" = self.callPackage (import PropBank) {};
-       
   };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { inherit pkgs uphere-nix-overlay ukb; };
@@ -61,6 +61,7 @@ let
             p.nlp-types
             p.textview
             p.HCoreNLP
+            p.HCoreNLP-Proto
             p.HWordNet
             p.predicate-matrix
             p.PropBank
