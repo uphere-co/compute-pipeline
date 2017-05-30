@@ -26,7 +26,7 @@ getPPR txt = do
   result <- ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
   return result
 
-runWSD txt pp = do
+getWSD txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
   pdoc <- getProtoDoc ann
