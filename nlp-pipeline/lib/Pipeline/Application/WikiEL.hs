@@ -18,4 +18,3 @@ runEL = do
     tt = getStanfordNEs stanford_nefs
     
   print tt
-  
