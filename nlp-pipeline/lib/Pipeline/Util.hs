@@ -158,13 +158,6 @@ process pp forest fp = do
       mapM_ formatResult . sortBy (compare `on` view (_1._1)) $ combine sentswithtmx sentswithner
       putStrLn "==========================================================="
 
-
-getFileList :: FilePath -> IO ([FilePath])
-getFileList fp = do
-  list' <- readDirectoryWith return fp
-  let filelist = sort . F.toList $ dirTree list'
-  return filelist
-
 simpleMap :: POSTag -> Maybe POS
 simpleMap p = case p of
   NN   -> Just POS_N
@@ -286,3 +279,11 @@ convStrToPOS str = case (last str) of
   'v' -> POS_V
   'a' -> POS_A
   'r' -> POS_R
+
+defaultPath = ( "/data/groups/uphere/intrinio/Articles/bloomberg"
+              , "/data/groups/uphere/F7745.all_entities"
+              , "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+              , "/data/groups/uphere/data/NLP/idiom.txt"
+              , "/data/groups/uphere/data/NLP/dict"
+              , "/data/groups/uphere/data/NLP/frames"
+              )

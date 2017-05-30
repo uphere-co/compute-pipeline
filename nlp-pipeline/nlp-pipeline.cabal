@@ -32,6 +32,7 @@ library
                   haskeline,
                   jvm,
                   lens,
+                  mtl,
                   optparse-applicative,
                   postgresql-simple,
                   protocol-buffers,
@@ -40,6 +41,7 @@ library
                   time,
                   transformers,
                   HCoreNLP,
+                  HCoreNLP-Proto,
                   HWordNet,
                   intrinio,
                   yaml,
@@ -47,13 +49,19 @@ library
                   yayaml,
                   HUKB,
                   HUKB-driver,
-                  predicate-matrix
+                  predicate-matrix,
+                  PropBank
   exposed-modules: Pipeline.Util
+                   Pipeline.Run.CompanyNER
+                   Pipeline.Run.Idiom
+                   Pipeline.Run.PredicateMatrix
+                   Pipeline.Run.UKB
+                   Pipeline.Run.Util
+                   Pipeline.Run
                    Pipeline.Application.Run
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.View.YAML.YAYAML
-                   Annot.NER
                    Annot.SUTime
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto

@@ -11,8 +11,8 @@ import qualified Data.Text.IO as TIO
 import PM.Type
 import PM.Util
 
-loadPM :: FilePath -> IO [PredicateMatrix]
-loadPM fp = do
+loadPMData :: FilePath -> IO [PredicateMatrix]
+loadPMData fp = do
   txt <- TIO.readFile fp
   let lines = drop 1 $ T.lines txt
       items = map T.words lines
@@ -25,6 +25,11 @@ loadPM fp = do
   
 createPM :: [PredicateMatrix] -> M.Map Text [(Text,Text)]
 createPM mat = fmap (map (\x -> (pbRoleset x, pbArg x))) $ foldl' (\acc x -> M.insertWith' (++) (mcrIliOffset x) [x] acc) M.empty mat
+
+loadPM fp = do
+  pmdata <- loadPMData fp
+  let pm = createPM pmdata
+  return pm
 
 query :: Text -> M.Map Text [(Text,Text)] -> Maybe [(Text,Text)]
 query txt pm = M.lookup (T.append "mcr:ili-30-" txt) pm
