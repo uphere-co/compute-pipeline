@@ -7,6 +7,7 @@
 , HWordNet ? <HWordNet>
 , HUKB ? <HUKB>
 , PropBank ? <PropBank>
+, wiki-ner ? <wiki-ner>
 }:
 
 with pkgs;
@@ -28,6 +29,7 @@ let
       "HWordNet" = self.callPackage (import HWordNet) {};
       "predicate-matrix" = self.callPackage ../predicate_matrix {};
       "PropBank" = self.callPackage (import PropBank) {};
+      "wiki-ner" = self.callPackage (import wiki-ner) {};
   };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { inherit pkgs uphere-nix-overlay ukb; };
@@ -65,6 +67,7 @@ let
             p.HWordNet
             p.predicate-matrix
             p.PropBank
+            p.wiki-ner
             HUKB-driver
           ]);
 

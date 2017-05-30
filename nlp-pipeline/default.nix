@@ -5,6 +5,7 @@
 , optparse-applicative, postgresql-simple, predicate-matrix
 , PropBank, protocol-buffers, stdenv, text, textview, time
 , transformers, yaml, yayaml
+, wiki-ner
 }:
 mkDerivation {
   pname = "nlp-pipeline";
@@ -18,6 +19,7 @@ mkDerivation {
     HCoreNLP HCoreNLP-Proto HUKB HUKB-driver HWordNet intrinio jvm lens mtl nlp-types
     optparse-applicative postgresql-simple predicate-matrix PropBank
     protocol-buffers text textview time transformers yaml yayaml
+    wiki-ner
   ];
   executableHaskellDepends = [ base filepath HUKB HUKB-driver text ];
   license = stdenv.lib.licenses.unfree;

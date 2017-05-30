@@ -30,6 +30,8 @@ findSubstring pat str = findIndex (isPrefixOf pat) (tails str)
 
 run :: IO ()
 run = do
+  putStrLn "A"
+  {-}
   clspath <- getEnv "CLASSPATH"
 
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
@@ -74,3 +76,4 @@ run = do
         print $ query (T.pack $ B.unpack $ (x ^. _3)) pm
       
   putStrLn "Program is finished!"
+-}
