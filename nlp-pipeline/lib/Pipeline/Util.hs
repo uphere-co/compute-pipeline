@@ -280,6 +280,16 @@ convStrToPOS str = case (last str) of
   'a' -> POS_A
   'r' -> POS_R
 
+getSents txt pp = do
+  doc <- getDoc txt
+  ann <- annotate pp doc
+  rdoc <- protobufDoc ann
+  case rdoc of
+    Left e  -> return Nothing
+    Right d -> do
+      let sents = d ^.. D.sentence . traverse
+      return (Just sents)
+
 defaultPath = ( "/data/groups/uphere/intrinio/Articles/bloomberg"
               , "/data/groups/uphere/F7745.all_entities"
               , "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
