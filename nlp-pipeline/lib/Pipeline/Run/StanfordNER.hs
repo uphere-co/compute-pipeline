@@ -7,6 +7,7 @@ import qualified Data.Text as T
 --
 import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type.Simplified
+import           NLP.Type.NamedEntity                  (NamedEntityClass(..))
 import           WikiEL.CoreNLP                        (parseNEROutputStr)
 import           WikiEL.WikiEntity                     (parseEntityLine,loadEntityReprs,nameWords)
 import           WikiEL.WikiEntityTagger               (buildEntityTable,wikiAnnotator)
@@ -17,7 +18,12 @@ import           WikiEL.EntityLinking                  (entityLinking,entityLink
 import           Pipeline.Util
 
 fromNERSentence (NERSentence xs) = xs
-mkTokenToText (txt,ne) = (show txt) ++ "/" ++ (show ne)
+mkTokenToText (txt,ne) = (show txt) ++ "/" ++ (convertNE ne)
+convertNE ne = case ne of
+  Person    -> "PERSON"
+  Org       -> "ORGANIZATION"
+  Other     -> "O"
+  otherwise -> "O"
 
 getEL txt pp = do
   sents <- getSents' txt pp

@@ -4,4 +4,4 @@ import Pipeline.Application.Run          (run)
 import Pipeline.Application.WikiEL       (runEL)
 
 main :: IO ()
-main = runEL
+main = run

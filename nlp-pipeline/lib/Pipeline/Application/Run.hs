@@ -72,5 +72,9 @@ run = do
       forM_ xs $ \x -> do
         runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
         print $ query (T.pack $ B.unpack $ (x ^. _3)) pm
-      
+
+      melr <- getEL txt pp
+      case melr of
+        Nothing  -> print "Error in wiki-ner"
+        Just elr -> print elr 
   putStrLn "Program is finished!"
