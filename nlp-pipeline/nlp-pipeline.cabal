@@ -50,6 +50,7 @@ library
                   HUKB,
                   HUKB-driver,
                   predicate-matrix,
+                  wiki-ner,
                   PropBank
   exposed-modules: Pipeline.Util
                    Pipeline.Run.CompanyNER
@@ -57,8 +58,9 @@ library
                    Pipeline.Run.PredicateMatrix
                    Pipeline.Run.UKB
                    Pipeline.Run.Util
-                   Pipeline.Run
+                   Pipeline.Run              
                    Pipeline.Application.Run
+                   Pipeline.Application.WikiEL
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.View.YAML.YAYAML
