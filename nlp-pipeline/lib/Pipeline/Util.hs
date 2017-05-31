@@ -280,7 +280,7 @@ convStrToPOS str = case (last str) of
   'a' -> POS_A
   'r' -> POS_R
 
-getSents txt pp = do
+getSents' txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
   rdoc <- protobufDoc ann
@@ -289,11 +289,3 @@ getSents txt pp = do
     Right d -> do
       let sents = d ^.. D.sentence . traverse
       return (Just sents)
-
-defaultPath = ( "/data/groups/uphere/intrinio/Articles/bloomberg"
-              , "/data/groups/uphere/F7745.all_entities"
-              , "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
-              , "/data/groups/uphere/data/NLP/idiom.txt"
-              , "/data/groups/uphere/data/NLP/dict"
-              , "/data/groups/uphere/data/NLP/frames"
-              )

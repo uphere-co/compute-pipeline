@@ -9,7 +9,6 @@ import           WikiEL.WikiEntityClass                (fromFiles,getNEClass)
 import           WikiEL.WikiNamedEntityTagger          (resolveNEs,buildTagUIDTable,getStanfordNEs,parseStanfordNE,namedEntityAnnotator)
 import           WikiEL.EntityLinking                  (entityLinking,entityLinkings,buildEntityMentions)
 
-
 runEL :: IO ()
 runEL = do
   let
