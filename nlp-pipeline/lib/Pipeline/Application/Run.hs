@@ -40,16 +40,16 @@ run = do
   db <- loadDB "/data/groups/uphere/data/NLP/dict"
   pdb <- constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
   let rdb = constructRoleSetDB pdb
-
+  {-
   let input = "take.01"
   case T.split (== '.') input of
     (x:n:_) -> queryRoleSet rdb input
     (x:[])  -> queryPredicate pdb input
     [] -> putStrLn "query is not recognized."
-  
+  -}
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True True True True)
-    forM_ (take 1 filelist) $ \a' -> do
+    forM_ (take 100 filelist) $ \a' -> do
       txt <- getDescription a'
       doc <- getDoc txt
       ann <- annotate pp doc
@@ -57,24 +57,24 @@ run = do
       let psents = getProtoSents pdoc
           sents  = convertProtoSents psents pdoc
           tokens = getTokens psents
-      print $ sents
-      print $ mkUkbInput tokens
-      runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      process pp forest a'
-      TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
+      -- print $ sents
+      -- print $ mkUkbInput tokens
+      -- runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
+      -- process pp forest a'
+      -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
       getTemporal ann
-      (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
+      -- (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
 
-      let (Right s,_) = findIdiom ["such","as","I","live"] forestIdiom
-      forM_ s $ \x'' -> do
-        print x''
+      -- let (Right s,_) = findIdiom ["such","as","I","live"] forestIdiom
+      -- forM_ s $ \x'' -> do
+      --   print x''
       
-      forM_ xs $ \x -> do
-        runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
-        print $ query (T.pack $ B.unpack $ (x ^. _3)) pm
+      -- forM_ xs $ \x -> do
+      --   runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
+      --   print $ query (T.pack $ B.unpack $ (x ^. _3)) pm
 
-      melr <- getEL txt pp
-      case melr of
-        Nothing  -> print "Error in wiki-ner"
-        Just elr -> print elr 
+      -- melr <- getEL txt pp
+      -- case melr of
+      --   Nothing  -> print "Error in wiki-ner"
+      --   Just elr -> print elr 
   putStrLn "Program is finished!"
