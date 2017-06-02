@@ -9,6 +9,8 @@ import           Control.Monad                   (forM,forM_)
 import           Control.Monad.Trans.Either      (EitherT(..))
 import qualified Data.ByteString.Char8  as B
 import           Data.List
+import           Data.Maybe                      (isNothing)
+import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy.Builder as TLB   (toLazyText)
 import qualified Data.Text.Lazy.IO      as TLIO
@@ -39,15 +41,28 @@ runPB = do
     pp <- prepare (PPConfig True True True True True False False False)
     forM_ (take 1 flist) $ \f -> do
       txt <- getDescription f
-      doc <- getDoc txt
+      let txt' = " In a speech from the Rose Garden, Mr. Trump said the landmark 2015 pact imposed wildly \
+      \unfair environmental standards on American businesses and workers. He vowed to stand with \
+      \the people of the United States against what he called a \"draconian\" international deal. \
+      \\"I was elected to represent the citizens of Pittsburgh, not Paris,\" the president said, \
+      \drawing support from members of his Republican Party but widespread condemnation from \
+      \political leaders, business executives and environmentalists around the globe. \
+      \Mr. Trump’s decision to abandon the agreement for environmental action signed by 195 nations \
+      \is a remarkable rebuke to heads of state, climate activists, corporate executives and members \
+      \of the president's own staff, who all failed to change his mind with an intense, last-minute \
+      \lobbying blitz. The Paris agreement was intended to bind the world community into battling \
+      \rising temperatures in concert, and the departure of the Earth’s second-largest polluter is a major blow.\" "
+      
+      doc <- getDoc txt'
       ann <- annotate pp doc
       pdoc <- getProtoDoc ann
       let psents = getProtoSents pdoc
           sents  = convertProtoSents psents pdoc
           tokens = getTokens psents
           ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
+      print ukb_input
       (_,wsdlst) <- getPPR ukb_input 
-      
+      print wsdlst
       result <- forM wsdlst $ \w@(wid',wpos',ili',lemma') -> do
         -- runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
         let wid   = T.pack (B.unpack wid')
@@ -55,27 +70,26 @@ runPB = do
             ili   = T.pack (B.unpack ili')
             lemma = T.pack (B.unpack lemma')
             
+        -- data LexItem = LI { _lex_word :: Text, _lex_id :: Int }
         let Right (n,_) = decimal ili
-
-        let concept = getQueryConcept n (extractPOS $ wpos) worddb
-        let sense = getQuerySense lemma n worddb
-
-        case sense of
-          Nothing -> print ""
-          Just s  -> print "sense : " >> print s -- print c -- putStrLn (T.unpack c)        
-        let (xs,_) = case concept of
-              Nothing -> ([],"")
-              Just c  -> c -- print c -- putStrLn (T.unpack c)
+            concept  :: Maybe ([LexItem],Text) = getQueryConcept n (extractPOS $ wpos) worddb
+        
+        (senseSIDofConcept :: [(Text,Maybe Int)]) <- do
+          case concept of
+            Nothing -> return []
+            Just c  -> do
+              result <- flip mapM (fst c) $ \c' -> do
+                return $ (_lex_word c',getQuerySense (_lex_word c') (_lex_id c') worddb)
+              return result
+        {-             
         flip mapM_ xs $ \x -> do
           print $ T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]
-          queryRoleSet propdb (T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]) -- (T.pack $ (show $ _lex_word x) ++ "." ++ (show $ _lex_id x))-- input
+          queryRoleSet propdb (T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)])
           case concept of
             Nothing -> print ""
             Just c  -> print c              
         return $ (lemma,fmap (nub . (map (^. _1))) (query ili predmat))
+        -}
+        return senseSIDofConcept
       putStrLn $ show (txt,result)
-      -- melr <- getEL txt pp
-      -- case melr of
-      --   Nothing  -> print "Error in wiki-ner"
-      --   Just elr -> print elr 
   putStrLn "Program is finished!"
