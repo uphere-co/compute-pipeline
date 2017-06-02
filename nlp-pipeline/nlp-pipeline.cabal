@@ -61,6 +61,7 @@ library
                    Pipeline.Run.Util
                    Pipeline.Run              
                    Pipeline.Application.Run
+                   Pipeline.Application.RunPropBank
                    Pipeline.Application.WikiEL
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article

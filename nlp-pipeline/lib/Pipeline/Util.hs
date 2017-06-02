@@ -273,8 +273,8 @@ getTemporal ann = do
     Left _  -> print ("" :: Text)
     Right r -> print (T._timexes $ fst r)
 
-convStrToPOS :: String -> POS
-convStrToPOS str = case (last str) of 
+extractPOS :: Text -> POS
+extractPOS txt = case (T.last txt) of 
   'n' -> POS_N
   'v' -> POS_V
   'a' -> POS_A
