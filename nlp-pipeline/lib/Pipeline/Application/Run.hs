@@ -4,7 +4,7 @@
 module Pipeline.Application.Run where
 
 import           Control.Applicative
-import           Control.Lens                    ((^.),_2,_3,_4)
+import           Control.Lens                    ((^.),_1,_2,_3,_4)
 import           Control.Monad                   (forM,forM_)
 import           Control.Monad.Trans.Either      (EitherT(..))
 import qualified Data.ByteString.Char8  as B
@@ -12,6 +12,7 @@ import           Data.List
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy.Builder as TLB   (toLazyText)
 import qualified Data.Text.Lazy.IO      as TLIO
+import           Data.Text.Read                  (decimal)
 import           Language.Java          as J
 import           System.Environment              (getEnv)
 --
@@ -20,6 +21,7 @@ import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
 --
+import           WordNet.Type
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple                  (annotate,prepare)
 import           YAML.Builder
@@ -40,16 +42,16 @@ run = do
   db <- loadDB "/data/groups/uphere/data/NLP/dict"
   pdb <- constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
   let rdb = constructRoleSetDB pdb
-  {-
+  
   let input = "take.01"
   case T.split (== '.') input of
     (x:n:_) -> queryRoleSet rdb input
     (x:[])  -> queryPredicate pdb input
     [] -> putStrLn "query is not recognized."
-  -}
+  
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True False False False)
-    forM_ (take 100 filelist) $ \a' -> do
+    forM_ (take 10000 filelist) $ \a' -> do
       txt <- getDescription a'
       doc <- getDoc txt
       ann <- annotate pp doc
@@ -71,7 +73,26 @@ run = do
       
       result <- forM xs $ \x -> do
         -- runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
-        return $ (T.pack $ B.unpack $ (x ^. _4),query (T.pack $ B.unpack $ (x ^. _3)) pm)
+        print x
+        let Right (n,_) = decimal (T.pack (B.unpack $ (x ^. _3)))
+        let word = T.pack $ B.unpack $ (x ^. _4)
+        let concept = getQueryConcept n (convStrToPOS $ B.unpack $ (x ^. _2)) db
+        print "word = " >> print word
+        let sense = getQuerySense word n db
+        case sense of
+          Nothing -> print ""
+          Just s  -> print "sense : " >> print s -- print c -- putStrLn (T.unpack c)        
+        let (xs,_) = case concept of
+              Nothing -> ([],"")
+              Just c  -> c -- print c -- putStrLn (T.unpack c)
+        flip mapM_ xs $ \x -> do
+          print $ T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]
+          queryRoleSet rdb (T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]) -- (T.pack $ (show $ _lex_word x) ++ "." ++ (show $ _lex_id x))-- input
+          case concept of
+            Nothing -> print ""
+            Just c  -> print $ getQuerySense word (_lex_id x) db
+
+        return $ (T.pack $ B.unpack $ (x ^. _4),fmap (nub . (map (^. _1))) (query (T.pack $ B.unpack $ (x ^. _3)) pm))
       putStrLn $ show (txt,result)
       -- melr <- getEL txt pp
       -- case melr of
