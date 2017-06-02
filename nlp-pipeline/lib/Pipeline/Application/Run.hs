@@ -4,8 +4,8 @@
 module Pipeline.Application.Run where
 
 import           Control.Applicative
-import           Control.Lens                    ((^.),_2,_3)
-import           Control.Monad                   (forM_)
+import           Control.Lens                    ((^.),_2,_3,_4)
+import           Control.Monad                   (forM,forM_)
 import           Control.Monad.Trans.Either      (EitherT(..))
 import qualified Data.ByteString.Char8  as B
 import           Data.List
@@ -48,7 +48,7 @@ run = do
     [] -> putStrLn "query is not recognized."
   -}
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    pp <- prepare (PPConfig True True True True True True True True)
+    pp <- prepare (PPConfig True True True True True False False False)
     forM_ (take 100 filelist) $ \a' -> do
       txt <- getDescription a'
       doc <- getDoc txt
@@ -62,17 +62,17 @@ run = do
       -- runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
       -- process pp forest a'
       -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
-      getTemporal ann
-      -- (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
+      -- getTemporal ann
+      (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
 
       -- let (Right s,_) = findIdiom ["such","as","I","live"] forestIdiom
       -- forM_ s $ \x'' -> do
       --   print x''
       
-      -- forM_ xs $ \x -> do
-      --   runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
-      --   print $ query (T.pack $ B.unpack $ (x ^. _3)) pm
-
+      result <- forM xs $ \x -> do
+        -- runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
+        return $ (T.pack $ B.unpack $ (x ^. _4),query (T.pack $ B.unpack $ (x ^. _3)) pm)
+      putStrLn $ show (txt,result)
       -- melr <- getEL txt pp
       -- case melr of
       --   Nothing  -> print "Error in wiki-ner"
