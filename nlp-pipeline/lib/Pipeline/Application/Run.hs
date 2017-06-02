@@ -22,6 +22,7 @@ import           Pipeline.Util
 import           Pipeline.Run
 --
 import           WordNet.Type
+
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple                  (annotate,prepare)
 import           YAML.Builder
@@ -90,7 +91,7 @@ run = do
           case concept of
             Nothing -> print ""
             Just c  -> print c              
-        return $ (T.pack $ B.unpack $ (x ^. _4),fmap (nub . (map (^. _1))) (query (T.pack $ B.unpack $ (x ^. _3)) pm))
+        return $ (T.pack $ B.unpack $ (x ^. _4)) -- ,fmap (nub . (map (^. _1))) (getQueryPM (T.pack $ B.unpack $ (x ^. _3)) pm))
       putStrLn $ show (txt,result)
       -- melr <- getEL txt pp
       -- case melr of

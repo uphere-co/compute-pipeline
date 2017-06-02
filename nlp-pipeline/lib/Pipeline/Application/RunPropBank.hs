@@ -23,6 +23,7 @@ import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
 --
+import           PM.Type
 import           WordNet.Type
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple                  (annotate,prepare)
@@ -60,11 +61,10 @@ runPB = do
           sents  = convertProtoSents psents pdoc
           tokens = getTokens psents
           ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
-      print ukb_input
+
       (_,wsdlst) <- getPPR ukb_input 
-      print wsdlst
+
       result <- forM wsdlst $ \w@(wid',wpos',ili',lemma') -> do
-        -- runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
         let wid   = T.pack (B.unpack wid')
             wpos  = T.pack (B.unpack wpos')
             ili   = T.pack (B.unpack ili')
@@ -73,6 +73,9 @@ runPB = do
         -- data LexItem = LI { _lex_word :: Text, _lex_id :: Int }
         let Right (n,_) = decimal ili
             concept  :: Maybe ([LexItem],Text) = getQueryConcept n (extractPOS $ wpos) worddb
+
+        print $ getQueryPM ili predmat
+
         
         (senseSIDofConcept :: [(Text,Maybe Int)]) <- do
           case concept of
@@ -81,15 +84,6 @@ runPB = do
               result <- flip mapM (fst c) $ \c' -> do
                 return $ (_lex_word c',getQuerySense (_lex_word c') (_lex_id c') worddb)
               return result
-        {-             
-        flip mapM_ xs $ \x -> do
-          print $ T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]
-          queryRoleSet propdb (T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)])
-          case concept of
-            Nothing -> print ""
-            Just c  -> print c              
-        return $ (lemma,fmap (nub . (map (^. _1))) (query ili predmat))
-        -}
         return senseSIDofConcept
       putStrLn $ show (txt,result)
   putStrLn "Program is finished!"
