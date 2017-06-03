@@ -39,18 +39,18 @@ data DB = DB { _wordDB :: WordNetDB
 runPB :: IO ()
 runPB = do
   clspath <- getEnv "CLASSPATH"
-
   flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
-  predmat <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
-  worddb  <- loadDB "/data/groups/uphere/data/NLP/dict"
-  propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
-
-  let db = DB worddb propdb predmat
-  
+  db <- getDB
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True False False False)
     forM_ (take 1 flist) $ \f -> runProcess f db pp
   putStrLn "Program is finished!"
+
+getDB = do
+  worddb  <- loadDB "/data/groups/uphere/data/NLP/dict"
+  propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
+  predmat <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+  return $ DB worddb propdb predmat
 
 runProcess f db pp = do
   let worddb  = _wordDB db
@@ -62,7 +62,7 @@ runProcess f db pp = do
   pdoc <- getProtoDoc ann
   let psents = getProtoSents pdoc
       sents  = convertProtoSents psents pdoc
-      tokens = getTokens psents
+      tokens = getAllTokens psents
       ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
       
   (_,wsdlst) <- getPPR ukb_input 
@@ -88,20 +88,4 @@ runProcess f db pp = do
             return $ (_lex_word c',getQuerySense (_lex_word c') (_lex_id c') worddb)
           return result
     return senseSIDofConcept
-  putStrLn $ show (txt,result)
-
-
-
-
-txt' =
-  " In a speech from the Rose Garden, Mr. Trump said the landmark 2015 pact imposed wildly \
-  \unfair environmental standards on American businesses and workers. He vowed to stand with \
-  \the people of the United States against what he called a \"draconian\" international deal. \
-  \\"I was elected to represent the citizens of Pittsburgh, not Paris,\" the president said, \
-  \drawing support from members of his Republican Party but widespread condemnation from \
-  \political leaders, business executives and environmentalists around the globe. \
-  \Mr. Trump’s decision to abandon the agreement for environmental action signed by 195 nations \
-  \is a remarkable rebuke to heads of state, climate activists, corporate executives and members \
-  \of the president's own staff, who all failed to change his mind with an intense, last-minute \
-  \lobbying blitz. The Paris agreement was intended to bind the world community into battling \
-  \rising temperatures in concert, and the departure of the Earth’s second-largest polluter is a major blow.\" "
+  return $ (txt,result)

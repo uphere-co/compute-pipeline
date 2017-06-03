@@ -206,7 +206,7 @@ processDoc ann = do
   pdoc <- getProtoDoc ann
   let sents = getProtoSents pdoc
       newsents = convertProtoSents sents pdoc
-      toklst = getTokens sents
+      toklst = getAllTokens sents
   return (newsents,toklst)
 
 myaction :: InputT IO (Maybe String)
@@ -252,9 +252,14 @@ getSents :: D.Document -> [Sentence]
 getSents doc = convertProtoSents (getProtoSents doc) doc
 
 -- Get tokens from ProtoSents.
-getTokens :: [S.Sentence] -> [Token]
-getTokens psents =
+getAllTokens :: [S.Sentence] -> [Token]
+getAllTokens psents =
   let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ psents
+  in toklst
+
+getTokens :: S.Sentence -> Maybe [Token]
+getTokens psent =
+  let toklst = mapM convertToken . (toListOf (S.token . traverse)) $ psent
   in toklst
 
 getProtoDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO D.Document

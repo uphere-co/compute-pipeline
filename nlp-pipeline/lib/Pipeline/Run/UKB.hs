@@ -32,6 +32,6 @@ getWSD txt pp = do
   pdoc <- getProtoDoc ann
   let psents = getProtoSents pdoc
       sents  = convertProtoSents psents pdoc
-      tokens = getTokens psents
+      tokens = getAllTokens psents
   (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
   return xs

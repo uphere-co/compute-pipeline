@@ -58,7 +58,7 @@ run = do
       pdoc <- getProtoDoc ann
       let psents = getProtoSents pdoc
           sents  = convertProtoSents psents pdoc
-          tokens = getTokens psents
+          tokens = getAllTokens psents
       -- print $ sents
       -- print $ mkUkbInput tokens
       -- runPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
