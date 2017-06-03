@@ -57,7 +57,7 @@ runProcess f db pp = do
       propdb  = _propDB db
       predmat = _predDB db
   txt <- getDescription f    
-  doc <- getDoc txt
+  doc <- getDoc txt'
   ann <- annotate pp doc
   pdoc <- getProtoDoc ann
   let psents = getProtoSents pdoc
@@ -73,12 +73,10 @@ runProcess f db pp = do
         ili   = T.pack (B.unpack ili')
         lemma = T.pack (B.unpack lemma')
             
-    -- data LexItem = LI { _lex_word :: Text, _lex_id :: Int }
     let Right (n,_) = decimal ili
         concept  :: Maybe ([LexItem],Text) = getQueryConcept n (extractPOS $ wpos) worddb
 
     print $ getQueryPM ili predmat
-
         
     (senseSIDofConcept :: [(Text,Maybe Int)]) <- do
       case concept of
@@ -88,4 +86,45 @@ runProcess f db pp = do
             return $ (_lex_word c',getQuerySense (_lex_word c') (_lex_id c') worddb)
           return result
     return senseSIDofConcept
+
+
+  putStrLn "Individual Sentence"
+  putStrLn "-------------------"
+  
+  forM_ psents $ \psent -> do
+    let Just tokens = getTokens psent
+        ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
+    (_,wsdlst) <- getPPR ukb_input
+    print wsdlst
+
+
   return $ (txt,result)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+txt' =
+  " In a speech from the Rose Garden, Mr. Trump said the landmark 2015 pact imposed wildly \
+  \unfair environmental standards on American businesses and workers. He vowed to stand with \
+  \the people of the United States against what he called a \"draconian\" international deal. \
+  \\"I was elected to represent the citizens of Pittsburgh, not Paris,\" the president said, \
+  \drawing support from members of his Republican Party but widespread condemnation from \
+  \political leaders, business executives and environmentalists around the globe. \
+  \Mr. Trump’s decision to abandon the agreement for environmental action signed by 195 nations \
+  \is a remarkable rebuke to heads of state, climate activists, corporate executives and members \
+  \of the president's own staff, who all failed to change his mind with an intense, last-minute \
+  \lobbying blitz. The Paris agreement was intended to bind the world community into battling \
+  \rising temperatures in concert, and the departure of the Earth’s second-largest polluter is a major blow.\" "
