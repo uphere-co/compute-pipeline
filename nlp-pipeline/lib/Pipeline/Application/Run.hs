@@ -66,14 +66,7 @@ run = do
       -- TLIO.putStrLn $ TLB.toLazyText (buildYaml 0 (makeYaml 0 tokens))
       -- getTemporal ann
       (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-
-      -- let (Right s,_) = findIdiom ["such","as","I","live"] forestIdiom
-      -- forM_ s $ \x'' -> do
-      --   print x''
-      
       result <- forM xs $ \x -> do
-        -- runSingleQuery (B.unpack $ (x ^. _3)) (convStrToPOS $ B.unpack $ (x ^. _2)) db
-        print x
         let Right (n,_) = decimal (T.pack (B.unpack $ (x ^. _3)))
         let word = T.pack $ B.unpack $ (x ^. _4)
         let concept = getQueryConcept n (extractPOS $ T.pack $ B.unpack $ (x ^. _2)) db
@@ -81,10 +74,10 @@ run = do
         let sense = getQuerySense word n db
         case sense of
           Nothing -> print ""
-          Just s  -> print "sense : " >> print s -- print c -- putStrLn (T.unpack c)        
+          Just s  -> print "sense : " >> print s
         let (xs,_) = case concept of
               Nothing -> ([],"")
-              Just c  -> c -- print c -- putStrLn (T.unpack c)
+              Just c  -> c
         flip mapM_ xs $ \x -> do
           print $ T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]
           queryRoleSet rdb (T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]) -- (T.pack $ (show $ _lex_word x) ++ "." ++ (show $ _lex_id x))-- input
