@@ -273,17 +273,19 @@ getTemporal ann = do
     Left _  -> print ("" :: Text)
     Right r -> print (T._timexes $ fst r)
 
-convStrToPOS :: String -> POS
-convStrToPOS str = case (last str) of 
+extractPOS :: Text -> POS
+extractPOS txt = case (T.last txt) of 
   'n' -> POS_N
   'v' -> POS_V
   'a' -> POS_A
   'r' -> POS_R
 
-defaultPath = ( "/data/groups/uphere/intrinio/Articles/bloomberg"
-              , "/data/groups/uphere/F7745.all_entities"
-              , "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
-              , "/data/groups/uphere/data/NLP/idiom.txt"
-              , "/data/groups/uphere/data/NLP/dict"
-              , "/data/groups/uphere/data/NLP/frames"
-              )
+getSents' txt pp = do
+  doc <- getDoc txt
+  ann <- annotate pp doc
+  rdoc <- protobufDoc ann
+  case rdoc of
+    Left e  -> return Nothing
+    Right d -> do
+      let sents = d ^.. D.sentence . traverse
+      return (Just sents)

@@ -1,3 +1,5 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module PM.Type where
 
 import Data.Text        (Text)
@@ -38,3 +40,30 @@ data POS  = Verb | Noun deriving (Eq,Show,Ord)
 
 type Predicate = Text
 type Role      = Text
+
+data PropBank = PropBank
+  { _pbRoleset        :: Text -- ^ Predicate in PropBank
+  , _pbArg            :: Text -- ^ Predicate argument in PropBank
+  } deriving (Show)
+
+data VerbNet = VerbNet
+  { _vnClass          :: Text -- ^ VerbNet class
+  , _vnClassNumber    :: Text -- ^ VerbNet class number
+  , _vnSubclass       :: Text -- ^ VerbNet subclass
+  , _vnSubclassNumber :: Text -- ^ VerbNet subclass number
+  , _vnLema           :: Text -- ^ Verb lemma
+  , _vnRole           :: Text -- ^ VerbNet thematic-role
+  } deriving (Show)
+
+data FrameNet = FrameNet
+  { _fnFrame          :: Text -- ^ Frame in FrameNet
+  , _fnLe             :: Text -- ^ Corresponding lexical-entry in FrameNet
+  , _fnFrameElement   :: Text -- ^ Frame-element in FrameNet
+  } deriving (Show)
+
+data ESO = ESO
+  { _esoClass         :: Text -- ^ Class of the ESO ontology
+  , _esoRole          :: Text -- ^ Role of the ESO ontology
+  } deriving (Show)
+
+type LinkNet = (PropBank,VerbNet,FrameNet,ESO)

@@ -56,10 +56,12 @@ library
                    Pipeline.Run.CompanyNER
                    Pipeline.Run.Idiom
                    Pipeline.Run.PredicateMatrix
+                   Pipeline.Run.StanfordNER
                    Pipeline.Run.UKB
                    Pipeline.Run.Util
                    Pipeline.Run              
                    Pipeline.Application.Run
+                   Pipeline.Application.RunPropBank
                    Pipeline.Application.WikiEL
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article
