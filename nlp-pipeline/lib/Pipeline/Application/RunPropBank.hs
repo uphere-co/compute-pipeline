@@ -106,11 +106,11 @@ runProcess f db pp = do
   putStrLn "Individual Sentence"
   putStrLn "-------------------"
   
-  mapM_ runSentenceProcess psents
+  mapM_ (runSentenceProcess predmat) psents
 
   return $ (txt,result)
 
-runSentenceProcess psent = do
+runSentenceProcess predmat psent = do
   return $ convertSenToText psent
   
   let Just tokens = getTokens psent
@@ -118,12 +118,12 @@ runSentenceProcess psent = do
   (_,wsdlst) <- getPPR ukb_input
 
   let ordtok = zip [1..] (getTKTokens psent) -- tokens
-      wsd = IM.fromList $ map (\(a,b,c,d) -> ((read $ drop 1 (B.unpack a)) :: Int,T.pack (B.unpack d))) wsdlst
-
+      wsd' = map (\(a,b,c,d) -> ((read $ drop 1 (B.unpack a)) :: Int,(T.pack (B.unpack c),T.pack (B.unpack d)))) wsdlst
+      wsd = IM.fromList $ map (\(i,(a,b)) -> (i,(a,b, $ getQueryPM a predmat))) wsd'
   pred' <- forM ordtok $ \(i,t) -> do
     case (IM.lookup i wsd) of
-      Nothing -> return (convertTokenToText t,"")
-      Just v  -> return (convertTokenToText t,v)
+      Nothing -> return (convertTokenToText t,Nothing)
+      Just v  -> return (convertTokenToText t,Just v)
 
   print pred'
   -- print wsd
