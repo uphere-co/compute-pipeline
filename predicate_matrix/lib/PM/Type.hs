@@ -66,4 +66,8 @@ data ESO = ESO
   , _esoRole          :: Text -- ^ Role of the ESO ontology
   } deriving (Show)
 
-type LinkNet = (PropBank,VerbNet,FrameNet,ESO)
+data LinkNet = LinkNet { propField  :: PropBank
+                       , verbField  :: VerbNet
+                       , frameField :: FrameNet
+                       , esoField   :: ESO
+                       } deriving (Show)
