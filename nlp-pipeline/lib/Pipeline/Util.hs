@@ -22,7 +22,7 @@ import           Data.Discrimination.Grouping     (hashing)
 import qualified Data.Foldable              as F
 import           Data.Function                    (on)
 import           Data.List                        (sort,sortBy)
-import           Data.Maybe                       (fromJust, isJust)
+import           Data.Maybe                       (catMaybes, fromJust, fromMaybe, isJust)
 import           Data.Monoid
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
@@ -251,10 +251,19 @@ convertProtoSents psents doc =
 getSents :: D.Document -> [Sentence]
 getSents doc = convertProtoSents (getProtoSents doc) doc
 
+convertSenToText :: S.Sentence -> Text
+convertSenToText s = let tokens = map (\t -> cutf8' <$> (t^.TK.originalText)) $ getTKTokens s
+                     in T.intercalate " " $ catMaybes tokens
+
 -- Get tokens from ProtoSents.
 getAllTokens :: [S.Sentence] -> [Token]
 getAllTokens psents =
   let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ psents
+  in toklst
+
+getTKTokens :: S.Sentence -> [TK.Token]
+getTKTokens psent = 
+  let toklst = (toListOf (S.token . traverse)) $ psent
   in toklst
 
 getTokens :: S.Sentence -> Maybe [Token]

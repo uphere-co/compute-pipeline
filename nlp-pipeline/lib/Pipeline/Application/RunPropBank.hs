@@ -36,6 +36,15 @@ data DB = DB { _wordDB :: WordNetDB
              , _predDB :: M.Map Text [LinkNet]
              }
 
+getPB = do
+  clspath <- getEnv "CLASSPATH"
+  flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
+  db <- getDB
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    pp <- prepare (PPConfig True True True True True False False False)
+    forM_ (take 1 flist) $ \f -> runProcess f db pp
+  
+
 runPB :: IO ()
 runPB = do
   clspath <- getEnv "CLASSPATH"
@@ -43,7 +52,9 @@ runPB = do
   db <- getDB
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True False False False)
-    forM_ (take 1 flist) $ \f -> runProcess f db pp
+    result <- forM (take 1 flist) $ \f -> runProcess f db pp
+    print result
+
   putStrLn "Program is finished!"
 
 getDB = do
@@ -52,6 +63,7 @@ getDB = do
   predmat <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
   return $ DB worddb propdb predmat
 
+-- runProcess :: 
 runProcess f db pp = do
   let worddb  = _wordDB db
       propdb  = _propDB db
@@ -91,30 +103,17 @@ runProcess f db pp = do
   putStrLn "Individual Sentence"
   putStrLn "-------------------"
   
-  forM_ psents $ \psent -> do
-    let Just tokens = getTokens psent
-        ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
-    (_,wsdlst) <- getPPR ukb_input
-    print wsdlst
-
+  mapM_ runSentenceProcess psents
 
   return $ (txt,result)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+runSentenceProcess psent = do
+  print $ convertSenToText psent
+  let Just tokens = getTokens psent
+      ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
+  (_,wsdlst) <- getPPR ukb_input
+  print wsdlst
+  
 
 txt' =
   " In a speech from the Rose Garden, Mr. Trump said the landmark 2015 pact imposed wildly \
