@@ -8,6 +8,7 @@ import           Control.Lens                    ((^.),_1,_2,_3,_4)
 import           Control.Monad                   (forM,forM_)
 import           Control.Monad.Trans.Either      (EitherT(..))
 import qualified Data.ByteString.Char8  as B
+import qualified Data.IntMap            as IM
 import           Data.List
 import qualified Data.Map               as M
 import           Data.Maybe                      (isNothing)
@@ -36,15 +37,17 @@ data DB = DB { _wordDB :: WordNetDB
              , _predDB :: M.Map Text [LinkNet]
              }
 
-getPB = do
-  clspath <- getEnv "CLASSPATH"
-  flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
-  db <- getDB
-  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    pp <- prepare (PPConfig True True True True True False False False)
-    forM_ (take 1 flist) $ \f -> runProcess f db pp
-  
+getPSents txt pp = do
+  doc <- getDoc txt
+  ann <- annotate pp doc
+  pdoc <- getProtoDoc ann
+  return $ getProtoSents pdoc
 
+getPB db pp = do
+  flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
+  result <- forM (take 1 flist) $ \f -> runProcess f db pp
+  return result
+  
 runPB :: IO ()
 runPB = do
   clspath <- getEnv "CLASSPATH"
@@ -53,8 +56,8 @@ runPB = do
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True False False False)
     result <- forM (take 1 flist) $ \f -> runProcess f db pp
-    print result
-
+    -- print result
+    return ()
   putStrLn "Program is finished!"
 
 getDB = do
@@ -108,13 +111,25 @@ runProcess f db pp = do
   return $ (txt,result)
 
 runSentenceProcess psent = do
-  print $ convertSenToText psent
+  return $ convertSenToText psent
+  
   let Just tokens = getTokens psent
       ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
   (_,wsdlst) <- getPPR ukb_input
-  print wsdlst
-  
 
+  let ordtok = zip [1..] (getTKTokens psent) -- tokens
+      wsd = IM.fromList $ map (\(a,b,c,d) -> ((read $ drop 1 (B.unpack a)) :: Int,T.pack (B.unpack d))) wsdlst
+
+  pred' <- forM ordtok $ \(i,t) -> do
+    case (IM.lookup i wsd) of
+      Nothing -> return (convertTokenToText t,"")
+      Just v  -> return (convertTokenToText t,v)
+
+  print pred'
+  -- print wsd
+  -- print wsdlst
+  
+  
 txt' =
   " In a speech from the Rose Garden, Mr. Trump said the landmark 2015 pact imposed wildly \
   \unfair environmental standards on American businesses and workers. He vowed to stand with \
