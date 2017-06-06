@@ -19,10 +19,9 @@ import           Data.Attoparsec.Text             (parseOnly)
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Discrimination              (outer)
 import           Data.Discrimination.Grouping     (hashing)
-import qualified Data.Foldable              as F
 import           Data.Function                    (on)
-import           Data.List                        (sort,sortBy)
-import           Data.Maybe                       (catMaybes, fromJust, fromMaybe, isJust)
+import           Data.List                        (sortBy)
+import           Data.Maybe                       (catMaybes, fromJust, isJust)
 import           Data.Monoid
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
@@ -35,7 +34,6 @@ import           Data.Time.Clock                  (getCurrentTime,UTCTime(..))
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
-import           System.Directory.Tree            (dirTree,readDirectoryWith)
 import           System.FilePath                  (takeFileName)
 import           Text.ProtocolBuffers.Basic (Utf8,utf8)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
@@ -246,7 +244,7 @@ mkUkbTextInput r = let jr = map (\(t,mp) -> (t,fromJust mp)) r
 mkUkbTextInput' :: [(Int,(Text,Maybe POS))] -> Text
 mkUkbTextInput' r = let ptow p = if (p == POS_N) then "#n" else if (p == POS_R) then "#r" else if (p == POS_A) then "#a" else "#v"
                         mkTaggedWord i t p = T.concat [t,ptow p,T.append "#w" (T.pack $ show i),"#1"]
-                        rt = T.intercalate " " $ map (\(i,(t,mp)) -> mkTaggedWord i t (fromJust mp)) (filter (\(i,(t,mp)) -> isJust mp) r)
+                        rt = T.intercalate " " $ map (\(i,(t,mp)) -> mkTaggedWord i t (fromJust mp)) (filter (\(_,(_,mp)) -> isJust mp) r)
                     in rt
 
 getProtoSents :: D.Document -> [S.Sentence]
@@ -306,13 +304,17 @@ extractPOS txt = case (T.last txt) of
   'v' -> POS_V
   'a' -> POS_A
   'r' -> POS_R
+  _   -> POS_N
 
+getSents' :: Text
+          -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+          -> IO (Maybe [S.Sentence])
 getSents' txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
   rdoc <- protobufDoc ann
   case rdoc of
-    Left e  -> return Nothing
+    Left  _ -> return Nothing
     Right d -> do
       let sents = d ^.. D.sentence . traverse
       return (Just sents)

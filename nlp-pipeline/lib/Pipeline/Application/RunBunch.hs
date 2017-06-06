@@ -1,8 +1,9 @@
-{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Pipeline.Application.RunPropBank where
+
+module Pipeline.Application.RunBunch where
 
 import           Control.Lens                    ((^.))
 import           Control.Monad                   (forM,forM_)
@@ -36,7 +37,6 @@ data DB = DB { _wordDB :: WordNetDB
              , _predDB :: M.Map Text [LinkNet]
              }
 
-
 getPSents :: Text
           -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
           -> IO [CoreNLP.Proto.CoreNLPProtos.Sentence.Sentence]
@@ -45,6 +45,7 @@ getPSents txt pp = do
   ann <- annotate pp doc
   pdoc <- getProtoDoc ann
   return $ getProtoSents pdoc
+
 
 getPB :: DB
       -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -116,6 +117,7 @@ runProcess f db pp = do
 
   return $ (txt,result)
 
+
 runSentenceProcess :: M.Map Text [LinkNet]
                    -> CoreNLP.Proto.CoreNLPProtos.Sentence.Sentence
                    -> IO ()
@@ -126,6 +128,7 @@ runSentenceProcess predmat psent = do
       zt = zip [1..] tokens
       ukb_input = T.unpack $ mkUkbTextInput' (mkUkbInput' zt)
   (_,wsdlst') <- getPPR ukb_input
+
 
   let wsdlst = concat $ map (\(_,b,c,d) -> map (\(i,_) -> (B.pack ("w" ++ (show i)),b,c,d)) $ filter (\(_,t) -> (_token_lemma t) == T.pack (B.unpack d)) zt) wsdlst'
 
@@ -143,18 +146,3 @@ runSentenceProcess predmat psent = do
       Just v  -> return (convertTokenToText t,Just v)
 
   print pred'
-
-
-testtxt :: Text
-testtxt =
-  " In a speech from the Rose Garden, Mr. Trump said the landmark 2015 pact imposed wildly \
-  \unfair environmental standards on American businesses and workers. He vowed to stand with \
-  \the people of the United States against what he called a \"draconian\" international deal. \
-  \\"I was elected to represent the citizens of Pittsburgh, not Paris,\" the president said, \
-  \drawing support from members of his Republican Party but widespread condemnation from \
-  \political leaders, business executives and environmentalists around the globe. \
-  \Mr. Trump’s decision to abandon the agreement for environmental action signed by 195 nations \
-  \is a remarkable rebuke to heads of state, climate activists, corporate executives and members \
-  \of the president's own staff, who all failed to change his mind with an intense, last-minute \
-  \lobbying blitz. The Paris agreement was intended to bind the world community into battling \
-  \rising temperatures in concert, and the departure of the Earth’s second-largest polluter is a major blow.\" "

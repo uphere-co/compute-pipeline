@@ -30,6 +30,7 @@ library
                   either,
                   filepath,
                   haskeline,
+                  jni,
                   jvm,
                   lens,
                   mtl,
@@ -60,8 +61,9 @@ library
                    Pipeline.Run.StanfordNER
                    Pipeline.Run.UKB
                    Pipeline.Run.Util
-                   Pipeline.Run              
+                   Pipeline.Run
                    Pipeline.Application.Run
+                   Pipeline.Application.RunBunch
                    Pipeline.Application.RunPropBank
                    Pipeline.Application.WikiEL
                    Pipeline.Type
