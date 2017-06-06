@@ -24,6 +24,7 @@ import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
+import           CoreNLP.Simple.Type.Simplified
 --
 import           PM.Type
 import           WordNet.Type
@@ -118,12 +119,12 @@ runSentenceProcess predmat psent = do
       ukb_input = T.unpack $ mkUkbTextInput' (mkUkbInput' zt)
   (_,wsdlst') <- getPPR ukb_input
 
-  
-        
+
+  let wsdlst = concat $ map (\(a,b,c,d) -> map (\(i,t) -> (B.pack ("w" ++ (show i)),b,c,d)) $ filter (\(i,t) -> (_token_lemma t) == T.pack (B.unpack d)) zt) wsdlst'
+
   print $ convertSenToText psent
   print ukb_input
-
-
+  
   let ordtok = zip [1..] (getTKTokens psent) -- tokens
       wsd' = map (\(a,b,c,d) -> ((read $ drop 1 (B.unpack a)) :: Int,(T.pack (B.unpack c),T.pack (B.unpack d)))) wsdlst
       k a = if (isNothing (getQueryPM a predmat)) then Nothing else Just (nub $ map (\x -> x ^. propField.lpbRoleset) (fromJust $ getQueryPM a predmat))
