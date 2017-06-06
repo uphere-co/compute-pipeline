@@ -27,7 +27,9 @@ Library
   build-depends:    base,
                     --
                     containers,
+                    lens,
                     text
+                    
   ghc-options:      -Wall -O2 -funbox-strict-fields -fno-warn-unused-do-bind
 
 executable predicate-matrix
@@ -37,6 +39,7 @@ executable predicate-matrix
   build-depends:      base,
                       --
                       containers,
+                      lens,
                       text,
                       --
                       predicate-matrix

@@ -11,7 +11,7 @@ import qualified Data.ByteString.Char8  as B
 import qualified Data.IntMap            as IM
 import           Data.List
 import qualified Data.Map               as M
-import           Data.Maybe                      (isNothing)
+import           Data.Maybe                      (fromJust,isNothing)
 import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy.Builder as TLB   (toLazyText)
@@ -114,12 +114,23 @@ runSentenceProcess predmat psent = do
   return $ convertSenToText psent
   
   let Just tokens = getTokens psent
-      ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
-  (_,wsdlst) <- getPPR ukb_input
+      zt = zip [1..] tokens
+      ukb_input = T.unpack $ mkUkbTextInput' (mkUkbInput' zt)
+  (_,wsdlst') <- getPPR ukb_input
+
+  
+        
+  print $ convertSenToText psent
+  print ukb_input
+
 
   let ordtok = zip [1..] (getTKTokens psent) -- tokens
       wsd' = map (\(a,b,c,d) -> ((read $ drop 1 (B.unpack a)) :: Int,(T.pack (B.unpack c),T.pack (B.unpack d)))) wsdlst
-      wsd = IM.fromList $ map (\(i,(a,b)) -> (i,(a,b, $ getQueryPM a predmat))) wsd'
+      k a = if (isNothing (getQueryPM a predmat)) then Nothing else Just (nub $ map (\x -> x ^. propField.lpbRoleset) (fromJust $ getQueryPM a predmat))
+      wsd = IM.fromList $ map (\(i,(a,b)) -> (i,(a,b,k a))) wsd'
+
+  -- print ordtok
+  
   pred' <- forM ordtok $ \(i,t) -> do
     case (IM.lookup i wsd) of
       Nothing -> return (convertTokenToText t,Nothing)

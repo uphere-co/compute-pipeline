@@ -233,12 +233,21 @@ getDoc txt = do
 mkUkbInput :: [Token] -> [(Text,Maybe POS)]
 mkUkbInput r2 = filter (\(_,y) -> isJust y) $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)
 
+mkUkbInput' :: [(Int,Token)] -> [(Int,(Text,Maybe POS))]
+mkUkbInput' r2 = map (\(i,x) -> (i,(_token_lemma x,simpleMap $ _token_pos x))) r2
+
 mkUkbTextInput :: [(Text,Maybe POS)] -> Text
 mkUkbTextInput r = let jr = map (\(t,mp) -> (t,fromJust mp)) r
                        ptow p = if (p == POS_N) then "#n" else if (p == POS_R) then "#r" else if (p == POS_A) then "#a" else "#v"
                        mkTaggedWord i t p = T.concat [t,ptow p,T.append "#w" (T.pack $ show i),"#1"]
                        rt = T.intercalate " " $ map (\(i,(t,p)) -> mkTaggedWord i t p) (zip [(1 :: Int)..] jr)
                    in rt
+
+mkUkbTextInput' :: [(Int,(Text,Maybe POS))] -> Text
+mkUkbTextInput' r = let ptow p = if (p == POS_N) then "#n" else if (p == POS_R) then "#r" else if (p == POS_A) then "#a" else "#v"
+                        mkTaggedWord i t p = T.concat [t,ptow p,T.append "#w" (T.pack $ show i),"#1"]
+                        rt = T.intercalate " " $ map (\(i,(t,mp)) -> mkTaggedWord i t (fromJust mp)) (filter (\(i,(t,mp)) -> isJust mp) r)
+                    in rt
 
 getProtoSents :: D.Document -> [S.Sentence]
 getProtoSents doc = toListOf (D.sentence . traverse) doc
