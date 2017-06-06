@@ -262,8 +262,8 @@ convertSenToText :: S.Sentence -> Text
 convertSenToText s = let tokens = map (\t -> cutf8' <$> (t^.TK.originalText)) $ getTKTokens s
                      in T.intercalate " " $ catMaybes tokens
 
-convertTokenToText :: TK.Token -> Maybe Text
-convertTokenToText tk = cutf8' <$> (tk^.TK.originalText)
+convertTokenToText :: TK.Token -> Text
+convertTokenToText tk = fromJust (cutf8' <$> (tk^.TK.originalText))
 
 
 -- Get tokens from ProtoSents.
