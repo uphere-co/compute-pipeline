@@ -14,12 +14,15 @@ import           Data.Maybe                      (fromJust,isNothing)
 import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import           Language.Java          as J
+import           System.Environment              (getEnv)
 --
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
 import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Proto.CoreNLPProtos.Sentence
+import           CoreNLP.Simple                  (prepare)
+import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 --
 import           PM.Type
 import           WordNet.Query                   (WordNetDB)
@@ -41,9 +44,18 @@ getPSents txt pp = do
   pdoc <- getProtoDoc ann
   return $ getProtoSents pdoc
 
+getPBFull :: Text -> IO [[WordWSD]]
+getPBFull txt = do
+  clspath <- getEnv "CLASSPATH"
+  db <- getDB
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    pp <- prepare (PPConfig True True True True True False False False)  
+    result <- runProcess txt db pp
+    return result
+  
 getPB :: Text -> DB
       -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-      -> IO [[(Text, Maybe (Text, Text, Maybe [Text]))]]
+      -> IO [[WordWSD]]
 getPB txt db pp = do
   result <- runProcess txt db pp
   return result
@@ -57,7 +69,7 @@ getDB = do
 
 runProcess :: Text -> DB
            -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-           -> IO [[(Text, Maybe (Text, Text, Maybe [Text]))]]
+           -> IO [[WordWSD]]
 runProcess txt db pp = do
   let predmat = _predDB db
   doc <- getDoc txt
@@ -71,7 +83,7 @@ runProcess txt db pp = do
 
 runSentenceProcess :: M.Map Text [LinkNet]
                    -> CoreNLP.Proto.CoreNLPProtos.Sentence.Sentence
-                   -> IO [(Text, Maybe (Text, Text, Maybe [Text]))]
+                   -> IO [WordWSD]
 runSentenceProcess predmat psent = do
   
   let Just tokens = getTokens psent
@@ -88,7 +100,26 @@ runSentenceProcess predmat psent = do
 
   result <- forM ordtok $ \(i,t) -> do
     case (IM.lookup i wsd) of
-      Nothing -> return (convertTokenToText t,Nothing)
-      Just v  -> return (convertTokenToText t,Just v)
-
+      Nothing -> return $ WordWSD { word = convertTokenToText t
+                                  , predicate = Nothing }
+      Just v  -> return $ WordWSD { word = convertTokenToText t
+                                  , predicate = Just (PredR { lemma = (take2 v)
+                                                            , ili = (take1 v)
+                                                            , prop = (take3 v) })
+                                  }
   return result
+
+take1 (a,_,_) = a
+take2 (_,b,_) = b
+take3 (_,_,c) = c
+
+-- (Word, (ILI, Lemma, [RoleSet]))
+
+data WordWSD = WordWSD { word :: Text
+                       , predicate :: Maybe PredR
+                       } deriving (Show)
+
+data PredR = PredR { lemma :: Text
+                   , ili :: Text
+                   , prop :: Maybe [Text]
+                   } deriving (Show)

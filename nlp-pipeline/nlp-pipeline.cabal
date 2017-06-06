@@ -88,3 +88,18 @@ executable nlp-pipeline
                        nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
+
+executable devel
+  hs-source-dirs:      app
+  main-is:             devel.hs
+  -- other-modules:       
+  build-depends:       base,
+                       --
+                       filepath,
+                       text,
+                       HUKB,
+                       HUKB-driver,                  
+                       --
+                       nlp-pipeline
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
+  default-language:    Haskell2010
