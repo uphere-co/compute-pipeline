@@ -1,7 +1,10 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module PM.Type where
 
+import Control.Lens
+import Control.Lens.TH
 import Data.Text        (Text)
 
 data PredicateMatrix = PM
@@ -42,28 +45,39 @@ type Predicate = Text
 type Role      = Text
 
 data PropBank = PropBank
-  { _pbRoleset        :: Text -- ^ Predicate in PropBank
-  , _pbArg            :: Text -- ^ Predicate argument in PropBank
+  { _lpbRoleset        :: Text -- ^ Predicate in PropBank
+  , _lpbArg            :: Text -- ^ Predicate argument in PropBank
   } deriving (Show)
 
 data VerbNet = VerbNet
-  { _vnClass          :: Text -- ^ VerbNet class
-  , _vnClassNumber    :: Text -- ^ VerbNet class number
-  , _vnSubclass       :: Text -- ^ VerbNet subclass
-  , _vnSubclassNumber :: Text -- ^ VerbNet subclass number
-  , _vnLema           :: Text -- ^ Verb lemma
-  , _vnRole           :: Text -- ^ VerbNet thematic-role
+  { _lvnClass          :: Text -- ^ VerbNet class
+  , _lvnClassNumber    :: Text -- ^ VerbNet class number
+  , _lvnSubclass       :: Text -- ^ VerbNet subclass
+  , _lvnSubclassNumber :: Text -- ^ VerbNet subclass number
+  , _lvnLema           :: Text -- ^ Verb lemma
+  , _lvnRole           :: Text -- ^ VerbNet thematic-role
   } deriving (Show)
 
 data FrameNet = FrameNet
-  { _fnFrame          :: Text -- ^ Frame in FrameNet
-  , _fnLe             :: Text -- ^ Corresponding lexical-entry in FrameNet
-  , _fnFrameElement   :: Text -- ^ Frame-element in FrameNet
+  { _lfnFrame          :: Text -- ^ Frame in FrameNet
+  , _lfnLe             :: Text -- ^ Corresponding lexical-entry in FrameNet
+  , _lfnFrameElement   :: Text -- ^ Frame-element in FrameNet
   } deriving (Show)
 
 data ESO = ESO
-  { _esoClass         :: Text -- ^ Class of the ESO ontology
-  , _esoRole          :: Text -- ^ Role of the ESO ontology
+  { _lesoClass         :: Text -- ^ Class of the ESO ontology
+  , _lesoRole          :: Text -- ^ Role of the ESO ontology
   } deriving (Show)
 
-type LinkNet = (PropBank,VerbNet,FrameNet,ESO)
+data LinkNet = LinkNet { _propField  :: PropBank
+                       , _verbField  :: VerbNet
+                       , _frameField :: FrameNet
+                       , _esoField   :: ESO
+                       } deriving (Show)
+
+
+makeLenses ''LinkNet
+makeLenses ''PropBank
+makeLenses ''VerbNet
+makeLenses ''FrameNet
+makeLenses ''ESO

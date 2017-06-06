@@ -3,15 +3,11 @@
 
 module Pipeline.Application.Run where
 
-import           Control.Applicative
-import           Control.Lens                    ((^.),_1,_2,_3,_4)
+import           Control.Lens                    ((^.),_2,_3,_4)
 import           Control.Monad                   (forM,forM_)
-import           Control.Monad.Trans.Either      (EitherT(..))
 import qualified Data.ByteString.Char8  as B
 import           Data.List
 import qualified Data.Text              as T
-import qualified Data.Text.Lazy.Builder as TLB   (toLazyText)
-import qualified Data.Text.Lazy.IO      as TLIO
 import           Data.Text.Read                  (decimal)
 import           Language.Java          as J
 import           System.Environment              (getEnv)
@@ -25,7 +21,6 @@ import           WordNet.Type
 
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple                  (annotate,prepare)
-import           YAML.Builder
 import           PropBank
 
 findSubstring :: Eq a => [a] -> [a] -> Maybe Int
@@ -36,19 +31,10 @@ run = do
   clspath <- getEnv "CLASSPATH"
 
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
-  forest <- prepareForest "/data/groups/uphere/F7745.all_entities"
-  pm <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
-  forestIdiom <- loadIdiom "/data/groups/uphere/data/NLP/idiom.txt"
   db <- loadDB "/data/groups/uphere/data/NLP/dict"
   pdb <- constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
   let rdb = constructRoleSetDB pdb
-  
-  let input = "take.01"
-  case T.split (== '.') input of
-    (x:n:_) -> queryRoleSet rdb input
-    (x:[])  -> queryPredicate pdb input
-    [] -> putStrLn "query is not recognized."
-  
+    
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True False False False)
     forM_ (take 10000 filelist) $ \a' -> do
@@ -57,31 +43,22 @@ run = do
       ann <- annotate pp doc
       pdoc <- getProtoDoc ann
       let psents = getProtoSents pdoc
-          sents  = convertProtoSents psents pdoc
-          tokens = getTokens psents
-      (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
-      result <- forM xs $ \x -> do
+          tokens = getAllTokens psents
+      (_,ppr) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
+      result <- forM ppr $ \x -> do
         let Right (n,_) = decimal (T.pack (B.unpack $ (x ^. _3)))
         let word = T.pack $ B.unpack $ (x ^. _4)
         let concept = getQueryConcept n (extractPOS $ T.pack $ B.unpack $ (x ^. _2)) db
-        print "word = " >> print word
         let sense = getQuerySense word n db
         case sense of
-          Nothing -> print ""
-          Just s  -> print "sense : " >> print s
+          Nothing -> print ("" :: String)
+          Just s  -> print ("sense : " :: String) >> print s
         let (xs,_) = case concept of
               Nothing -> ([],"")
               Just c  -> c
-        flip mapM_ xs $ \x -> do
-          print $ T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]
-          queryRoleSet rdb (T.intercalate "" [_lex_word x,".",T.pack (show $ _lex_id x)]) -- (T.pack $ (show $ _lex_word x) ++ "." ++ (show $ _lex_id x))-- input
-          case concept of
-            Nothing -> print ""
-            Just c  -> print c              
-        return $ (T.pack $ B.unpack $ (x ^. _4)) -- ,fmap (nub . (map (^. _1))) (getQueryPM (T.pack $ B.unpack $ (x ^. _3)) pm))
+        flip mapM_ xs $ \x' -> do
+          print $ T.intercalate "" [_lex_word x',".",T.pack (show $ _lex_id x')]
+          queryRoleSet rdb (T.intercalate "" [_lex_word x',".",T.pack (show $ _lex_id x')])
+        return $ (T.pack $ B.unpack $ (x ^. _4))
       putStrLn $ show (txt,result)
-      -- melr <- getEL txt pp
-      -- case melr of
-      --   Nothing  -> print "Error in wiki-ner"
-      --   Just elr -> print elr 
   putStrLn "Program is finished!"

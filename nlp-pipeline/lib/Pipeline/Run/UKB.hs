@@ -1,18 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
 
 module Pipeline.Run.UKB where
 
 import qualified Data.ByteString.Char8  as B
 import           System.FilePath             ((</>))
-import           Language.Java          as J
 import qualified Data.Text              as T
-import           System.Environment              (getEnv)
+
+import           Foreign.JNI.Types
 --
 import           HUKB.PPR
 --
 import           Pipeline.Util
-import           CoreNLP.Simple                  (annotate,prepare)
-import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
+import           CoreNLP.Simple                  (annotate)
 
 runPPR :: String -> IO ()
 runPPR txt = do
@@ -26,12 +26,15 @@ getPPR txt = do
   result <- ppr (dir </> "wn30.bin") (dir </> "wnet30_dict.txt") "ctx_01" txt
   return result
 
+getWSD :: T.Text
+       -> Foreign.JNI.Types.J
+          ('Foreign.JNI.Types.Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+       -> IO [(B.ByteString, B.ByteString, B.ByteString, B.ByteString)]
 getWSD txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
   pdoc <- getProtoDoc ann
   let psents = getProtoSents pdoc
-      sents  = convertProtoSents psents pdoc
-      tokens = getTokens psents
+      tokens = getAllTokens psents
   (_,xs) <- getPPR (T.unpack $ mkUkbTextInput (mkUkbInput tokens))
   return xs

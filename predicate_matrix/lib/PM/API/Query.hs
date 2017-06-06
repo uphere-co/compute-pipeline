@@ -25,10 +25,11 @@ loadPMData fp = do
 createPM :: [PredicateMatrix] -> M.Map Text [LinkNet]
 createPM mat = fmap (map (\pm -> mkLN pm)) $ foldl' (\acc x -> M.insertWith' (++) (mcrIliOffset x) [x] acc) M.empty mat
   where
-    mkLN pm = ( PropBank (pbRoleset pm)  (pbArg pm)
-              , VerbNet (vnClass pm)  (vnClassNumber pm)  (vnSubclass pm)  (vnSubclassNumber pm)  (vnLema pm)  (vnRole pm)
-              , FrameNet (fnFrame pm)  (fnLe pm)  (fnFrameElement pm)
-              , ESO (esoClass pm)  (esoRole pm))
+    mkLN pm = LinkNet
+      (PropBank (pbRoleset pm)  (pbArg pm))
+      (VerbNet (vnClass pm)  (vnClassNumber pm)  (vnSubclass pm)  (vnSubclassNumber pm)  (vnLema pm)  (vnRole pm))
+      (FrameNet (fnFrame pm)  (fnLe pm)  (fnFrameElement pm))
+      (ESO (esoClass pm)  (esoRole pm))
 
 loadPM fp = do
   pmdata <- loadPMData fp
