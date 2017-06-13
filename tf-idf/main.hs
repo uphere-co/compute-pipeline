@@ -43,6 +43,11 @@ mkLogCountTF docs vocab =
   let f i doc vocab = M.map (log . (+ 1)) $ foldl' (\acc x -> M.insertWith' (+) (fromJust $ lookupVocabIndex x vocab,i) 1 acc) M.empty doc
   in foldl' (\acc (i,doc) -> (f i doc vocab):acc) [] (zip [1..] docs)
 
+mkIDF :: [Doc] -> Vocabulary -> M.Map Int Float
+mkIDF docs vocab =
+  let docNum = length docs
+  in Set.foldl' (\acc x -> M.insert (fromJust $ lookupVocabIndex x vocab) (log $ (fromIntegral docNum)/(fromIntegral $ howManyInDocs x docs)) acc) M.empty vocab
+
 main :: IO ()
 main = do
   content <- TIO.readFile "/data/groups/uphere/data/filelist.txt"
@@ -57,9 +62,10 @@ main = do
   let vocab = mkVocab (concat docs)
   let btf = mkBooleanTF docs vocab
       ctf = mkLogCountTF docs vocab
-
+      idf = mkIDF docs vocab
   print btf
   print ctf
+  print idf
   -- print $ Set.size vocab
   -- print $ Set.size $ Set.map (\x -> (x,howManyInDocs x docs)) vocab 
 
