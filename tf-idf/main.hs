@@ -15,6 +15,7 @@ import qualified Data.Text.IO          as TIO
 import           Numeric.LinearAlgebra
 
 type Vocabulary = Set.Set Text
+type Doc = [Text]
 
 -- Make vocab. Should be run for whole text from all documents.
 mkVocab :: [Text] -> Vocabulary
@@ -22,6 +23,12 @@ mkVocab txts = foldl' (\acc x -> Set.insert x acc) Set.empty txts
 
 isInVocab :: Text -> Vocabulary -> Bool
 isInVocab = Set.member
+
+isInDoc :: Text -> Doc -> Bool
+isInDoc = elem
+
+howManyInDocs :: Text -> [Doc] -> Int
+howManyInDocs txt docs = length $ filter (isInDoc txt) docs
 
 lookupVocabIndex :: Text -> Vocabulary -> Maybe Int
 lookupVocabIndex = Set.lookupIndex
@@ -42,6 +49,13 @@ main = do
   -- let tfc = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
   let vocab = mkVocab txts
 
+  docs <- forM (take 3 filelist) $ \f -> do
+    ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
+    print ta
+    return (T.words ta)
+
+  print $ howManyInDocs "Windows" docs
+  
   tfs <- forM (take 1 (zip [1..] filelist)) $ \(i,f) -> do
     ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
     let tf = foldl' (\acc x -> ((fromJust $ lookupVocabIndex x vocab,i),1):acc) [] (T.words ta)
