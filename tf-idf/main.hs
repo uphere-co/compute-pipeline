@@ -6,6 +6,7 @@ import           Control.Monad                (forM,forM_)
 import qualified Data.IntMap           as IM
 import           Data.List                    (foldl')
 import qualified Data.Map              as M
+import           Data.Maybe                   (fromJust)
 import qualified Data.Set              as Set
 -- import qualified Data.HashMap.Strict   as HM
 import           Data.Text                    (Text)
@@ -13,16 +14,17 @@ import qualified Data.Text             as T
 import qualified Data.Text.IO          as TIO
 import           Numeric.LinearAlgebra
 
-testM1 = [((10000,10000),1.5),((9999,9999),0.2)]
+type Vocabulary = Set.Set Text
 
 -- Make vocab. Should be run for whole text from all documents.
+mkVocab :: [Text] -> Vocabulary
 mkVocab txts = foldl' (\acc x -> Set.insert x acc) Set.empty txts
 
-isInVocab :: Text -> Set.Set Text -> Bool
+isInVocab :: Text -> Vocabulary -> Bool
 isInVocab = Set.member
 
-lookupVocabIndex txt vocab = Set.lookupIndex txt vocab
-
+lookupVocabIndex :: Text -> Vocabulary -> Maybe Int
+lookupVocabIndex = Set.lookupIndex
 
 main :: IO ()
 main = do
@@ -31,24 +33,20 @@ main = do
   let filelist' = T.lines content
       filelist = filter (\x -> last (T.splitOn "." x) == "maintext") filelist'
 
-  txts' <- forM filelist $ \f -> do
+  txts' <- forM (take 3 filelist) $ \f -> do
     ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
     return ta
 
   let txts = concat $ map T.words txts'
 
-  -- let result = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
+  -- let tfc = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
   let vocab = mkVocab txts
-  -- let docindex = 1
-  -- let tf = foldl' (\acc x -> ((lookupVocabIndex x vocab,docindex),1):acc) [] (T.words txt)
 
-
-  -- print $ (mkSparse testM1)
-  {-
-  print result
-  print tf
+  tfs <- forM (take 1 (zip [1..] filelist)) $ \(i,f) -> do
+    ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
+    let tf = foldl' (\acc x -> ((fromJust $ lookupVocabIndex x vocab,i),1):acc) [] (T.words ta)
+    return tf
+    
   print $ Set.size vocab
-  -}
-  print vocab
 
   putStrLn "TF-IDF App"
