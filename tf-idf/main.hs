@@ -40,27 +40,18 @@ main = do
   let filelist' = T.lines content
       filelist = filter (\x -> last (T.splitOn "." x) == "maintext") filelist'
 
-  txts' <- forM (take 3 filelist) $ \f -> do
+  docs <- forM filelist $ \f -> do
     ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
-    return ta
-
-  let txts = concat $ map T.words txts'
-
-  -- let tfc = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
-  let vocab = mkVocab txts
-
-  docs <- forM (take 3 filelist) $ \f -> do
-    ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
-    print ta
     return (T.words ta)
 
-  print $ howManyInDocs "Windows" docs
-  
-  tfs <- forM (take 1 (zip [1..] filelist)) $ \(i,f) -> do
-    ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
-    let tf = foldl' (\acc x -> ((fromJust $ lookupVocabIndex x vocab,i),1):acc) [] (T.words ta)
+  -- let tfc = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
+  let vocab = mkVocab (concat docs)
+
+  tfs <- forM (take 1 (zip [1..] docs)) $ \(i,doc) -> do
+    let tf = foldl' (\acc x -> ((fromJust $ lookupVocabIndex x vocab,i),1):acc) [] doc
     return tf
     
   print $ Set.size vocab
+  print $ Set.size $ Set.map (\x -> (x,howManyInDocs x docs)) vocab 
 
   putStrLn "TF-IDF App"
