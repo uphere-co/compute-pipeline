@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Control.Monad                (forM,forM_)
 import qualified Data.IntMap           as IM
 import           Data.List                    (foldl')
 import qualified Data.Map              as M
@@ -25,18 +26,29 @@ lookupVocabIndex txt vocab = Set.lookupIndex txt vocab
 
 main :: IO ()
 main = do
-  txt <- TIO.readFile "test.txt"
-  txt2 <- TIO.readFile "test2.txt"
-  print txt
-  let result = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
-  let vocab = mkVocab ((T.words txt) ++ (T.words txt2))
-  let docindex = 1
-  let tf = foldl' (\acc x -> ((lookupVocabIndex x vocab,docindex),1):acc) [] (T.words txt)
+
+  content <- TIO.readFile "/data/groups/uphere/data/filelist.txt"
+  let filelist' = T.lines content
+      filelist = filter (\x -> last (T.splitOn "." x) == "maintext") filelist'
+
+  txts' <- forM filelist $ \f -> do
+    ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
+    return ta
+
+  let txts = concat $ map T.words txts'
+
+  -- let result = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
+  let vocab = mkVocab txts
+  -- let docindex = 1
+  -- let tf = foldl' (\acc x -> ((lookupVocabIndex x vocab,docindex),1):acc) [] (T.words txt)
 
 
   -- print $ (mkSparse testM1)
+  {-
   print result
-  print vocab
   print tf
   print $ Set.size vocab
+  -}
+  print vocab
+
   putStrLn "TF-IDF App"
