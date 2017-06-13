@@ -4,7 +4,7 @@ module Main where
 
 import           Control.Monad                (forM,forM_)
 import qualified Data.IntMap           as IM
-import           Data.List                    (foldl')
+import           Data.List                    (foldl',nub)
 import qualified Data.Map              as M
 import           Data.Maybe                   (fromJust)
 import qualified Data.Set              as Set
@@ -33,25 +33,34 @@ howManyInDocs txt docs = length $ filter (isInDoc txt) docs
 lookupVocabIndex :: Text -> Vocabulary -> Maybe Int
 lookupVocabIndex = Set.lookupIndex
 
+mkBooleanTF :: [Doc] -> Vocabulary -> [M.Map (Int,Int) Int]
+mkBooleanTF docs vocab =
+  let f i doc vocab = foldl' (\acc x -> M.insert (fromJust $ lookupVocabIndex x vocab,i) 1 acc) M.empty doc
+  in foldl' (\acc (i,doc) -> (f i doc vocab):acc) [] (zip [1..] docs)
+
+mkLogCountTF :: [Doc] -> Vocabulary -> [M.Map (Int,Int) Float]
+mkLogCountTF docs vocab =
+  let f i doc vocab = M.map (log . (+ 1)) $ foldl' (\acc x -> M.insertWith' (+) (fromJust $ lookupVocabIndex x vocab,i) 1 acc) M.empty doc
+  in foldl' (\acc (i,doc) -> (f i doc vocab):acc) [] (zip [1..] docs)
+
 main :: IO ()
 main = do
-
   content <- TIO.readFile "/data/groups/uphere/data/filelist.txt"
   let filelist' = T.lines content
       filelist = filter (\x -> last (T.splitOn "." x) == "maintext") filelist'
 
-  docs <- forM filelist $ \f -> do
+  docs <- forM (take 10 filelist) $ \f -> do
     ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
     return (T.words ta)
 
   -- let tfc = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
   let vocab = mkVocab (concat docs)
+  let btf = mkBooleanTF docs vocab
+      ctf = mkLogCountTF docs vocab
 
-  tfs <- forM (take 1 (zip [1..] docs)) $ \(i,doc) -> do
-    let tf = foldl' (\acc x -> ((fromJust $ lookupVocabIndex x vocab,i),1):acc) [] doc
-    return tf
-    
-  print $ Set.size vocab
-  print $ Set.size $ Set.map (\x -> (x,howManyInDocs x docs)) vocab 
+  print btf
+  print ctf
+  -- print $ Set.size vocab
+  -- print $ Set.size $ Set.map (\x -> (x,howManyInDocs x docs)) vocab 
 
   putStrLn "TF-IDF App"
