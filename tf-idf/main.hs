@@ -20,7 +20,7 @@ type Doc = [Text]
 
 -- Make vocab. Should be run for whole text from all documents.
 mkVocab :: [Text] -> Vocabulary
-mkVocab txts = foldl' (\acc x -> Set.insert x acc) Set.empty txts
+mkVocab txts = foldl' (\(!acc) x -> Set.insert x acc) Set.empty txts
 
 isInVocab :: Text -> Vocabulary -> Bool
 isInVocab = Set.member
@@ -36,13 +36,13 @@ lookupVocabIndex = Set.lookupIndex
 
 mkBooleanTF :: [Doc] -> Vocabulary -> [M.Map (Int,Int) Int]
 mkBooleanTF docs vocab =
-  let f i doc vocab = foldl' (\acc x -> M.insert (fromJust $ lookupVocabIndex x vocab,i) 1 acc) M.empty doc
-  in foldl' (\acc (i,doc) -> (f i doc vocab):acc) [] (zip [1..] docs)
+  let f i doc vocab = foldl' (\(!acc) x -> M.insert (fromJust $ lookupVocabIndex x vocab,i) 1 acc) M.empty doc
+  in foldl' (\(!acc) (i,doc) -> (f i doc vocab):acc) [] (zip [1..] docs)
 
 mkLogCountTF :: [Doc] -> Vocabulary -> [M.Map (Int,Int) Float]
 mkLogCountTF docs vocab =
-  let f i doc vocab = M.map (log . (+ 1)) $ foldl' (\acc x -> M.insertWith' (+) (fromJust $ lookupVocabIndex x vocab,i) 1 acc) M.empty doc
-  in foldl' (\acc (i,doc) -> (f i doc vocab):acc) [] (zip [1..] docs)
+  let f i doc vocab = M.map (log . (+ 1)) $ foldl' (\(!acc) x -> M.insertWith' (+) (fromJust $ lookupVocabIndex x vocab,i) 1 acc) M.empty doc
+  in foldl' (\(!acc) (i,doc) -> (f i doc vocab):acc) [] (zip [1..] docs)
 
 mkIDF :: [Doc] -> Vocabulary -> M.Map Int Float
 mkIDF docs vocab =
@@ -59,7 +59,7 @@ main = do
     ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
     return (T.words ta)
 
-  -- let tfc = foldl' (\acc x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
+  -- let tfc = foldl' (\(!acc) x -> M.insertWith' (+) x 1 acc) M.empty (T.words txt)
   let vocab = mkVocab (concat docs)
   let btf = mkBooleanTF docs vocab
       ctf = mkLogCountTF docs vocab
