@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns      #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -46,7 +47,7 @@ mkLogCountTF docs vocab =
 mkIDF :: [Doc] -> Vocabulary -> M.Map Int Float
 mkIDF docs vocab =
   let docNum = length docs
-  in Set.foldl' (\acc x -> M.insert (fromJust $ lookupVocabIndex x vocab) (log $ (fromIntegral docNum)/(fromIntegral $ howManyInDocs x docs)) acc) M.empty vocab
+  in Set.foldl' (\(!acc) x -> M.insert (fromJust $ lookupVocabIndex x vocab) (log $ (fromIntegral docNum)/(fromIntegral $ howManyInDocs x docs)) acc) M.empty vocab
 
 main :: IO ()
 main = do
