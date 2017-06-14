@@ -54,7 +54,7 @@ main = do
   let filelist' = T.lines content
       filelist = filter (\x -> last (T.splitOn "." x) == "maintext") filelist'
 
-  docs <- forM (take 10 filelist) $ \f -> do
+  docs <- forM filelist $ \f -> do
     ta <- TIO.readFile $ "/home/modori/workspace/RSS.text/" ++ (T.unpack f)
     return (T.words ta)
 
@@ -63,9 +63,9 @@ main = do
   let btf = mkBooleanTF docs vocab
       ctf = mkLogCountTF docs vocab
       idf = mkIDF docs vocab
-  print btf
-  print ctf
-  print idf
+  print $ length btf
+  print $ length ctf
+  print $ length idf
   -- print $ Set.size vocab
   -- print $ Set.size $ Set.map (\x -> (x,howManyInDocs x docs)) vocab 
 
