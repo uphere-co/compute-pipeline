@@ -21,29 +21,27 @@ data ArticleNYT = ArticleNYT
   , _maintext :: [Text]
   } deriving (Show)
 
-parseNYT :: Text -> IO (ArticleNYT)
-parseNYT htxt = do
+parseNYT :: Text -> ArticleNYT
+parseNYT htxt =
   let ltxt = TL.fromStrict htxt
       ml = ltxt ^.. html . allNamed (only "meta")
       ll = ltxt ^.. html . allNamed (only "link")
       pl = ltxt ^.. html . allNamed (only "p")
              
-  let title   = ml ^.. traverse . attributed (ix "property" . only "og:title") . attrs . at "content"
+      title   = ml ^.. traverse . attributed (ix "property" . only "og:title") . attrs . at "content"
       summary = ml ^.. traverse . attributed (ix "property" . only "og:description") . attrs . at "content"
       ptime   = ml ^.. traverse . attributed (ix "name" . only "ptime") . attrs . at "content"
       link    = ll ^.. traverse . attributed (ix "rel" . only "canonical") . attrs . at "href"
       maintext1 = pl ^.. traverse . attributed (ix "class" . only "story-body-text story-content") . children . traverse . content
       maintext2 = pl ^.. traverse . attributed (ix "itemprop" . only "articleBody") . children . traverse . content
 
-  let result = ArticleNYT
-        { _title = title
-        , _link  = link
-        , _ptime = ptime
-        , _summary = summary
-        , _maintext = (maintext1 ++ maintext2)
-        }
-        
-  return result
+  in ArticleNYT { _title = title
+                , _link  = link
+                , _ptime = ptime
+                , _summary = summary
+                , _maintext = (maintext1 ++ maintext2)
+                }
+
 
 main :: IO ()
 main = do
@@ -52,5 +50,5 @@ main = do
 
   forM_ (take 1 filelist) $ \f -> do
     txt <- TIO.readFile f
-    parsedNYT <- parseNYT txt
+    let parsedNYT = parseNYT txt
     print parsedNYT
