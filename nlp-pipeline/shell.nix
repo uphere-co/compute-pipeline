@@ -23,7 +23,7 @@ let
     self: super: {
       "nlp-types" = self.callPackage (import nlp-types) {};
       "textview" = self.callPackage (import textview) {};
-      "intrinio" = self.callPackage (import (fetchfin + "/intrinio")) {};
+      "newsapi" = self.callPackage (import (fetchfin + "/newsapi")) {};
       "HCoreNLP" = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
       "HCoreNLP-Proto" = self.callPackage (import (HCoreNLP + "/HCoreNLP-Proto")) {};       
       "HWordNet" = self.callPackage (import HWordNet) {};
@@ -59,7 +59,7 @@ let
             transformers
             yaml
             yayaml
-            p.intrinio
+            p.newsapi
             p.nlp-types
             p.textview
             p.HCoreNLP

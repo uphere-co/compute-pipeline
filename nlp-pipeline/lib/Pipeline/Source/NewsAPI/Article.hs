@@ -9,7 +9,7 @@ import           Data.List                       (sort)
 import           Data.Text                       (Text)
 import           System.Directory.Tree           (dirTree,readDirectoryWith)
 --
-import           Intrinio.Type
+import           NewsAPI.Type
 
 getDescription :: FilePath -> IO Text
 getDescription f = do

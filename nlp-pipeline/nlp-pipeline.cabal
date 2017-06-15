@@ -44,7 +44,7 @@ library
                   HCoreNLP,
                   HCoreNLP-Proto,
                   HWordNet,
-                  intrinio,
+                  newsapi,
                   yaml,
                   nlp-types,
                   yayaml,
