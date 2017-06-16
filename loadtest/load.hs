@@ -5,11 +5,15 @@ module Main where
 import           Control.Concurrent
 import           Control.Concurrent.STM
 import           Control.DeepSeq
+import           Data.Function              (on)
 import qualified Data.HashMap.Strict as HM
-import qualified Data.List           as L   (lookup)
+import qualified Data.List           as L   (groupBy,lookup)
 import           Data.List.Split            (chunksOf)
+import           Data.Maybe                 (mapMaybe)
 import qualified Data.Text           as T
 import qualified Data.Text.IO        as TIO
+-- import qualified Data.Text.Lazy      as TL
+-- import qualified Data.Text.Lazy.IO   as TLIO
 import           System.IO
 
 main' = do
@@ -17,7 +21,6 @@ main' = do
   txt <- TIO.readFile fp
   let txts = T.lines txt
       m = HM.fromList . map (\(x:xs)-> (x,T.intercalate " " xs)) . map T.words $ txts
-  -- print (HM.size m)
   print (HM.lookup "Q354" m)
 
 main = do
@@ -31,7 +34,12 @@ main = do
   ref <- atomically $ newTVar []
   flip mapM_ (zip [0..] txtss) $ \(n,txts) ->
     forkIO $ do
-      let xs = HM.fromList . map (\(x:xs) -> (x,T.intercalate " " xs)) . map T.words $ txts
+      let xs = HM.fromList
+             . map (\xs -> (fst (head xs), map snd xs)) 
+             . L.groupBy ((==) `on` fst)
+             . map (\(x:xs) -> (x, T.intercalate " " xs))
+             . map T.words
+             $ txts
       deepseq xs $ do
         -- (print . HM.size) xs
         atomically $ do
@@ -41,8 +49,5 @@ main = do
   xss <- atomically $ do
            array <- readTVar ref
            if (length array /= 20) then retry else return (map snd array)
-  {- let m = HM.unions xss
-  print (HM.lookup "Q349" m)
-  -}
-  mapM_ (print . HM.lookup "Q349") xss
+  (print . concat . mapMaybe (HM.lookup "Q349")) xss
 
