@@ -41,10 +41,10 @@ data DB = DB { _wordDB :: WordNetDB
              , _predDB :: M.Map Text [LinkNet]
              }
 
-data NLPPOption = NLPPOption { textPath       :: FilePath
-                             , dbWordNetPath  :: FilePath
-                             , dbPropBankPath :: FilePath
-                             , dbPredMatPath  :: FilePath
+data NLPPOption = NLPPOption { _textPath       :: FilePath
+                             , _dbWordNetPath  :: FilePath
+                             , _dbPropBankPath :: FilePath
+                             , _dbPredMatPath  :: FilePath
                              } deriving Show
 
 pOptions :: Parser NLPPOption
@@ -53,8 +53,8 @@ pOptions = NLPPOption <$> strOption (long "text" <> short 't' <> help "Path stor
                       <*> strOption (long "prop" <> short 'p' <> help "PropBank DB Path")
                       <*> strOption (long "pred" <> short 'm' <> help "Predicate Matrix DB Path")
 
-progOption :: ParserInfo NLPPOption
-progOption = info pOptions (fullDesc <> progDesc "NLP-Pipeline")
+nlppOption :: ParserInfo NLPPOption
+nlppOption = info pOptions (fullDesc <> progDesc "NLP-Pipeline")
 
 getPSents :: Text
           -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -77,18 +77,25 @@ getPB db pp = do
 runPB :: IO ()
 runPB = do
   clspath <- getEnv "CLASSPATH"
-  flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
-  db <- getDB
+  
+  opt <- execParser nlppOption
+  let tfp = _textPath opt
+      wdb = _dbWordNetPath opt
+      pdb = _dbPropBankPath opt
+      mdb = _dbPredMatPath opt
+  
+  flist   <- getFileList tfp -- "/data/groups/uphere/intrinio/Articles/bloomberg"
+  db <- getDB (wdb,pdb,mdb)
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True False False False)
     forM_ (take 10000 flist) $ \f -> runProcess f db pp
   putStrLn "Program is finished!"
 
-getDB :: IO DB
-getDB = do
-  worddb  <- loadDB "/data/groups/uphere/data/NLP/dict"
-  propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
-  predmat <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+getDB :: (FilePath,FilePath,FilePath) -> IO DB
+getDB (wdb,pdb,mdb) = do
+  worddb  <- loadDB wdb -- "/data/groups/uphere/data/NLP/dict"
+  propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB pdb -- "/data/groups/uphere/data/NLP/frames"
+  predmat <- loadPM mdb -- "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
   return $ DB worddb propdb predmat
 
 runProcess :: FilePath
