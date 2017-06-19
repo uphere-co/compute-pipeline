@@ -2,12 +2,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE TemplateHaskell #-}
 
 module Pipeline.Application.RunBunch where
 
 import           Control.Applicative             ((<*>))
 import           Control.Lens                    ((^.))
+import           Control.Lens.TH
 import           Control.Monad                   (forM,forM_)
 import           Data.Aeson                      (FromJSON,ToJSON)
 import           Data.Aeson.Types                (fieldLabelModifier)
@@ -46,11 +47,16 @@ data DB = DB { _wordDB :: WordNetDB
              , _predDB :: M.Map Text [LinkNet]
              }
 
-data NLPPOption = NLPPOption { _textPath       :: FilePath
+makeLenses ''DB
+
+data NLPPOption = NLPPOption { _configFilePath :: FilePath
+                             , _textPath       :: FilePath
                              , _dbWordNetPath  :: FilePath
                              , _dbPropBankPath :: FilePath
                              , _dbPredMatPath  :: FilePath
                              } deriving (Generic,Show)
+
+makeLenses ''NLPPOption
 
 instance ToJSON NLPPOption where
   toJSON = A.genericToJSON A.defaultOptions { fieldLabelModifier = drop 1 }
@@ -58,14 +64,15 @@ instance ToJSON NLPPOption where
 instance FromJSON NLPPOption where
   parseJSON = A.genericParseJSON A.defaultOptions { fieldLabelModifier = drop 1 }
 
-pOptions :: NLPPOption -> Parser NLPPOption
-pOptions def = NLPPOption <$> strOption (long "text" <> short 't' <> value (_textPath def) <> help "Path storing text files")
-                          <*> strOption (long "word" <> short 'w' <> value (_dbWordNetPath def) <> help "WordNet DB Path")
-                          <*> strOption (long "prop" <> short 'p' <> value (_dbPropBankPath def) <> help "PropBank DB Path")
-                          <*> strOption (long "pred" <> short 'm' <> value (_dbPredMatPath def) <> help "Predicate Matrix DB Path")
+pOptions :: Parser NLPPOption
+pOptions = NLPPOption <$> strOption (long "cfg" <> short 'c' <> help "Configuration file path")
+                      <*> strOption (long "text" <> short 't' <> value "" <> help "Path storing text files")
+                      <*> strOption (long "word" <> short 'w' <> value "" <> help "WordNet DB Path")
+                      <*> strOption (long "prop" <> short 'p' <> value "" <> help "PropBank DB Path")
+                      <*> strOption (long "pred" <> short 'm' <> value "" <> help "Predicate Matrix DB Path")
 
-nlppOption :: NLPPOption -> ParserInfo NLPPOption
-nlppOption def = info (pOptions def) (fullDesc <> progDesc "NLP-Pipeline")
+nlppOption :: ParserInfo NLPPOption
+nlppOption = info pOptions (fullDesc <> progDesc "NLP-Pipeline")
 
 getPSents :: Text
           -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -84,24 +91,20 @@ getPB fp db pp = do
   flist <- getFileList fp
   result <- forM (take 1 flist) $ \f -> runProcess f db pp
   return result
-
-loadConfig fp = do
-  bt <- BL.readFile fp
-  return bt
   
 runPB :: IO ()
 runPB = do
   clspath <- getEnv "CLASSPATH"
-  config' <- loadConfig "config/config.json"
-  
-  let (def :: NLPPOption) = fromJust $ A.decode config'
 
-  opt <- execParser (nlppOption def)
+  opt <- execParser nlppOption
   
-  let tfp = _textPath opt
-      wdb = _dbWordNetPath opt
-      pdb = _dbPropBankPath opt
-      mdb = _dbPredMatPath opt
+  def' <- BL.readFile (opt ^. configFilePath)
+
+  let (def :: NLPPOption) = fromJust $ A.decode def'
+      tfp = if (opt ^. textPath /= "") then (opt ^. textPath) else (def ^. textPath)
+      wdb = if (opt ^. dbWordNetPath /= "") then (opt ^. dbWordNetPath) else (def ^. dbWordNetPath)
+      pdb = if (opt ^. dbPropBankPath /= "") then (opt ^. dbPropBankPath) else (def ^. dbPropBankPath)
+      mdb = if (opt ^. dbPredMatPath /= "") then (opt ^. dbPredMatPath) else (def ^. dbPredMatPath)
   
   flist   <- getFileList tfp
   db <- getDB (wdb,pdb,mdb)
