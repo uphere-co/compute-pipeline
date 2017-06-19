@@ -24,6 +24,7 @@ library
                   base16-bytestring,
                   bytestring,
                   containers,
+                  data-default,
                   directory,
                   directory-tree,
                   discrimination,
