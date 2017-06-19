@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -8,8 +9,11 @@ module Pipeline.Application.RunBunch where
 import           Control.Applicative             ((<*>))
 import           Control.Lens                    ((^.))
 import           Control.Monad                   (forM,forM_)
+import           Data.Aeson                      (FromJSON,ToJSON)
+import           Data.Aeson.Types                (fieldLabelModifier)
+import qualified Data.Aeson             as A
 import qualified Data.ByteString.Char8  as B
-import           Data.Default
+import qualified Data.ByteString.Lazy   as BL
 import qualified Data.IntMap            as IM
 import           Data.List
 import qualified Data.Map               as M
@@ -18,6 +22,7 @@ import           Data.Monoid                     ((<>))
 import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import           Data.Text.Read                  (decimal)
+import           GHC.Generics
 import           Language.Java          as J
 import           Options.Applicative
 import           System.Environment              (getEnv)
@@ -45,16 +50,22 @@ data NLPPOption = NLPPOption { _textPath       :: FilePath
                              , _dbWordNetPath  :: FilePath
                              , _dbPropBankPath :: FilePath
                              , _dbPredMatPath  :: FilePath
-                             } deriving Show
+                             } deriving (Generic,Show)
 
-pOptions :: Parser NLPPOption
-pOptions = NLPPOption <$> strOption (long "text" <> short 't' <> help "Path storing text files")
-                      <*> strOption (long "word" <> short 'w' <> help "WordNet DB Path")
-                      <*> strOption (long "prop" <> short 'p' <> help "PropBank DB Path")
-                      <*> strOption (long "pred" <> short 'm' <> help "Predicate Matrix DB Path")
+instance ToJSON NLPPOption where
+  toJSON = A.genericToJSON A.defaultOptions { fieldLabelModifier = drop 1 }
+    
+instance FromJSON NLPPOption where
+  parseJSON = A.genericParseJSON A.defaultOptions { fieldLabelModifier = drop 1 }
 
-nlppOption :: ParserInfo NLPPOption
-nlppOption = info pOptions (fullDesc <> progDesc "NLP-Pipeline")
+pOptions :: NLPPOption -> Parser NLPPOption
+pOptions def = NLPPOption <$> strOption (long "text" <> short 't' <> value (_textPath def) <> help "Path storing text files")
+                          <*> strOption (long "word" <> short 'w' <> value (_dbWordNetPath def) <> help "WordNet DB Path")
+                          <*> strOption (long "prop" <> short 'p' <> value (_dbPropBankPath def) <> help "PropBank DB Path")
+                          <*> strOption (long "pred" <> short 'm' <> value (_dbPredMatPath def) <> help "Predicate Matrix DB Path")
+
+nlppOption :: NLPPOption -> ParserInfo NLPPOption
+nlppOption def = info (pOptions def) (fullDesc <> progDesc "NLP-Pipeline")
 
 getPSents :: Text
           -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -73,12 +84,21 @@ getPB db pp = do
   flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
   result <- forM (take 1 flist) $ \f -> runProcess f db pp
   return result
+
+loadConfig fp = do
+  bt <- BL.readFile fp
+  return bt
   
 runPB :: IO ()
 runPB = do
   clspath <- getEnv "CLASSPATH"
+  let configPath = "config/config.json"
+  config' <- loadConfig configPath
   
-  opt <- execParser nlppOption
+  let (def :: NLPPOption) = fromJust $ A.decode config'
+
+  opt <- execParser (nlppOption def)
+  
   let tfp = _textPath opt
       wdb = _dbWordNetPath opt
       pdb = _dbPropBankPath opt
