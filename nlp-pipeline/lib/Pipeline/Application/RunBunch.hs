@@ -76,12 +76,12 @@ getPSents txt pp = do
   pdoc <- getProtoDoc ann
   return $ getProtoSents pdoc
 
-
-getPB :: DB
+getPB :: FilePath
+      -> DB
       -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
       -> IO [(Text, [[(Text, Maybe Int)]])]
-getPB db pp = do
-  flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
+getPB fp db pp = do
+  flist <- getFileList fp
   result <- forM (take 1 flist) $ \f -> runProcess f db pp
   return result
 
@@ -92,8 +92,7 @@ loadConfig fp = do
 runPB :: IO ()
 runPB = do
   clspath <- getEnv "CLASSPATH"
-  let configPath = "config/config.json"
-  config' <- loadConfig configPath
+  config' <- loadConfig "config/config.json"
   
   let (def :: NLPPOption) = fromJust $ A.decode config'
 
@@ -104,7 +103,7 @@ runPB = do
       pdb = _dbPropBankPath opt
       mdb = _dbPredMatPath opt
   
-  flist   <- getFileList tfp -- "/data/groups/uphere/intrinio/Articles/bloomberg"
+  flist   <- getFileList tfp
   db <- getDB (wdb,pdb,mdb)
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True False False False)
@@ -113,9 +112,9 @@ runPB = do
 
 getDB :: (FilePath,FilePath,FilePath) -> IO DB
 getDB (wdb,pdb,mdb) = do
-  worddb  <- loadDB wdb -- "/data/groups/uphere/data/NLP/dict"
-  propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB pdb -- "/data/groups/uphere/data/NLP/frames"
-  predmat <- loadPM mdb -- "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+  worddb  <- loadDB wdb
+  propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB pdb
+  predmat <- loadPM mdb
   return $ DB worddb propdb predmat
 
 runProcess :: FilePath
