@@ -5,17 +5,21 @@
 
 module Pipeline.Application.RunBunch where
 
+import           Control.Applicative             ((<*>))
 import           Control.Lens                    ((^.))
 import           Control.Monad                   (forM,forM_)
 import qualified Data.ByteString.Char8  as B
+import           Data.Default
 import qualified Data.IntMap            as IM
 import           Data.List
 import qualified Data.Map               as M
 import           Data.Maybe                      (fromJust,isNothing)
+import           Data.Monoid                     ((<>))
 import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import           Data.Text.Read                  (decimal)
 import           Language.Java          as J
+import           Options.Applicative
 import           System.Environment              (getEnv)
 --
 import           Pipeline.Source.NewsAPI.Article
@@ -36,6 +40,21 @@ data DB = DB { _wordDB :: WordNetDB
              , _propDB :: RoleSetDB
              , _predDB :: M.Map Text [LinkNet]
              }
+
+data NLPPOption = NLPPOption { textPath       :: FilePath
+                             , dbWordNetPath  :: FilePath
+                             , dbPropBankPath :: FilePath
+                             , dbPredMatPath  :: FilePath
+                             } deriving Show
+
+pOptions :: Parser NLPPOption
+pOptions = NLPPOption <$> strOption (long "text" <> short 't' <> help "Path storing text files")
+                      <*> strOption (long "word" <> short 'w' <> help "WordNet DB Path")
+                      <*> strOption (long "prop" <> short 'p' <> help "PropBank DB Path")
+                      <*> strOption (long "pred" <> short 'm' <> help "Predicate Matrix DB Path")
+
+progOption :: ParserInfo NLPPOption
+progOption = info pOptions (fullDesc <> progDesc "NLP-Pipeline")
 
 getPSents :: Text
           -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
