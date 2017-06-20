@@ -11,7 +11,6 @@
 module Pipeline.Util where
 
 import           Control.Lens
-import           Control.Monad                    (join)
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEither)
@@ -21,21 +20,18 @@ import           Data.Discrimination              (outer)
 import           Data.Discrimination.Grouping     (hashing)
 import           Data.Function                    (on)
 import           Data.List                        (sortBy)
-import           Data.Maybe                       (catMaybes, fromJust, isJust)
+import           Data.Maybe                       (fromJust, isJust)
 import           Data.Monoid
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
-import qualified Data.Text.Lazy             as TL
-import qualified Data.Text.Lazy.Encoding    as TLE
 import qualified Data.Text.IO               as TIO
 import           Data.Time.Calendar               (fromGregorian,Day)
 import           Data.Time.Format                 (defaultTimeLocale, formatTime)
-import           Data.Time.Clock                  (getCurrentTime,UTCTime(..))
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
 import           System.FilePath                  (takeFileName)
-import           Text.ProtocolBuffers.Basic (Utf8,utf8)
+import           Text.ProtocolBuffers.Basic (Utf8)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           CoreNLP.Simple

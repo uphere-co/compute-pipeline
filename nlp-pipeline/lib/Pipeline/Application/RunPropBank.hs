@@ -4,7 +4,7 @@
 
 module Pipeline.Application.RunPropBank where
 
-import           Control.Lens                    ((^.))
+import           Control.Lens                    ((^.),_1,_2,_3)
 import           Control.Monad                   (forM)
 import qualified Data.ByteString.Char8    as B
 import qualified Data.IntMap              as IM
@@ -104,15 +104,17 @@ runSentenceProcess predmat psent = do
       Nothing -> return $ WordWSD { word = convertTokenToText t
                                   , predicate = Nothing }
       Just v  -> return $ WordWSD { word = convertTokenToText t
-                                  , predicate = Just (PredR { lemma = (take2 v)
-                                                            , ili = (take1 v)
-                                                            , prop = (take3 v) })
+                                  , predicate = Just (PredR { lemma = v^._2
+                                                            , ili   = v^._1
+                                                            , prop  = v^._3 })
                                   }
   return result
 
+{- 
 take1 (a,_,_) = a
 take2 (_,b,_) = b
 take3 (_,_,c) = c
+-}
 
 -- (Word, (ILI, Lemma, [RoleSet]))
 
