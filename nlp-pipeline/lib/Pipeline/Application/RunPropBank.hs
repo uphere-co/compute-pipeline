@@ -16,18 +16,20 @@ import qualified Data.Text              as T
 import           Language.Java          as J
 import           System.Environment              (getEnv)
 --
+import           CoreNLP.Proto.CoreNLPProtos.Sentence
+import           CoreNLP.Simple                  (annotate,prepare)
+import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
+import           CoreNLP.Simple.Type.Simplified
+import           CoreNLP.Simple.Util
+--
+import           PM.Type
+import           PropBank
+import           WordNet.Query                   (WordNetDB)
+--
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
-import           CoreNLP.Simple.Type.Simplified
-import           CoreNLP.Proto.CoreNLPProtos.Sentence
-import           CoreNLP.Simple                  (prepare)
-import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
---
-import           PM.Type
-import           WordNet.Query                   (WordNetDB)
-import           CoreNLP.Simple                  (annotate)
-import           PropBank
+
 
 data DB = DB { _wordDB :: WordNetDB
              , _propDB :: RoleSetDB

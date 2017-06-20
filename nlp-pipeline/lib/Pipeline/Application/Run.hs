@@ -12,19 +12,21 @@ import           Data.Text.Read                  (decimal)
 import           Language.Java          as J
 import           System.Environment              (getEnv)
 --
+import           CoreNLP.Simple                  (annotate,prepare)
+import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
+import           CoreNLP.Simple.Util
+import           PropBank
+import           WordNet.Type
+--
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
---
-import           WordNet.Type
 
-import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
-import           CoreNLP.Simple                  (annotate,prepare)
-import           PropBank
 
 findSubstring :: Eq a => [a] -> [a] -> Maybe Int
 findSubstring pat str = findIndex (isPrefixOf pat) (tails str) 
+
 
 run :: IO ()
 run = do

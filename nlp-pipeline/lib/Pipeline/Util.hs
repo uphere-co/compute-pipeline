@@ -41,6 +41,7 @@ import           Text.ProtocolBuffers.WireMessage (messageGet)
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 import           CoreNLP.Simple.Type.Simplified
+import           CoreNLP.Simple.Util
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.CoreNLPProtos.Timex     as Tmx
@@ -202,11 +203,6 @@ myaction = do
   -- (r1, r2) <- processDoc ann
 
 --  return ()
-
-getDoc :: Text -> IO Document
-getDoc txt = do
-  day <- fmap utctDay getCurrentTime
-  return $ Document txt day
 
 mkUkbInput :: [Token] -> [(Text,Maybe POS)]
 mkUkbInput r2 = filter (\(_,y) -> isJust y) $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)

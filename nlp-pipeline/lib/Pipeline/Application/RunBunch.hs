@@ -18,24 +18,27 @@ import           Data.Text.Read                  (decimal)
 import           Language.Java          as J
 import           System.Environment              (getEnv)
 --
+import           CoreNLP.Simple.Type.Simplified
+import           CoreNLP.Proto.CoreNLPProtos.Sentence
+import           CoreNLP.Simple                  (annotate,prepare)
+import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
+import           CoreNLP.Simple.Util
+import           PM.Type
+import           PropBank
+import           WordNet.Type
+import           WordNet.Query                   (WordNetDB)
+--
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
-import           CoreNLP.Simple.Type.Simplified
-import           CoreNLP.Proto.CoreNLPProtos.Sentence
---
-import           PM.Type
-import           WordNet.Type
-import           WordNet.Query                   (WordNetDB)
-import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
-import           CoreNLP.Simple                  (annotate,prepare)
-import           PropBank
+
 
 data DB = DB { _wordDB :: WordNetDB
              , _propDB :: RoleSetDB
              , _predDB :: M.Map Text [LinkNet]
              }
+
 
 getPSents :: Text
           -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -54,6 +57,7 @@ getPB db pp = do
   flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
   result <- forM (take 1 flist) $ \f -> runProcess f db pp
   return result
+
   
 runPB :: IO ()
 runPB = do
@@ -65,12 +69,14 @@ runPB = do
     forM_ (take 10000 flist) $ \f -> runProcess f db pp
   putStrLn "Program is finished!"
 
+
 getDB :: IO DB
 getDB = do
   worddb  <- loadDB "/data/groups/uphere/data/NLP/dict"
   propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
   predmat <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
   return $ DB worddb propdb predmat
+
 
 runProcess :: FilePath
            -> DB
