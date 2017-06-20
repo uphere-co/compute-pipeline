@@ -1,13 +1,14 @@
-{ pkgs ? import <nixpkgs> {}
-, fetchfin ? <fetchfin>
-, nlp-types ? <nlp-types>
-, textview ? <textview>
+{ pkgs               ? import <nixpkgs> {}
 , uphere-nix-overlay ? <uphere-nix-overlay>
-, HCoreNLP ? <HCoreNLP>
-, HWordNet ? <HWordNet>
-, HUKB ? <HUKB>
-, PropBank ? <PropBank>
-, wiki-ner ? <wiki-ner>
+, fetchfin           ? <fetchfin>
+, HCoreNLP           ? <HCoreNLP>
+, HUKB               ? <HUKB>
+, HWordNet           ? <HWordNet>
+, nlp-types          ? <nlp-types>
+, predicate-matrix   ? <predicate-matrix>
+, PropBank           ? <PropBank>
+, wiki-ner           ? <wiki-ner>
+, textview           ? <textview>
 }:
 
 with pkgs;
@@ -27,7 +28,7 @@ let
       "HCoreNLP" = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
       "HCoreNLP-Proto" = self.callPackage (import (HCoreNLP + "/HCoreNLP-Proto")) {};       
       "HWordNet" = self.callPackage (import HWordNet) {};
-      "predicate-matrix" = self.callPackage ../predicate_matrix {};
+      "predicate-matrix" = self.callPackage (import predicate-matrix) {};
       "PropBank" = self.callPackage (import PropBank) {};
       "wiki-ner" = self.callPackage (import wiki-ner) {};
   };

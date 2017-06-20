@@ -23,7 +23,7 @@ import           CoreNLP.Proto.CoreNLPProtos.Sentence
 import           CoreNLP.Simple                  (annotate,prepare)
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple.Util
-import           PM.Type
+import qualified PredicateMatrix.Type   as PM
 import           PropBank
 import           WordNet.Type
 import           WordNet.Query                   (WordNetDB)
@@ -36,7 +36,7 @@ import           Pipeline.Run
 
 data DB = DB { _wordDB :: WordNetDB
              , _propDB :: RoleSetDB
-             , _predDB :: M.Map Text [LinkNet]
+             , _predDB :: M.Map Text [PM.LinkNet]
              }
 
 
@@ -124,7 +124,7 @@ runProcess f db pp = do
   return $ (txt,result)
 
 
-runSentenceProcess :: M.Map Text [LinkNet]
+runSentenceProcess :: M.Map Text [PM.LinkNet]
                    -> CoreNLP.Proto.CoreNLPProtos.Sentence.Sentence
                    -> IO ()
 runSentenceProcess predmat psent = do
@@ -143,7 +143,7 @@ runSentenceProcess predmat psent = do
   
   let ordtok = zip [1..] (getTKTokens psent)
       wsd' = map (\(a,_,c,d) -> ((read $ drop 1 (B.unpack a)) :: Int,(T.pack (B.unpack c),T.pack (B.unpack d)))) wsdlst
-      k a = if (isNothing (getQueryPM a predmat)) then Nothing else Just (nub $ map (\x -> x ^. propField.lpbRoleset) (fromJust $ getQueryPM a predmat))
+      k a = if (isNothing (getQueryPM a predmat)) then Nothing else Just (nub $ map (\x -> x ^. PM.propField . PM.lpbRoleset) (fromJust $ getQueryPM a predmat))
       wsd = IM.fromList $ map (\(i,(a,b)) -> (i,(a,b,k a))) wsd'
 
   pred' <- forM ordtok $ \(i,t) -> do

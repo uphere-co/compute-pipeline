@@ -6,14 +6,14 @@ module Pipeline.Application.RunPropBank where
 
 import           Control.Lens                    ((^.))
 import           Control.Monad                   (forM)
-import qualified Data.ByteString.Char8  as B
-import qualified Data.IntMap            as IM
+import qualified Data.ByteString.Char8    as B
+import qualified Data.IntMap              as IM
 import           Data.List
-import qualified Data.Map               as M
+import qualified Data.Map                 as M
 import           Data.Maybe                      (fromJust,isNothing)
 import           Data.Text                       (Text)
-import qualified Data.Text              as T
-import           Language.Java          as J
+import qualified Data.Text                as T
+import           Language.Java            as J
 import           System.Environment              (getEnv)
 --
 import           CoreNLP.Proto.CoreNLPProtos.Sentence
@@ -21,8 +21,7 @@ import           CoreNLP.Simple                  (annotate,prepare)
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
---
-import           PM.Type
+import qualified PredicateMatrix.Type     as PM
 import           PropBank
 import           WordNet.Query                   (WordNetDB)
 --
@@ -33,7 +32,7 @@ import           Pipeline.Run
 
 data DB = DB { _wordDB :: WordNetDB
              , _propDB :: RoleSetDB
-             , _predDB :: M.Map Text [LinkNet]
+             , _predDB :: M.Map Text [PM.LinkNet]
              }
 
 
@@ -83,7 +82,7 @@ runProcess txt db pp = do
 
   return result
 
-runSentenceProcess :: M.Map Text [LinkNet]
+runSentenceProcess :: M.Map Text [PM.LinkNet]
                    -> CoreNLP.Proto.CoreNLPProtos.Sentence.Sentence
                    -> IO [WordWSD]
 runSentenceProcess predmat psent = do
@@ -97,7 +96,7 @@ runSentenceProcess predmat psent = do
 
   let ordtok = zip [1..] (getTKTokens psent)
       wsd' = map (\(a,_,c,d) -> ((read $ drop 1 (B.unpack a)) :: Int,(T.pack (B.unpack c),T.pack (B.unpack d)))) wsdlst
-      k a = if (isNothing (getQueryPM a predmat)) then Nothing else Just (nub $ map (\x -> x ^. propField.lpbRoleset) (fromJust $ getQueryPM a predmat))
+      k a = if (isNothing (getQueryPM a predmat)) then Nothing else Just (nub $ map (\x -> x ^. PM.propField. PM.lpbRoleset) (fromJust $ getQueryPM a predmat))
       wsd = IM.fromList $ map (\(i,(a,b)) -> (i,(a,b,k a))) wsd'
 
   result <- forM ordtok $ \(i,t) -> do
