@@ -178,26 +178,6 @@ simpleMap p = case p of
   _    -> Nothing
 
 
-cutf8' :: Utf8 -> Text
-cutf8' = TL.toStrict . TLE.decodeUtf8 . utf8 
-
-convertSentence :: D.Document -> S.Sentence -> Maybe Sentence
-convertSentence _ s = do
-  i <- fromIntegral <$> s^.S.sentenceIndex
-  b <- fromIntegral <$> join (firstOf (S.token . traverse . TK.beginChar) s)
-  e <- fromIntegral <$> join (lastOf  (S.token . traverse . TK.endChar) s)
-  return (Sentence i (b,e) 
-            (fromIntegral (s^.S.tokenOffsetBegin),fromIntegral (s^.S.tokenOffsetEnd)))
-
-convertToken :: TK.Token -> Maybe Token
-convertToken t = do
-  (b',e') <- (,) <$> t^.TK.tokenBeginIndex <*> t^.TK.tokenEndIndex
-  let (b,e) = (fromIntegral b',fromIntegral e')
-  w <- cutf8' <$> (t^.TK.originalText)
-  p <- identifyPOS . cutf8' <$> (t^.TK.pos)
-  l <- cutf8' <$> (t^.TK.lemma)
-  return (Token (b,e) w p l)
-
 
 processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([Sentence], [Token])
 processDoc ann = do
@@ -247,48 +227,6 @@ mkUkbTextInput' r = let ptow p = if (p == POS_N) then "#n" else if (p == POS_R) 
                         rt = T.intercalate " " $ map (\(i,(t,mp)) -> mkTaggedWord i t (fromJust mp)) (filter (\(_,(_,mp)) -> isJust mp) r)
                     in rt
 
-getProtoSents :: D.Document -> [S.Sentence]
-getProtoSents doc = toListOf (D.sentence . traverse) doc
-
-convertProtoSents :: [S.Sentence] -> D.Document -> [Sentence]
-convertProtoSents psents doc =
-  let Just newsents = mapM (convertSentence doc) psents
-  in newsents
-
-getSents :: D.Document -> [Sentence]
-getSents doc = convertProtoSents (getProtoSents doc) doc
-
-convertSenToText :: S.Sentence -> Text
-convertSenToText s = let tokens = map (\t -> cutf8' <$> (t^.TK.originalText)) $ getTKTokens s
-                     in T.intercalate " " $ catMaybes tokens
-
-convertTokenToText :: TK.Token -> Text
-convertTokenToText tk = fromJust (cutf8' <$> (tk^.TK.originalText))
-
-
--- Get tokens from ProtoSents.
-getAllTokens :: [S.Sentence] -> [Token]
-getAllTokens psents =
-  let Just (toklst :: [Token]) = mapM convertToken . concatMap (toListOf (S.token . traverse)) $ psents
-  in toklst
-
-getTKTokens :: S.Sentence -> [TK.Token]
-getTKTokens psent = 
-  let toklst = (toListOf (S.token . traverse)) $ psent
-  in toklst
-
-getTokens :: S.Sentence -> Maybe [Token]
-getTokens psent =
-  let toklst = mapM convertToken . (toListOf (S.token . traverse)) $ psent
-  in toklst
-
-getProtoDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO D.Document
-getProtoDoc ann = do
-  bstr <- serializeDoc ann
-  let lbstr = BL.fromStrict bstr
-  case (messageGet lbstr :: Either String (D.Document,BL.ByteString)) of
-    Left  err     -> error err
-    Right (doc,_) -> return doc
 
 getTemporal :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ()
 getTemporal ann = do
