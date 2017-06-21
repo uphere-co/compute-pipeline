@@ -111,7 +111,7 @@ main = do
   cnts <- getDirectoryContents dir
   let cnts' = (filter (\x -> x /= "." && x /= "..")) cnts
   lst <- flip mapM cnts' $ \fp -> getTimeTitleDesc (dir </> fp)
-  let ordered = take 10 $ sortBy (compare `on` (^._1)) $ catMaybes lst 
+  let ordered = sortBy (compare `on` (^._1)) $ catMaybes lst 
 
   let propframedir = "/scratch/wavewave/MASC/Propbank/Propbank-orig/framefiles"
   propdb <- constructFrameDB propframedir
