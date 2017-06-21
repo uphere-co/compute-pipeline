@@ -1,0 +1,6 @@
+{ "configFilePath" : ""
+, "textPath"       : "/data/groups/uphere/intrinio/Articles/bloomberg"
+, "dbWordNetPath"  : "/data/groups/uphere/data/NLP/dict"
+, "dbPropBankPath" : "/data/groups/uphere/data/NLP/frames"
+, "dbPredMatPath"  : "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+}

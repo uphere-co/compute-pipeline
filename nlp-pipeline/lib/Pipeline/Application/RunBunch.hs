@@ -1,21 +1,31 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE TemplateHaskell #-}
 
 module Pipeline.Application.RunBunch where
 
+import           Control.Applicative             ((<*>))
 import           Control.Lens                    ((^.))
+import           Control.Lens.TH
 import           Control.Monad                   (forM,forM_)
+import           Data.Aeson                      (FromJSON,ToJSON)
+import           Data.Aeson.Types                (fieldLabelModifier)
+import qualified Data.Aeson             as A
 import qualified Data.ByteString.Char8  as B
+import qualified Data.ByteString.Lazy   as BL
 import qualified Data.IntMap            as IM
 import           Data.List
 import qualified Data.Map               as M
 import           Data.Maybe                      (fromJust,isNothing)
+import           Data.Monoid                     ((<>))
 import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import           Data.Text.Read                  (decimal)
+import           GHC.Generics
 import           Language.Java          as J
+import           Options.Applicative
 import           System.Environment              (getEnv)
 --
 import           CoreNLP.Simple.Type.Simplified
@@ -39,6 +49,33 @@ data DB = DB { _wordDB :: WordNetDB
              , _predDB :: M.Map Text [PM.LinkNet]
              }
 
+makeLenses ''DB
+
+data NLPPOption = NLPPOption { _configFilePath :: FilePath
+                             , _textPath       :: FilePath
+                             , _dbWordNetPath  :: FilePath
+                             , _dbPropBankPath :: FilePath
+                             , _dbPredMatPath  :: FilePath
+                             } deriving (Generic,Show)
+
+makeLenses ''NLPPOption
+
+instance ToJSON NLPPOption where
+  toJSON = A.genericToJSON A.defaultOptions { fieldLabelModifier = drop 1 }
+    
+instance FromJSON NLPPOption where
+  parseJSON = A.genericParseJSON A.defaultOptions { fieldLabelModifier = drop 1 }
+
+pOptions :: Parser NLPPOption
+pOptions = NLPPOption <$> strOption (long "cfg" <> short 'c' <> help "Configuration file path")
+                      <*> strOption (long "text" <> short 't' <> value "" <> help "Path storing text files")
+                      <*> strOption (long "word" <> short 'w' <> value "" <> help "WordNet DB Path")
+                      <*> strOption (long "prop" <> short 'p' <> value "" <> help "PropBank DB Path")
+                      <*> strOption (long "pred" <> short 'm' <> value "" <> help "Predicate Matrix DB Path")
+
+nlppOption :: ParserInfo NLPPOption
+nlppOption = info pOptions (fullDesc <> progDesc "NLP-Pipeline")
+
 
 getPSents :: Text
           -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -49,12 +86,12 @@ getPSents txt pp = do
   pdoc <- getProtoDoc ann
   return $ getProtoSents pdoc
 
-
-getPB :: DB
+getPB :: FilePath
+      -> DB
       -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
       -> IO [(Text, [[(Text, Maybe Int)]])]
-getPB db pp = do
-  flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
+getPB fp db pp = do
+  flist <- getFileList fp
   result <- forM (take 1 flist) $ \f -> runProcess f db pp
   return result
 
@@ -62,19 +99,30 @@ getPB db pp = do
 runPB :: IO ()
 runPB = do
   clspath <- getEnv "CLASSPATH"
-  flist   <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
-  db <- getDB
+
+  opt <- execParser nlppOption
+  
+  def' <- BL.readFile (opt ^. configFilePath)
+
+  let (def :: NLPPOption) = fromJust $ A.decode def'
+      tfp = if (opt ^. textPath /= "") then (opt ^. textPath) else (def ^. textPath)
+      wdb = if (opt ^. dbWordNetPath /= "") then (opt ^. dbWordNetPath) else (def ^. dbWordNetPath)
+      pdb = if (opt ^. dbPropBankPath /= "") then (opt ^. dbPropBankPath) else (def ^. dbPropBankPath)
+      mdb = if (opt ^. dbPredMatPath /= "") then (opt ^. dbPredMatPath) else (def ^. dbPredMatPath)
+  
+  flist   <- getFileList tfp
+  db <- getDB (wdb,pdb,mdb)
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True True False False False)
     forM_ (take 10000 flist) $ \f -> runProcess f db pp
   putStrLn "Program is finished!"
 
 
-getDB :: IO DB
-getDB = do
-  worddb  <- loadDB "/data/groups/uphere/data/NLP/dict"
-  propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
-  predmat <- loadPM "/data/groups/uphere/data/NLP/PredicateMatrix.v1.3.txt"
+getDB :: (FilePath,FilePath,FilePath) -> IO DB
+getDB (wdb,pdb,mdb) = do
+  worddb  <- loadDB wdb
+  propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB pdb
+  predmat <- loadPM mdb
   return $ DB worddb propdb predmat
 
 
