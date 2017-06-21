@@ -12,7 +12,7 @@ import           Data.Default
 import qualified Data.HashMap.Strict   as HM
 import           Data.Function                (on)
 import           Data.List                    (foldl',sort,sortBy)
-import           Data.Maybe                   (catMaybes,mapMaybe)
+import           Data.Maybe                   (catMaybes,listToMaybe,mapMaybe)
 import           Data.Monoid                  ((<>))
 import           Data.Text                    (Text)
 import qualified Data.Text.IO          as TIO
@@ -26,14 +26,30 @@ import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import           CoreNLP.Simple
+import           CoreNLP.Simple.Convert                      (decodeToPennTree)
 import           CoreNLP.Simple.Type
 import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
+import           NLP.Printer.PennTreebankII
 import           NLP.Type.PennTreebankII
-import           NewsAPI.Type (SourceArticles(..))
+import           NewsAPI.Type                                (SourceArticles(..))
 import           PropBank.Query
 
 
+
+
+runParser pp txt = do
+  doc <- getDoc txt
+  ann <- annotate pp doc
+  pdoc <- getProtoDoc ann
+  let psents = getProtoSents pdoc
+  
+      parsetrees = map (\x -> pure . decodeToPennTree =<< (x^.S.parseTree) ) psents
+      sents = map (convertSentence pdoc) psents
+  
+      tktokss = map (getTKTokens) psents
+      tokss = map (mapMaybe convertToken') tktokss
+  return (sents,tokss,parsetrees)
 
 printFormat (time,title,desc) = do
   TIO.putStrLn time
@@ -79,13 +95,7 @@ extractVerbsFromText :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline"
                      -> IO [Token]
 extractVerbsFromText pp txt = do
   -- TIO.putStrLn txt
-  doc <- getDoc txt
-  ann <- annotate pp doc
-  pdoc <- getProtoDoc ann
-  let psents = getProtoSents pdoc
-      sents = map (convertSentence pdoc) psents
-      tktokss = map (getTKTokens) psents
-      tokss = map (mapMaybe convertToken') tktokss
+  (sents,tokss,_) <- runParser pp txt
   -- mapM_ print tokss
   return $ concatMap (filter (\t -> isVerb (t^.token_pos))) tokss
   -- mapM_ (mapM_ (putStrLn.formatLemmaPOS)
@@ -105,32 +115,56 @@ printEachVerb preddb (lemma,n) = do
   putStrLn "---------------------------------------------------------------"
 
 
--- doesContainVerb :: Text -> Text -> IO Bool
-doesContainVerb pp txt lemma = do 
-  doc <- getDoc txt
-  ann <- annotate pp doc
-  pdoc <- getProtoDoc ann
-  let psents = getProtoSents pdoc
-      sents = map (convertSentence pdoc) psents
-      tktokss = map (getTKTokens) psents
-      toks = concatMap (mapMaybe convertToken') tktokss
-  -- mapM_ print tokss
+doesContainVerb pp txt lemma = do
+  (sents,tokss,_) <- runParser pp txt
+  let toks = concat tokss
   (return . not . null . filter (\t -> isVerb (t^.token_pos) && t^.token_lemma == lemma)) toks
-  -- mapM_ (mapM_ (putStrLn.formatLemmaPOS)
 
 
+verbStatisticsWithPropBank pp preddb lst = do
+    toks <- concat <$> mapM (extractVerbs pp) lst
+    let acc = foldl' (flip (HM.alter (\case { Nothing -> Just 1; Just n -> Just (n+1)}))) HM.empty $
+                (map (^.token_lemma) toks)
+    (mapM_ (printEachVerb preddb) . sortBy (flip compare `on` snd) . HM.toList) acc
+
+
+sentStructure pp txt = do
+  (sents,tokss,mptrs) <- runParser pp txt
+  let ptrs = catMaybes mptrs 
+  mapM_ (TIO.putStrLn . prettyPrint 0) ptrs
+  let adtrs = map getADTPennTree ptrs
+  mapM_ print adtrs
+  mapM_ (print . parseTreeVerb) adtrs
+
+
+parseTreeVerb :: PennTreeGen ChunkTag (POSTag, Text) -> Maybe (PennTreeGen Text Text)
+parseTreeVerb = fmap squash . verbTree  --  fmap squash . verbTree 
+  where
+    verbTree tr@(PL (pos,txt)) = if isVerb pos then Just (PL txt) else Nothing 
+    verbTree tr@(PN _ xs) = let xs' = mapMaybe verbTree xs
+                            in case xs' of
+                                 []   -> Nothing
+                                 y:ys -> case y of
+                                           PN v _ -> Just (PN v (y:ys))
+                                           PL v   -> case ys of
+                                                       [] -> Just (PL v)
+                                                       _ -> Just (PN v ys)
+    -- squash
+
+    
 main :: IO ()
 main = do
   let dir = "/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg"
   cnts <- getDirectoryContents dir
   let cnts' = (filter (\x -> x /= "." && x /= "..")) cnts
   lst <- flip mapM cnts' $ \fp -> getTimeTitleDesc (dir </> fp)
-  let ordered = sortBy (compare `on` (^._1)) $ catMaybes lst 
+  let ordered = take 10 $ sortBy (compare `on` (^._1)) $ catMaybes lst 
 
+  {- 
   let propframedir = "/scratch/wavewave/MASC/Propbank/Propbank-orig/framefiles"
   propdb <- constructFrameDB propframedir
   let preddb = constructPredicateDB propdb
-
+  -}
  
    
   clspath <- getEnv "CLASSPATH"
@@ -139,12 +173,11 @@ main = do
                        . (words2sentences .~ True)
                        . (postagger .~ True)
                        . (lemma .~ True)
+                       . (constituency .~ True)
                   )
-    txts <- filterM (\txt -> doesContainVerb pp txt "run") $ map (^._3) ordered
-    mapM_ (\t -> TIO.putStrLn t >> TIO.putStrLn "") txts
-{-      
-    toks <- concat <$> mapM (extractVerbs pp) ordered
-    let acc = foldl' (flip (HM.alter (\case { Nothing -> Just 1; Just n -> Just (n+1)}))) HM.empty $
-                (map (^.token_lemma) toks)
-    (mapM_ (printEachVerb preddb) . sortBy (flip compare `on` snd) . HM.toList) acc
--}
+    -- txts <- filterM (\txt -> doesContainVerb pp txt "run") $ map (^._3) ordered
+    -- mapM_ (\t -> TIO.putStrLn t >> TIO.putStrLn "") txts
+      
+    -- verbStatisticsWithPropBank pp preddb ordered
+    mapM_ (sentStructure pp . (^._3) ) ordered
+     
