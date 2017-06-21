@@ -26,7 +26,7 @@ import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import           CoreNLP.Simple
-import           CoreNLP.Simple.Convert                      (decodeToPennTree)
+import           CoreNLP.Simple.Convert                      (cutf8,decodeToPennTree,lemmatize,mkLemmaMap)
 import           CoreNLP.Simple.Type
 import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
@@ -49,7 +49,7 @@ runParser pp txt = do
   
       tktokss = map (getTKTokens) psents
       tokss = map (mapMaybe convertToken') tktokss
-  return (sents,tokss,parsetrees)
+  return (psents,sents,tokss,parsetrees)
 
 printFormat (time,title,desc) = do
   TIO.putStrLn time
@@ -71,9 +71,9 @@ convertToken' :: TK.Token -> Maybe Token
 convertToken' t = do
   (b',e') <- (,) <$> t^.TK.beginChar <*> t^.TK.endChar
   let (b,e) = (fromIntegral b',fromIntegral e')
-  w <- cutf8' <$> (t^.TK.originalText)
-  p <- identifyPOS . cutf8' <$> (t^.TK.pos)
-  l <- cutf8' <$> (t^.TK.lemma)
+  w <- cutf8 <$> (t^.TK.originalText)
+  p <- identifyPOS . cutf8 <$> (t^.TK.pos)
+  l <- cutf8 <$> (t^.TK.lemma)
   return (Token (b,e) w p l)
 
 
@@ -95,7 +95,7 @@ extractVerbsFromText :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline"
                      -> IO [Token]
 extractVerbsFromText pp txt = do
   -- TIO.putStrLn txt
-  (sents,tokss,_) <- runParser pp txt
+  (_,sents,tokss,_) <- runParser pp txt
   -- mapM_ print tokss
   return $ concatMap (filter (\t -> isVerb (t^.token_pos))) tokss
   -- mapM_ (mapM_ (putStrLn.formatLemmaPOS)
@@ -116,7 +116,7 @@ printEachVerb preddb (lemma,n) = do
 
 
 doesContainVerb pp txt lemma = do
-  (sents,tokss,_) <- runParser pp txt
+  (_,sents,tokss,_) <- runParser pp txt
   let toks = concat tokss
   (return . not . null . filter (\t -> isVerb (t^.token_pos) && t^.token_lemma == lemma)) toks
 
@@ -129,18 +129,22 @@ verbStatisticsWithPropBank pp preddb lst = do
 
 
 sentStructure pp txt = do
-  (sents,tokss,mptrs) <- runParser pp txt
-  let ptrs = catMaybes mptrs 
-  mapM_ (TIO.putStrLn . prettyPrint 0) ptrs
-  let adtrs = map getADTPennTree ptrs
-  mapM_ print adtrs
-  mapM_ (print . parseTreeVerb) adtrs
+  (psents,sents,tokss,mptrs) <- runParser pp txt
+  flip mapM_ (zip3 psents sents mptrs) $ \(psent,sent,mptr) -> do
+    flip mapM_ mptr $ \ptr -> do
+      (TIO.putStrLn . prettyPrint 0) ptr
+      let itr = mkPennTreeIdx ptr
+          lmap= mkLemmaMap psent
+          iltr = lemmatize lmap itr
+      (print . parseTreeVerb) iltr
+      
 
+type Lemma = Text
 
-parseTreeVerb :: PennTreeGen ChunkTag (POSTag, Text) -> Maybe (PennTreeGen Text Text)
+parseTreeVerb :: PennTreeIdxG ChunkTag (POSTag, (Text,Lemma)) -> Maybe (PennTreeGen (Int,Lemma) (Int,Lemma))
 parseTreeVerb = fmap squash . verbTree  --  fmap squash . verbTree 
   where
-    verbTree tr@(PL (pos,txt)) = if isVerb pos then Just (PL txt) else Nothing 
+    verbTree tr@(PL (i,(pos,txt2))) = if isVerb pos then Just (PL (i,txt2^._2)) else Nothing 
     verbTree tr@(PN _ xs) = let xs' = mapMaybe verbTree xs
                             in case xs' of
                                  []   -> Nothing
@@ -149,7 +153,11 @@ parseTreeVerb = fmap squash . verbTree  --  fmap squash . verbTree
                                            PL v   -> case ys of
                                                        [] -> Just (PL v)
                                                        _ -> Just (PN v ys)
-    -- squash
+
+    squash (PN y [z@(PN w ws)]) = if y == w then squash z else PN y [squash z]
+    squash (PN y [z@(PL w)   ]) = if y == w then PL w     else PN y [squash z]    
+    squash (PN y ys)            = PN y (map squash ys)
+    squash x                    = x
 
     
 main :: IO ()
