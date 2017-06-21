@@ -5,6 +5,7 @@
 module Main where
 
 import           Control.Lens
+import           Control.Monad                (filterM)
 import           Data.Aeson
 import qualified Data.ByteString.Char8 as B
 import           Data.Default
@@ -104,6 +105,19 @@ printEachVerb preddb (lemma,n) = do
   putStrLn "---------------------------------------------------------------"
 
 
+-- doesContainVerb :: Text -> Text -> IO Bool
+doesContainVerb pp txt lemma = do 
+  doc <- getDoc txt
+  ann <- annotate pp doc
+  pdoc <- getProtoDoc ann
+  let psents = getProtoSents pdoc
+      sents = map (convertSentence pdoc) psents
+      tktokss = map (getTKTokens) psents
+      toks = concatMap (mapMaybe convertToken') tktokss
+  -- mapM_ print tokss
+  (return . not . null . filter (\t -> isVerb (t^.token_pos) && t^.token_lemma == lemma)) toks
+  -- mapM_ (mapM_ (putStrLn.formatLemmaPOS)
+
 
 main :: IO ()
 main = do
@@ -126,8 +140,11 @@ main = do
                        . (postagger .~ True)
                        . (lemma .~ True)
                   )
+    txts <- filterM (\txt -> doesContainVerb pp txt "run") $ map (^._3) ordered
+    mapM_ (\t -> TIO.putStrLn t >> TIO.putStrLn "") txts
+{-      
     toks <- concat <$> mapM (extractVerbs pp) ordered
     let acc = foldl' (flip (HM.alter (\case { Nothing -> Just 1; Just n -> Just (n+1)}))) HM.empty $
                 (map (^.token_lemma) toks)
     (mapM_ (printEachVerb preddb) . sortBy (flip compare `on` snd) . HM.toList) acc
-  
+-}
