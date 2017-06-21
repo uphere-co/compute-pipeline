@@ -1,7 +1,7 @@
 module Pipeline.Run.PredicateMatrix
 (
-  module PM.API.Query
+  module PredicateMatrix.Query.Old
 ) where
 
-import           PM.API.Query
+import           PredicateMatrix.Query.Old
 

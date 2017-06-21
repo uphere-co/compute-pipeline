@@ -28,23 +28,25 @@ import           Language.Java          as J
 import           Options.Applicative
 import           System.Environment              (getEnv)
 --
+import           CoreNLP.Simple.Type.Simplified
+import           CoreNLP.Proto.CoreNLPProtos.Sentence
+import           CoreNLP.Simple                  (annotate,prepare)
+import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
+import           CoreNLP.Simple.Util
+import qualified PredicateMatrix.Type   as PM
+import           PropBank
+import           WordNet.Type
+import           WordNet.Query                   (WordNetDB)
+--
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
-import           CoreNLP.Simple.Type.Simplified
-import           CoreNLP.Proto.CoreNLPProtos.Sentence
---
-import           PM.Type
-import           WordNet.Type
-import           WordNet.Query                   (WordNetDB)
-import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
-import           CoreNLP.Simple                  (annotate,prepare)
-import           PropBank
+
 
 data DB = DB { _wordDB :: WordNetDB
              , _propDB :: RoleSetDB
-             , _predDB :: M.Map Text [LinkNet]
+             , _predDB :: M.Map Text [PM.LinkNet]
              }
 
 makeLenses ''DB
@@ -74,6 +76,7 @@ pOptions = NLPPOption <$> strOption (long "cfg" <> short 'c' <> help "Configurat
 nlppOption :: ParserInfo NLPPOption
 nlppOption = info pOptions (fullDesc <> progDesc "NLP-Pipeline")
 
+
 getPSents :: Text
           -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
           -> IO [CoreNLP.Proto.CoreNLPProtos.Sentence.Sentence]
@@ -91,6 +94,7 @@ getPB fp db pp = do
   flist <- getFileList fp
   result <- forM (take 1 flist) $ \f -> runProcess f db pp
   return result
+
   
 runPB :: IO ()
 runPB = do
@@ -113,12 +117,14 @@ runPB = do
     forM_ (take 10000 flist) $ \f -> runProcess f db pp
   putStrLn "Program is finished!"
 
+
 getDB :: (FilePath,FilePath,FilePath) -> IO DB
 getDB (wdb,pdb,mdb) = do
   worddb  <- loadDB wdb
   propdb  <- fmap constructRoleSetDB $ constructPredicateDB <$> constructFrameDB pdb
   predmat <- loadPM mdb
   return $ DB worddb propdb predmat
+
 
 runProcess :: FilePath
            -> DB
@@ -166,7 +172,7 @@ runProcess f db pp = do
   return $ (txt,result)
 
 
-runSentenceProcess :: M.Map Text [LinkNet]
+runSentenceProcess :: M.Map Text [PM.LinkNet]
                    -> CoreNLP.Proto.CoreNLPProtos.Sentence.Sentence
                    -> IO ()
 runSentenceProcess predmat psent = do
@@ -185,7 +191,7 @@ runSentenceProcess predmat psent = do
   
   let ordtok = zip [1..] (getTKTokens psent)
       wsd' = map (\(a,_,c,d) -> ((read $ drop 1 (B.unpack a)) :: Int,(T.pack (B.unpack c),T.pack (B.unpack d)))) wsdlst
-      k a = if (isNothing (getQueryPM a predmat)) then Nothing else Just (nub $ map (\x -> x ^. propField.lpbRoleset) (fromJust $ getQueryPM a predmat))
+      k a = if (isNothing (getQueryPM a predmat)) then Nothing else Just (nub $ map (\x -> x ^. PM.propField . PM.lpbRoleset) (fromJust $ getQueryPM a predmat))
       wsd = IM.fromList $ map (\(i,(a,b)) -> (i,(a,b,k a))) wsd'
 
   pred' <- forM ordtok $ \(i,t) -> do

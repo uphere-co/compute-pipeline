@@ -13,6 +13,7 @@ import           HUKB.PPR
 --
 import           Pipeline.Util
 import           CoreNLP.Simple                  (annotate)
+import           CoreNLP.Simple.Util
 
 runPPR :: String -> IO ()
 runPPR txt = do
