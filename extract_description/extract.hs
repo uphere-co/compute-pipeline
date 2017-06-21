@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -57,13 +58,42 @@ convertToken' t = do
 
 
 formatLemmaPOS t = printf "%10s %5s" (t^.token_lemma) (show (t^.token_pos))
+
+extractVerbs :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+             -> (Text,Text,Text)
+             -> IO ()
+extractVerbs pp (_,title,desc) = do
+  extractVerbsFromText pp title
+  extractVerbsFromText pp desc
+
+extractVerbsFromText :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+                     -> Text
+                     -> IO ()
+extractVerbsFromText pp txt = do
+  putStrLn "======"
+  TIO.putStrLn txt
+  doc <- getDoc txt
+  ann <- annotate pp doc
+  pdoc <- getProtoDoc ann
+  -- print doc
+  -- print pdoc
+  let psents = getProtoSents pdoc
+      sents = map (convertSentence pdoc) psents
+      tktokss = map (getTKTokens) psents
+      tokss = map (mapMaybe convertToken') tktokss
+  --     tokens = getAllTokens psents
+  -- mapM_ print sents -- tokens
+  -- mapM_ print tktokss
+  mapM_ (mapM_ (putStrLn.formatLemmaPOS)
+               . filter (\t -> isVerb (t^.token_pos))) tokss
+-- mapM_ printFormat $ sortBy (compare `on` (^._1)) $ catMaybes lst 
+
   
 main :: IO ()
 main = do
-  
   let dir = "/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg"
   cnts <- getDirectoryContents dir
-  let cnts' = take 10 $ (filter (\x -> x /= "." && x /= "..")) cnts
+  let cnts' = (filter (\x -> x /= "." && x /= "..")) cnts
   lst <- flip mapM cnts' $ \fp -> getTimeTitleDesc (dir </> fp)
   let ordered = sortBy (compare `on` (^._1)) $ catMaybes lst 
 
@@ -75,19 +105,5 @@ main = do
                        . (postagger .~ True)
                        . (lemma .~ True)
                   )
-    let (_,title,desc) = head ordered
-    doc <- getDoc desc
-    ann <- annotate pp doc
-    pdoc <- getProtoDoc ann
-    print doc
-    print pdoc
-    let psents = getProtoSents pdoc
-        sents = map (convertSentence pdoc) psents
-        tktokss = map (getTKTokens) psents
-        tokss = map (mapMaybe convertToken') tktokss
-    --     tokens = getAllTokens psents
-    -- mapM_ print sents -- tokens
-    -- mapM_ print tktokss
-    mapM_ (mapM_ (putStrLn.formatLemmaPOS)
-                 . filter (\t -> isVerb (t^.token_pos))) tokss
-  -- mapM_ printFormat $ sortBy (compare `on` (^._1)) $ catMaybes lst 
+
+    mapM_ (extractVerbs pp) ordered
