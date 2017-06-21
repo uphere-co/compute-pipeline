@@ -15,8 +15,9 @@ import           Data.List                    (foldl',sort,sortBy)
 import           Data.Maybe                   (catMaybes,listToMaybe,mapMaybe)
 import           Data.Monoid                  ((<>))
 import           Data.Text                    (Text)
+import qualified Data.Text             as T
 import qualified Data.Text.IO          as TIO
-import           Language.Java           as J
+import           Language.Java         as J
 import           System.Directory
 import           System.Environment
 import           System.FilePath
@@ -79,6 +80,30 @@ convertToken' t = do
 
 formatLemmaPOS t = printf "%10s %5s" (t^.token_lemma) (show (t^.token_pos))
 
+formatHist :: (Text,Int) -> String
+formatHist (txt,n) = printf "%20s   %5d" txt n 
+
+
+formatPred :: (Text,Text) -> String
+formatPred (roleset,definition) = printf "                          %20s : %s" roleset definition
+
+
+formatTree :: Int -> PennTreeGen (Int,Lemma) (Int,Lemma) -> Text
+formatTree n (PN (i,l) xs) = T.replicate n " " <> l <> "\n" <> T.intercalate "\n" (map (formatTree (n+4)) xs)
+formatTree n (PL (i,l))    = T.replicate n " " <> l
+
+
+
+printEachVerb preddb (lemma,n) = do
+  putStrLn (formatHist (lemma,n))
+  let lst = lookupPredicate preddb lemma
+  mapM_ (putStrLn . formatPred) lst 
+  putStrLn "---------------------------------------------------------------"
+
+
+
+
+
 
 extractVerbs :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
              -> (Text,Text,Text)
@@ -101,19 +126,6 @@ extractVerbsFromText pp txt = do
   -- mapM_ (mapM_ (putStrLn.formatLemmaPOS)
 
 
-formatHist :: (Text,Int) -> String
-formatHist (txt,n) = printf "%20s   %5d" txt n 
-
-
-formatPred :: (Text,Text) -> String
-formatPred (roleset,definition) = printf "                          %20s : %s" roleset definition
-
-printEachVerb preddb (lemma,n) = do
-  putStrLn (formatHist (lemma,n))
-  let lst = lookupPredicate preddb lemma
-  mapM_ (putStrLn . formatPred) lst 
-  putStrLn "---------------------------------------------------------------"
-
 
 doesContainVerb pp txt lemma = do
   (_,sents,tokss,_) <- runParser pp txt
@@ -130,14 +142,21 @@ verbStatisticsWithPropBank pp preddb lst = do
 
 sentStructure pp txt = do
   (psents,sents,tokss,mptrs) <- runParser pp txt
+  TIO.putStrLn txt
+  putStrLn "---------------------------------------------------------------"
+  mapM_ (putStrLn . formatLemmaPOS) . concatMap (filter (\t -> isVerb (t^.token_pos))) $ tokss
+  putStrLn "---------------------------------------------------------------"
   flip mapM_ (zip3 psents sents mptrs) $ \(psent,sent,mptr) -> do
     flip mapM_ mptr $ \ptr -> do
-      (TIO.putStrLn . prettyPrint 0) ptr
       let itr = mkPennTreeIdx ptr
           lmap= mkLemmaMap psent
           iltr = lemmatize lmap itr
-      (print . parseTreeVerb) iltr
-      
+          ptv = parseTreeVerb iltr 
+      mapM_ (TIO.putStrLn . formatTree 0) ptv
+      putStrLn "---------------------------------------------------------------"
+      (TIO.putStrLn . prettyPrint 0) ptr
+      putStrLn "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-"
+
 
 type Lemma = Text
 
