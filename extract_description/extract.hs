@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -7,8 +8,9 @@ import           Control.Lens
 import           Data.Aeson
 import qualified Data.ByteString.Char8 as B
 import           Data.Default
+import qualified Data.HashMap.Strict   as HM
 import           Data.Function                (on)
-import           Data.List                    (sort,sortBy)
+import           Data.List                    (foldl',sort,sortBy)
 import           Data.Maybe                   (catMaybes,mapMaybe)
 import           Data.Monoid                  ((<>))
 import           Data.Text                    (Text)
@@ -28,6 +30,9 @@ import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
 import           NLP.Type.PennTreebankII
 import           NewsAPI.Type (SourceArticles(..))
+import           PropBank.Query
+
+
 
 printFormat (time,title,desc) = do
   TIO.putStrLn time
@@ -45,8 +50,6 @@ getTimeTitleDesc fp = do
     Right src -> return ((,,) <$> _publishedAt src <*> _title src <*> _description src)
 
 
-
-
 convertToken' :: TK.Token -> Maybe Token
 convertToken' t = do
   (b',e') <- (,) <$> t^.TK.beginChar <*> t^.TK.endChar
@@ -59,36 +62,49 @@ convertToken' t = do
 
 formatLemmaPOS t = printf "%10s %5s" (t^.token_lemma) (show (t^.token_pos))
 
+
 extractVerbs :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
              -> (Text,Text,Text)
-             -> IO ()
-extractVerbs pp (_,title,desc) = do
-  extractVerbsFromText pp title
+             -> IO [Token]
+extractVerbs pp (time,title,desc) = do
+  -- putStrLn "======"
+  -- TIO.putStrLn time  
+  -- extractVerbsFromText pp title
   extractVerbsFromText pp desc
+
 
 extractVerbsFromText :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                      -> Text
-                     -> IO ()
+                     -> IO [Token]
 extractVerbsFromText pp txt = do
-  putStrLn "======"
-  TIO.putStrLn txt
+  -- TIO.putStrLn txt
   doc <- getDoc txt
   ann <- annotate pp doc
   pdoc <- getProtoDoc ann
-  -- print doc
-  -- print pdoc
   let psents = getProtoSents pdoc
       sents = map (convertSentence pdoc) psents
       tktokss = map (getTKTokens) psents
       tokss = map (mapMaybe convertToken') tktokss
-  --     tokens = getAllTokens psents
-  -- mapM_ print sents -- tokens
-  -- mapM_ print tktokss
-  mapM_ (mapM_ (putStrLn.formatLemmaPOS)
-               . filter (\t -> isVerb (t^.token_pos))) tokss
--- mapM_ printFormat $ sortBy (compare `on` (^._1)) $ catMaybes lst 
+  -- mapM_ print tokss
+  return $ concatMap (filter (\t -> isVerb (t^.token_pos))) tokss
+  -- mapM_ (mapM_ (putStrLn.formatLemmaPOS)
 
-  
+
+formatHist :: (Text,Int) -> String
+formatHist (txt,n) = printf "%20s   %5d" txt n 
+
+
+formatPred :: (Text,Text) -> String
+formatPred (roleset,definition) = printf "                          %20s : %s" roleset definition
+
+printEachVerb preddb (lemma,n) = do
+  putStrLn (formatHist (lemma,n))
+  let lst = lookupPredicate preddb lemma
+  mapM_ (putStrLn . formatPred) lst 
+  putStrLn "---------------------------------------------------------------"
+
+
+
 main :: IO ()
 main = do
   let dir = "/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg"
@@ -97,7 +113,12 @@ main = do
   lst <- flip mapM cnts' $ \fp -> getTimeTitleDesc (dir </> fp)
   let ordered = sortBy (compare `on` (^._1)) $ catMaybes lst 
 
+  let propframedir = "/scratch/wavewave/MASC/Propbank/Propbank-orig/framefiles"
+  propdb <- constructFrameDB propframedir
+  let preddb = constructPredicateDB propdb
 
+ 
+   
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -105,5 +126,8 @@ main = do
                        . (postagger .~ True)
                        . (lemma .~ True)
                   )
-
-    mapM_ (extractVerbs pp) ordered
+    toks <- concat <$> mapM (extractVerbs pp) ordered
+    let acc = foldl' (flip (HM.alter (\case { Nothing -> Just 1; Just n -> Just (n+1)}))) HM.empty $
+                (map (^.token_lemma) toks)
+    (mapM_ (printEachVerb preddb) . sortBy (flip compare `on` snd) . HM.toList) acc
+  

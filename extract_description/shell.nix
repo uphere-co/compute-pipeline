@@ -55,6 +55,7 @@ let
             cabal-install
             p.newsapi
             p.HCoreNLP
+            p.PropBank
           ]);
 
 in
