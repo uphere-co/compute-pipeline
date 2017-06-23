@@ -19,12 +19,10 @@ import           CoreNLP.Simple.Type.Simplified
 import qualified NLP.Type.NamedEntity    as N
 import           WikiEL                           (loadEMtagger)
 
-runWikiEL pp = do
+getWikiEL txt pp = do
   emTagger <- loadEMtagger "/data/groups/uphere/wikidata/testset/uid"
                            [(N.Org, "/data/groups/uphere/wikidata/testset/ne.org"),
                             (N.Person, "/data/groups/uphere/wikidata/testset/ne.person")]
-  txt <- TIO.readFile "test.txt"
-  clspath <- getEnv "CLASSPATH"
   let doc = Document txt (fromGregorian 2017 4 17)
   ann <- annotate pp doc
   rdoc <- protobufDoc ann

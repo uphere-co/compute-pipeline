@@ -6,7 +6,7 @@ module Pipeline.Application.Run where
 import           Control.Lens                    ((^.),_2,_3,_4)
 import           Control.Monad                   (forM,forM_)
 import qualified Data.ByteString.Char8  as B
-import           Data.List
+import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import           Data.Text.Read                  (decimal)
 import           Language.Java          as J
@@ -23,15 +23,9 @@ import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
 
-
-findSubstring :: Eq a => [a] -> [a] -> Maybe Int
-findSubstring pat str = findIndex (isPrefixOf pat) (tails str) 
-
-
 run :: IO ()
 run = do
   clspath <- getEnv "CLASSPATH"
-
   filelist <- getFileList "/data/groups/uphere/intrinio/Articles/bloomberg"
   db <- loadDB "/data/groups/uphere/data/NLP/dict"
   pdb <- constructPredicateDB <$> constructFrameDB "/data/groups/uphere/data/NLP/frames"
@@ -64,3 +58,15 @@ run = do
         return $ (T.pack $ B.unpack $ (x ^. _4))
       putStrLn $ show (txt,result)
   putStrLn "Program is finished!"
+
+
+runWikiEL :: IO ()
+runWikiEL = do
+  clspath <- getEnv "CLASSPATH"
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    pp <- prepare (PPConfig True True True False False False False True)
+    getWikiEL test_text pp
+
+
+test_text :: Text
+test_text = "United Airlines (UAL.N) and its chief executive faced mounting pressure on Tuesday from a worldwide backlash over its treatment of a passenger who was dragged from his seat on a plane on Sunday to make room for four employees on the overbooked flight."
