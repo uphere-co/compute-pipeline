@@ -27,11 +27,11 @@ getWikiEL txt pp = do
   ann <- annotate pp doc
   rdoc <- protobufDoc ann
   case rdoc of
-    Left e -> print e
+    Left e -> return []
     Right d -> do
       let sents = d ^.. D.sentence . traverse
           f (NERSentence tokens) = tokens
           neTokens =  concatMap (f.sentToNER) sents
           linked_mentions = emTagger neTokens
           text = T.unwords (map fst neTokens)
-      mapM_ print linked_mentions
+      return linked_mentions

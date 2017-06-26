@@ -59,14 +59,13 @@ run = do
       putStrLn $ show (txt,result)
   putStrLn "Program is finished!"
 
-
 runWikiEL :: IO ()
 runWikiEL = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True False False False False True)
-    getWikiEL test_text pp
-
+    wiki <- getWikiEL test_text pp
+    print wiki
 
 test_text :: Text
 test_text = "United Airlines (UAL.N) and its chief executive faced mounting pressure on Tuesday from a worldwide backlash over its treatment of a passenger who was dragged from his seat on a plane on Sunday to make room for four employees on the overbooked flight."
