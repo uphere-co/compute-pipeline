@@ -7,6 +7,7 @@ module Pipeline.Run
 , module Pipeline.Run.StanfordNER
 , module Pipeline.Run.UKB
 -- , module Pipeline.Run.Util
+, module Pipeline.Run.WikiEL
 , module Pipeline.Run.WordNet
 ) where
 
@@ -17,4 +18,5 @@ import Pipeline.Run.PredicateMatrix
 import Pipeline.Run.StanfordNER
 import Pipeline.Run.UKB
 -- import Pipeline.Run.Util
+import Pipeline.Run.WikiEL
 import Pipeline.Run.WordNet

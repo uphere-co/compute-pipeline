@@ -62,6 +62,7 @@ library
                    Pipeline.Run.StanfordNER
                    Pipeline.Run.UKB
                    Pipeline.Run.Util
+                   Pipeline.Run.WikiEL
                    Pipeline.Run
                    Pipeline.Application.Run
                    Pipeline.Application.RunBunch

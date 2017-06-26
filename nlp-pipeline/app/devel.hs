@@ -2,7 +2,8 @@
 
 module Main where
 
-import Pipeline.Application.RunPropBank
+import Pipeline.Application.Run
+-- import Pipeline.Application.RunPropBank
 
 main :: IO ()
-main = print =<< getPBFull "Trump canceled Paris."
+main = runWikiEL -- print =<< getPBFull "Trump canceled Paris."

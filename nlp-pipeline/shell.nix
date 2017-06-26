@@ -9,6 +9,7 @@
 , PropBank           ? <PropBank>
 , wiki-ner           ? <wiki-ner>
 , textview           ? <textview>
+, uphere-opaleye     ? <uphere-opaleye>
 }:
 
 with pkgs;
@@ -31,6 +32,8 @@ let
       "predicate-matrix" = self.callPackage (import predicate-matrix) {};
       "PropBank" = self.callPackage (import PropBank) {};
       "wiki-ner" = self.callPackage (import wiki-ner) {};
+      "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
+      "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
   };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { inherit pkgs uphere-nix-overlay ukb; };
