@@ -17,6 +17,7 @@ import           Data.Monoid                  ((<>))
 import           Data.Text                    (Text)
 import qualified Data.Text             as T
 import qualified Data.Text.IO          as TIO
+import           Data.Tree
 import           Language.Java         as J
 import           System.Directory
 import           System.Environment
@@ -38,6 +39,7 @@ import           NLP.Type.PennTreebankII
 import           PropBank.Query
 import           SRL.Feature.Dependency
 import           SRL.Type                                    (Level)
+import           Text.Format.Tree                            (linePrint)
 
 
 runParser pp txt = do
@@ -90,15 +92,12 @@ formatPred :: (Text,Text) -> String
 formatPred (roleset,definition) = printf "                          %20s : %s" roleset definition
 
 
-formatTree :: Int -> Bitree (Int,Lemma,a) (Int,Lemma,a) -> Text
-formatTree n tr
-  = case tr of
-      PN (i,l,_) xs -> branchline n <> unLemma l <> "\n" <> T.intercalate "\n" (map (formatTree (n+4)) xs)
-      PL (i,l,_)    -> branchline n <> unLemma l                    
-  where
-    branchline n | n <= 0 = ""
-                 | otherwise = T.replicate n " " -- T.replicate (n-4) <> "|-- " 
-
+formatTree :: Bitree (Int,Lemma,a) (Int,Lemma,a) -> Text
+formatTree tr = linePrint unLemma (toTree (bimap (^._2) (^._2) tr))
+  where f (_,l,_) =  l
+        toTree (PN x xs) = Node x (map toTree xs)
+        toTree (PL x)    = Node x []
+        
 
 
 printEachVerb preddb (lemma,n) = do
@@ -161,7 +160,7 @@ sentStructure pp txt = do
           -- dep = 
           idltr = depLevelTree dep iltr 
           ptv = parseTreeVerb idltr 
-      mapM_ (TIO.putStrLn . formatTree 0) ptv
+      mapM_ (TIO.putStrLn . formatTree) ptv
       putStrLn "---------------------------------------------------------------"
       (TIO.putStrLn . prettyPrint 0) ptr
       putStrLn "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-"
@@ -203,7 +202,7 @@ main = do
   cnts <- getDirectoryContents dir
   let cnts' = (filter (\x -> x /= "." && x /= "..")) cnts
   lst <- flip mapM cnts' $ \fp -> getTimeTitleDesc (dir </> fp)
-  let ordered = take 10 $ sortBy (compare `on` (^._1)) $ catMaybes lst 
+  let ordered = sortBy (compare `on` (^._1)) $ catMaybes lst 
 
   {- 
   let propframedir = "/scratch/wavewave/MASC/Propbank/Propbank-orig/framefiles"

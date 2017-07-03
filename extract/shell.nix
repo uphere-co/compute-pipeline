@@ -82,6 +82,7 @@ let
             p.HCoreNLP
             p.PropBank
             p.semantic-role-labeler
+            p.textview
           ]);
 
 in
