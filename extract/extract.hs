@@ -27,10 +27,11 @@ import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import           CoreNLP.Simple
-import           CoreNLP.Simple.Convert                      (cutf8,decodeToPennTree,lemmatize,mkLemmaMap)
+import           CoreNLP.Simple.Convert                      -- (cutf8,decodeToPennTree,lemmatize,mkLemmaMap)
 import           CoreNLP.Simple.Type
 import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
+import           Data.Attribute
 import           NLP.Printer.PennTreebankII
 import           NLP.Type.PennTreebankII
 import           NewsAPI.Type                                (SourceArticles(..))
@@ -89,8 +90,8 @@ formatPred (roleset,definition) = printf "                          %20s : %s" r
 
 
 formatTree :: Int -> PennTreeGen (Int,Lemma) (Int,Lemma) -> Text
-formatTree n (PN (i,l) xs) = T.replicate n " " <> l <> "\n" <> T.intercalate "\n" (map (formatTree (n+4)) xs)
-formatTree n (PL (i,l))    = T.replicate n " " <> l
+formatTree n (PN (i,l) xs) = T.replicate n " " <> unLemma l <> "\n" <> T.intercalate "\n" (map (formatTree (n+4)) xs)
+formatTree n (PL (i,l))    = T.replicate n " " <> unLemma l
 
 
 
@@ -148,7 +149,7 @@ sentStructure pp txt = do
   putStrLn "---------------------------------------------------------------"
   flip mapM_ (zip3 psents sents mptrs) $ \(psent,sent,mptr) -> do
     flip mapM_ mptr $ \ptr -> do
-      let itr = mkPennTreeIdx ptr
+      let itr = mkAnnotatable (mkPennTreeIdx ptr)
           lmap= mkLemmaMap psent
           iltr = lemmatize lmap itr
           ptv = parseTreeVerb iltr 
@@ -158,20 +159,23 @@ sentStructure pp txt = do
       putStrLn "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-"
 
 
-type Lemma = Text
+-- type Lemma = Text
 
-parseTreeVerb :: PennTreeIdxG ChunkTag (POSTag, (Text,Lemma)) -> Maybe (PennTreeGen (Int,Lemma) (Int,Lemma))
+ 
+parseTreeVerb :: PennTreeIdxG (ANode (AttribList '[])) (ALeaf (AttribList '[Lemma]))
+              -> Maybe (Bitree (Int,Lemma) (Int,Lemma))
 parseTreeVerb = fmap squash . verbTree  --  fmap squash . verbTree 
   where
-    verbTree tr@(PL (i,(pos,txt2))) = if isVerb pos then Just (PL (i,txt2^._2)) else Nothing 
-    verbTree tr@(PN _ xs) = let xs' = mapMaybe verbTree xs
-                            in case xs' of
-                                 []   -> Nothing
-                                 y:ys -> case y of
-                                           PN v _ -> Just (PN v (y:ys))
-                                           PL v   -> case ys of
-                                                       [] -> Just (PL v)
-                                                       _ -> Just (PN v ys)
+    -- verbTree tr@(PL (i,(pos,txt2))) = if isVerb pos then Just (PL (i,txt2^._2)) else Nothing 
+    verbTree (PL (i,l)) = if isVerb (posTag l) then Just (PL (i,ahead (getAnnot l))) else Nothing 
+    verbTree (PN _ xs) = let xs' = mapMaybe verbTree xs
+                         in case xs' of
+                              []   -> Nothing
+                              y:ys -> case y of
+                                        PN v _ -> Just (PN v (y:ys))
+                                        PL v   -> case ys of
+                                                    [] -> Just (PL v)
+                                                    _ -> Just (PN v ys)
 
     squash (PN y [z@(PN w ws)]) = if y == w then squash z else PN y [squash z]
     squash (PN y [z@(PL w)   ]) = if y == w then PL w     else PN y [squash z]    
@@ -185,7 +189,7 @@ main = do
   cnts <- getDirectoryContents dir
   let cnts' = (filter (\x -> x /= "." && x /= "..")) cnts
   lst <- flip mapM cnts' $ \fp -> getTimeTitleDesc (dir </> fp)
-  let ordered = sortBy (compare `on` (^._1)) $ catMaybes lst 
+  let ordered = take 10 $ sortBy (compare `on` (^._1)) $ catMaybes lst 
 
   {- 
   let propframedir = "/scratch/wavewave/MASC/Propbank/Propbank-orig/framefiles"
@@ -206,5 +210,6 @@ main = do
     -- mapM_ (\t -> TIO.putStrLn t >> TIO.putStrLn "") txts
       
     -- verbStatisticsWithPropBank pp preddb ordered
+    -- print "hello"
     mapM_ (sentStructure pp . (^._3) ) ordered
      
