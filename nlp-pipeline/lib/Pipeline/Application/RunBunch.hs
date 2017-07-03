@@ -142,7 +142,7 @@ runProcess f db pp = do
       ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
       
   (_,wsdlst) <- getPPR ukb_input 
-  
+  {-
   result <- forM wsdlst $ \(_,wpos',ili',_) -> do
     let -- wid   = T.pack (B.unpack wid')
         wpos  = T.pack (B.unpack wpos')
@@ -153,7 +153,7 @@ runProcess f db pp = do
         concept  :: Maybe ([LexItem],Text) = getQueryConcept n (extractPOS $ wpos) worddb
 
     print $ getQueryPM ili predmat
-        
+         
     (senseSIDofConcept :: [(Text,Maybe Int)]) <- do
       case concept of
         Nothing -> return []
@@ -162,14 +162,13 @@ runProcess f db pp = do
             return $ (_lex_word c',getQuerySense (_lex_word c') (_lex_id c') worddb)
           return result
     return senseSIDofConcept
-
-
+  -}
   putStrLn "Individual Sentence"
   putStrLn "-------------------"
   
   mapM_ (runSentenceProcess predmat) psents
 
-  return $ (txt,result)
+  return $ (txt,[[]])
 
 
 runSentenceProcess :: M.Map Text [PM.LinkNet]

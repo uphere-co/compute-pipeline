@@ -45,6 +45,7 @@ run = do
         let Right (n,_) = decimal (T.pack (B.unpack $ (x ^. _3)))
         let word = T.pack $ B.unpack $ (x ^. _4)
         let concept = getQueryConcept n (extractPOS $ T.pack $ B.unpack $ (x ^. _2)) db
+        {-
         let sense = getQuerySense word n db
         case sense of
           Nothing -> print ("" :: String)
@@ -56,7 +57,9 @@ run = do
           print $ T.intercalate "" [_lex_word x',".",T.pack (show $ _lex_id x')]
           queryRoleSet rdb (T.intercalate "" [_lex_word x',".",T.pack (show $ _lex_id x')])
         return $ (T.pack $ B.unpack $ (x ^. _4))
-      putStrLn $ show (txt,result)
+        -}
+        return ()
+      return ()
   putStrLn "Program is finished!"
 
 runWikiEL :: IO ()
