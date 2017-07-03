@@ -4,14 +4,14 @@
 
 module Main where
 
-import           Control.Lens
+import           Control.Lens          hiding (Level)
 import           Control.Monad                (filterM)
 import           Data.Aeson
 import qualified Data.ByteString.Char8 as B
 import           Data.Default
 import qualified Data.HashMap.Strict   as HM
 import           Data.Function                (on)
-import           Data.List                    (foldl',sort,sortBy)
+import           Data.List                    (foldl',minimumBy,sort,sortBy,zip4)
 import           Data.Maybe                   (catMaybes,listToMaybe,mapMaybe)
 import           Data.Monoid                  ((<>))
 import           Data.Text                    (Text)
@@ -27,17 +27,17 @@ import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import           CoreNLP.Simple
-import           CoreNLP.Simple.Convert                      -- (cutf8,decodeToPennTree,lemmatize,mkLemmaMap)
+import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type
 import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
 import           Data.Attribute
+import           NewsAPI.Type                                (SourceArticles(..))
 import           NLP.Printer.PennTreebankII
 import           NLP.Type.PennTreebankII
-import           NewsAPI.Type                                (SourceArticles(..))
 import           PropBank.Query
-
-
+import           SRL.Feature.Dependency
+import           SRL.Type                                    (Level)
 
 
 runParser pp txt = do
@@ -48,10 +48,11 @@ runParser pp txt = do
   
       parsetrees = map (\x -> pure . decodeToPennTree =<< (x^.S.parseTree) ) psents
       sents = map (convertSentence pdoc) psents
-  
+      Right deps = mapM sentToDep psents
+
       tktokss = map (getTKTokens) psents
       tokss = map (mapMaybe convertToken') tktokss
-  return (psents,sents,tokss,parsetrees)
+  return (psents,sents,tokss,parsetrees,deps)
 
 printFormat (time,title,desc) = do
   TIO.putStrLn time
@@ -89,9 +90,14 @@ formatPred :: (Text,Text) -> String
 formatPred (roleset,definition) = printf "                          %20s : %s" roleset definition
 
 
-formatTree :: Int -> PennTreeGen (Int,Lemma) (Int,Lemma) -> Text
-formatTree n (PN (i,l) xs) = T.replicate n " " <> unLemma l <> "\n" <> T.intercalate "\n" (map (formatTree (n+4)) xs)
-formatTree n (PL (i,l))    = T.replicate n " " <> unLemma l
+formatTree :: Int -> Bitree (Int,Lemma,a) (Int,Lemma,a) -> Text
+formatTree n tr
+  = case tr of
+      PN (i,l,_) xs -> branchline n <> unLemma l <> "\n" <> T.intercalate "\n" (map (formatTree (n+4)) xs)
+      PL (i,l,_)    -> branchline n <> unLemma l                    
+  where
+    branchline n | n <= 0 = ""
+                 | otherwise = T.replicate n " " -- T.replicate (n-4) <> "|-- " 
 
 
 
@@ -121,7 +127,7 @@ extractVerbsFromText :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline"
                      -> IO [Token]
 extractVerbsFromText pp txt = do
   -- TIO.putStrLn txt
-  (_,sents,tokss,_) <- runParser pp txt
+  (_,sents,tokss,_,_) <- runParser pp txt
   -- mapM_ print tokss
   return $ concatMap (filter (\t -> isVerb (t^.token_pos))) tokss
   -- mapM_ (mapM_ (putStrLn.formatLemmaPOS)
@@ -129,7 +135,7 @@ extractVerbsFromText pp txt = do
 
 
 doesContainVerb pp txt lemma = do
-  (_,sents,tokss,_) <- runParser pp txt
+  (_,sents,tokss,_,_) <- runParser pp txt
   let toks = concat tokss
   (return . not . null . filter (\t -> isVerb (t^.token_pos) && t^.token_lemma == lemma)) toks
 
@@ -142,40 +148,48 @@ verbStatisticsWithPropBank pp preddb lst = do
 
 
 sentStructure pp txt = do
-  (psents,sents,tokss,mptrs) <- runParser pp txt
+  (psents,sents,tokss,mptrs,deps) <- runParser pp txt
   TIO.putStrLn txt
   putStrLn "---------------------------------------------------------------"
   mapM_ (putStrLn . formatLemmaPOS) . concatMap (filter (\t -> isVerb (t^.token_pos))) $ tokss
   putStrLn "---------------------------------------------------------------"
-  flip mapM_ (zip3 psents sents mptrs) $ \(psent,sent,mptr) -> do
+  flip mapM_ (zip4 psents sents mptrs deps) $ \(psent,sent,mptr,dep) -> do
     flip mapM_ mptr $ \ptr -> do
       let itr = mkAnnotatable (mkPennTreeIdx ptr)
           lmap= mkLemmaMap psent
           iltr = lemmatize lmap itr
-          ptv = parseTreeVerb iltr 
+          -- dep = 
+          idltr = depLevelTree dep iltr 
+          ptv = parseTreeVerb idltr 
       mapM_ (TIO.putStrLn . formatTree 0) ptv
       putStrLn "---------------------------------------------------------------"
       (TIO.putStrLn . prettyPrint 0) ptr
       putStrLn "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-"
 
 
--- type Lemma = Text
 
- 
-parseTreeVerb :: PennTreeIdxG (ANode (AttribList '[])) (ALeaf (AttribList '[Lemma]))
-              -> Maybe (Bitree (Int,Lemma) (Int,Lemma))
-parseTreeVerb = fmap squash . verbTree  --  fmap squash . verbTree 
+parseTreeVerb :: PennTreeIdxG (ANAtt '[]) (ALAtt '[Maybe Level,Lemma])
+              -> Maybe (Bitree (Int,Lemma,Maybe Level) (Int,Lemma,Maybe Level))
+parseTreeVerb = fmap squash . verbTree
   where
-    -- verbTree tr@(PL (i,(pos,txt2))) = if isVerb pos then Just (PL (i,txt2^._2)) else Nothing 
-    verbTree (PL (i,l)) = if isVerb (posTag l) then Just (PL (i,ahead (getAnnot l))) else Nothing 
+    verbTree (PL (i,l)) = if isVerb (posTag l)
+                          then let mlvl = ahead (getAnnot l)
+                                   lma = ahead (atail (getAnnot l))
+                                   -- AttribCons mlvl (AttribCons lma AttribNil) = getAnnot l
+                               in Just (PL (i,lma,mlvl))  --       Just (PL (i,ahead (getAnnot l)))
+                          else Nothing 
     verbTree (PN _ xs) = let xs' = mapMaybe verbTree xs
                          in case xs' of
-                              []   -> Nothing
-                              y:ys -> case y of
-                                        PN v _ -> Just (PN v (y:ys))
-                                        PL v   -> case ys of
-                                                    [] -> Just (PL v)
-                                                    _ -> Just (PN v ys)
+                              []  -> Nothing
+                              lst -> let y:ys = sortBy (cmpLevel `on` getLevel) lst
+                                     in case y of
+                                          PN v _ -> Just (PN v (y:ys))
+                                          PL v   -> case ys of
+                                                      [] -> Just (PL v)
+                                                      _ -> Just (PN v ys)
+    getLevel (PL (_i,_,ml))   = ml
+    getLevel (PN (_i,_,ml) _) = ml
+              
 
     squash (PN y [z@(PN w ws)]) = if y == w then squash z else PN y [squash z]
     squash (PN y [z@(PL w)   ]) = if y == w then PL w     else PN y [squash z]    
