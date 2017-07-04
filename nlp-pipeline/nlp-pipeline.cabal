@@ -52,6 +52,8 @@ library
                   HUKB,
                   HUKB-driver,
                   predicate-matrix,
+                  nyt-db,
+                  nyt-scrapper,
                   wiki-ner,
                   PropBank
   exposed-modules: Pipeline.Util

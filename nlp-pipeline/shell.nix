@@ -33,6 +33,8 @@ let
       "PropBank" = self.callPackage (import PropBank) {};
       "wiki-ner" = self.callPackage (import wiki-ner) {};
       "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
+      "nyt-db" = self.callPackage (import (fetchfin + "/nyt/db")) {};
+      "nyt-scrapper" = self.callPackage (import (fetchfin + "/nyt")) {};
       "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
   };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
@@ -72,6 +74,8 @@ let
             p.predicate-matrix
             p.PropBank
             p.wiki-ner
+            p.nyt-db
+            p.nyt-scrapper
             HUKB-driver
           ]);
 
