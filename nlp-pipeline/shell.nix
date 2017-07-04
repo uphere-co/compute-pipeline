@@ -60,6 +60,7 @@ let
             haskeline
             lens
             monad-loops
+            opaleye
             optparse-applicative
             postgresql-simple
             transformers
