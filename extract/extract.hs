@@ -37,8 +37,9 @@ import           NewsAPI.Type                                (SourceArticles(..)
 import           NLP.Printer.PennTreebankII
 import           NLP.Type.PennTreebankII
 import           PropBank.Query
+import           SRL.Feature
 import           SRL.Feature.Dependency
-import           SRL.Type                                    (Level)
+-- import           SRL.Type                                    (Level)
 import           Text.Format.Tree                            (linePrint)
 
 
@@ -99,16 +100,11 @@ formatTree tr = linePrint unLemma (toTree (bimap (^._2) (^._2) tr))
         toTree (PL x)    = Node x []
         
 
-
 printEachVerb preddb (lemma,n) = do
   putStrLn (formatHist (lemma,n))
   let lst = lookupPredicate preddb lemma
   mapM_ (putStrLn . formatPred) lst 
   putStrLn "---------------------------------------------------------------"
-
-
-
-
 
 
 extractVerbs :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -157,43 +153,14 @@ sentStructure pp txt = do
       let itr = mkAnnotatable (mkPennTreeIdx ptr)
           lmap= mkLemmaMap psent
           iltr = lemmatize lmap itr
-          -- dep = 
           idltr = depLevelTree dep iltr 
-          ptv = parseTreeVerb idltr 
+          ptv = verbTree idltr 
       mapM_ (TIO.putStrLn . formatTree) ptv
       putStrLn "---------------------------------------------------------------"
       (TIO.putStrLn . prettyPrint 0) ptr
       putStrLn "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-"
 
 
-
-parseTreeVerb :: PennTreeIdxG (ANAtt '[]) (ALAtt '[Maybe Level,Lemma])
-              -> Maybe (Bitree (Int,Lemma,Maybe Level) (Int,Lemma,Maybe Level))
-parseTreeVerb = fmap squash . verbTree
-  where
-    verbTree (PL (i,l)) = if isVerb (posTag l)
-                          then let mlvl = ahead (getAnnot l)
-                                   lma = ahead (atail (getAnnot l))
-                                   -- AttribCons mlvl (AttribCons lma AttribNil) = getAnnot l
-                               in Just (PL (i,lma,mlvl))  --       Just (PL (i,ahead (getAnnot l)))
-                          else Nothing 
-    verbTree (PN _ xs) = let xs' = mapMaybe verbTree xs
-                         in case xs' of
-                              []  -> Nothing
-                              lst -> let y:ys = sortBy (cmpLevel `on` getLevel) lst
-                                     in case y of
-                                          PN v _ -> Just (PN v (y:ys))
-                                          PL v   -> case ys of
-                                                      [] -> Just (PL v)
-                                                      _ -> Just (PN v ys)
-    getLevel (PL (_i,_,ml))   = ml
-    getLevel (PN (_i,_,ml) _) = ml
-              
-
-    squash (PN y [z@(PN w ws)]) = if y == w then squash z else PN y [squash z]
-    squash (PN y [z@(PL w)   ]) = if y == w then PL w     else PN y [squash z]    
-    squash (PN y ys)            = PN y (map squash ys)
-    squash x                    = x
 
     
 main :: IO ()
@@ -202,7 +169,7 @@ main = do
   cnts <- getDirectoryContents dir
   let cnts' = (filter (\x -> x /= "." && x /= "..")) cnts
   lst <- flip mapM cnts' $ \fp -> getTimeTitleDesc (dir </> fp)
-  let ordered = sortBy (compare `on` (^._1)) $ catMaybes lst 
+  let ordered = take 10 $ sortBy (compare `on` (^._1)) $ catMaybes lst 
 
   {- 
   let propframedir = "/scratch/wavewave/MASC/Propbank/Propbank-orig/framefiles"
