@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Main where
 
@@ -11,12 +12,13 @@ import qualified Data.ByteString.Char8 as B
 import           Data.Default
 import qualified Data.HashMap.Strict   as HM
 import           Data.Function                (on)
+import qualified Data.IntMap           as IM
 import           Data.List                    (foldl',minimumBy,sort,sortBy,zip4)
-import           Data.Maybe                   (catMaybes,listToMaybe,mapMaybe)
+import           Data.Maybe
 import           Data.Monoid                  ((<>))
 import           Data.Text                    (Text)
 import qualified Data.Text             as T
-import qualified Data.Text.IO          as TIO
+import qualified Data.Text.IO          as T.IO
 import           Data.Tree
 import           Language.Java         as J
 import           System.Directory
@@ -39,8 +41,11 @@ import           NLP.Type.PennTreebankII
 import           PropBank.Query
 import           SRL.Feature
 import           SRL.Feature.Dependency
+import           SRL.Feature.Verb                            (getVerbProperty)
+import           SRL.Format                                  (formatBitree)
 -- import           SRL.Type                                    (Level)
-import           Text.Format.Tree                            (linePrint)
+import           SRL.Util
+-- import           Text.Format.Tree                            (linePrint)
 
 
 runParser pp txt = do
@@ -58,10 +63,10 @@ runParser pp txt = do
   return (psents,sents,tokss,parsetrees,deps)
 
 printFormat (time,title,desc) = do
-  TIO.putStrLn time
-  TIO.putStrLn title
-  TIO.putStrLn desc
-  TIO.putStrLn ""
+  T.IO.putStrLn time
+  T.IO.putStrLn title
+  T.IO.putStrLn desc
+  T.IO.putStrLn ""
 
 
 getTimeTitleDesc :: FilePath -> IO (Maybe (Text,Text,Text))
@@ -93,11 +98,6 @@ formatPred :: (Text,Text) -> String
 formatPred (roleset,definition) = printf "                          %20s : %s" roleset definition
 
 
-formatTree :: Bitree (Int,Lemma,a) (Int,Lemma,a) -> Text
-formatTree tr = linePrint unLemma (toTree (bimap (^._2) (^._2) tr))
-  where f (_,l,_) =  l
-        toTree (PN x xs) = Node x (map toTree xs)
-        toTree (PL x)    = Node x []
         
 
 printEachVerb preddb (lemma,n) = do
@@ -112,7 +112,7 @@ extractVerbs :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
              -> IO [Token]
 extractVerbs pp (time,title,desc) = do
   -- putStrLn "======"
-  -- TIO.putStrLn time  
+  -- T.IO.putStrLn time  
   -- extractVerbsFromText pp title
   extractVerbsFromText pp desc
 
@@ -121,7 +121,7 @@ extractVerbsFromText :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline"
                      -> Text
                      -> IO [Token]
 extractVerbsFromText pp txt = do
-  -- TIO.putStrLn txt
+  -- T.IO.putStrLn txt
   (_,sents,tokss,_,_) <- runParser pp txt
   -- mapM_ print tokss
   return $ concatMap (filter (\t -> isVerb (t^.token_pos))) tokss
@@ -142,22 +142,32 @@ verbStatisticsWithPropBank pp preddb lst = do
     (mapM_ (printEachVerb preddb) . sortBy (flip compare `on` snd) . HM.toList) acc
 
 
+
+showVerb tkmap (Left lma) = unLemma lma
+showVerb tkmap (Right (lma,is)) = unLemma lma <> " : " <> fullwords
+  where fullwords = T.intercalate " " $ map (\i -> fromMaybe "" (IM.lookup i tkmap)) is
+
+
 sentStructure pp txt = do
   (psents,sents,tokss,mptrs,deps) <- runParser pp txt
-  TIO.putStrLn txt
+  T.IO.putStrLn txt
   putStrLn "---------------------------------------------------------------"
   mapM_ (putStrLn . formatLemmaPOS) . concatMap (filter (\t -> isVerb (t^.token_pos))) $ tokss
   putStrLn "---------------------------------------------------------------"
   flip mapM_ (zip4 psents sents mptrs deps) $ \(psent,sent,mptr,dep) -> do
     flip mapM_ mptr $ \ptr -> do
+      let tkns = zip [0..] (getTKTokens psent)
+          tkmap = IM.fromList (mapMaybe (\tk -> (tk^._1,) <$> tk^._2.TK.word.to (fmap cutf8)) tkns)
+      
       let itr = mkAnnotatable (mkPennTreeIdx ptr)
           lmap= mkLemmaMap psent
           iltr = lemmatize lmap itr
-          idltr = depLevelTree dep iltr 
-          ptv = verbTree idltr 
-      mapM_ (TIO.putStrLn . formatTree) ptv
+          idltr = depLevelTree dep iltr
+          vps = getVerbProperty (ptr,psent)
+          vtree = verbTree vps idltr 
+      mapM_ (T.IO.putStrLn . formatBitree (^._2.to (showVerb tkmap))) vtree
       putStrLn "---------------------------------------------------------------"
-      (TIO.putStrLn . prettyPrint 0) ptr
+      (T.IO.putStrLn . prettyPrint 0) ptr
       putStrLn "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-"
 
 
@@ -169,7 +179,7 @@ main = do
   cnts <- getDirectoryContents dir
   let cnts' = (filter (\x -> x /= "." && x /= "..")) cnts
   lst <- flip mapM cnts' $ \fp -> getTimeTitleDesc (dir </> fp)
-  let ordered = take 10 $ sortBy (compare `on` (^._1)) $ catMaybes lst 
+  let ordered = sortBy (compare `on` (^._1)) $ catMaybes lst 
 
   {- 
   let propframedir = "/scratch/wavewave/MASC/Propbank/Propbank-orig/framefiles"
@@ -187,7 +197,7 @@ main = do
                        . (constituency .~ True)
                   )
     -- txts <- filterM (\txt -> doesContainVerb pp txt "run") $ map (^._3) ordered
-    -- mapM_ (\t -> TIO.putStrLn t >> TIO.putStrLn "") txts
+    -- mapM_ (\t -> T.IO.putStrLn t >> T.IO.putStrLn "") txts
       
     -- verbStatisticsWithPropBank pp preddb ordered
     -- print "hello"
