@@ -6,4 +6,6 @@ import Pipeline.Application.Run
 -- import Pipeline.Application.RunPropBank
 
 main :: IO ()
-main = runWikiEL -- print =<< getPBFull "Trump canceled Paris."
+main = runWikiEL
+
+-- runWikiEL -- print =<< getPBFull "Trump canceled Paris."
