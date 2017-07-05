@@ -17,7 +17,6 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.Binary                as Bi
 import           System.Directory           (listDirectory,createDirectoryIfMissing,doesFileExist)
 
-
 getAllParsedNYTArticle = do
   let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
   conn <- PGS.connectPostgreSQL dbconfig
@@ -25,10 +24,12 @@ getAllParsedNYTArticle = do
   result <- flip mapM articles $ \x -> do
     let hsh = (L8.unpack . L8.fromStrict . B16.encode . A._sha256) x
         fileprefix = "/data/groups/uphere/news-archive/fetchfin/nyt/NYTArticles/"
-    fchk <- doesFileExist (fileprefix ++ hsh ++ ".info/" ++ hsh ++ ".parsed")
+        filepath = fileprefix ++ hsh ++ ".info/" ++ hsh ++ ".parsed"
+        tokensavepath = fileprefix ++ hsh ++ ".info/" ++ hsh ++ ".tokenized"
+    fchk <- doesFileExist filepath
     case fchk of
       True -> do
-        (file :: NYTArticleFullContent) <- fmap (Bi.decode . BL.fromStrict) $ B.readFile (fileprefix ++ hsh ++ ".info/" ++ hsh ++ ".parsed")
-        return (_maintext file)
+        (file :: NYTArticleFullContent) <- fmap (Bi.decode . BL.fromStrict) $ B.readFile filepath
+        return $ (tokensavepath, _title file, _summary file, _maintext file)
       False -> print hsh >> error "error"
   return result
