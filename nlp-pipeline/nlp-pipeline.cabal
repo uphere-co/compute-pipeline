@@ -22,6 +22,7 @@ library
                   aeson,
                   attoparsec,
                   base16-bytestring,
+                  binary,
                   bytestring,
                   containers,
                   data-default,
@@ -35,6 +36,7 @@ library
                   jvm,
                   lens,
                   mtl,
+                  opaleye,
                   optparse-applicative,
                   postgresql-simple,
                   protocol-buffers,
@@ -52,6 +54,8 @@ library
                   HUKB,
                   HUKB-driver,
                   predicate-matrix,
+                  nyt-db,
+                  nyt-scrapper,
                   wiki-ner,
                   PropBank
   exposed-modules: Pipeline.Util
@@ -70,6 +74,7 @@ library
                    Pipeline.Application.WikiEL
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article
+                   Pipeline.Source.NYT.Article
                    Pipeline.View.YAML.YAYAML
                    Annot.SUTime
   other-extensions: TemplateHaskell

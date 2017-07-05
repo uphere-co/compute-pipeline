@@ -19,6 +19,7 @@ import           PropBank
 import           WordNet.Type
 --
 import           Pipeline.Source.NewsAPI.Article
+import Pipeline.Source.NYT.Article
 import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
@@ -62,13 +63,14 @@ run = do
       return ()
   putStrLn "Program is finished!"
 
-runWikiEL :: IO ()
 runWikiEL = do
+  particles <- getAllParsedNYTArticle
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True False False False False True)
-    wiki <- getWikiEL test_text pp
-    print wiki
+    forM_ particles $ \pa -> do
+      let txt = T.intercalate "    " pa
+      getWikiEL txt pp >>= print
 
 test_text :: Text
 test_text = "United Airlines (UAL.N) and its chief executive faced mounting pressure on Tuesday from a worldwide backlash over its treatment of a passenger who was dragged from his seat on a plane on Sunday to make room for four employees on the overbooked flight."
