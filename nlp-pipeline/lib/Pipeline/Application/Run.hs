@@ -4,30 +4,21 @@
 module Pipeline.Application.Run where
 
 import           Control.Lens                    ((^.),_2,_3,_4)
-import           Data.Maybe                   (catMaybes,listToMaybe,mapMaybe)
 import           Control.Monad                   (forM,forM_)
 import qualified Data.ByteString.Char8  as B
-import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import           Data.Text.Read                  (decimal)
 import           Language.Java          as J
 import           System.Environment              (getEnv)
 --
-import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import           CoreNLP.Simple                  (annotate,prepare)
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple.Util
-import           CoreNLP.Simple.Type.Simplified
-import           CoreNLP.Simple.Convert
 import           PropBank
-import           WordNet.Type
 --
 import           Pipeline.Source.NewsAPI.Article
-import Pipeline.Source.NYT.Article
-import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
-import           NLP.Type.PennTreebankII
 
 run :: IO ()
 run = do
@@ -54,30 +45,3 @@ run = do
         return ()
       return ()
   putStrLn "Program is finished!"
-
-runWikiEL = do
-  particles <- getAllParsedNYTArticle
-  clspath <- getEnv "CLASSPATH"
-  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    pp <- prepare (PPConfig True True True True False False False True)
-    forM_ (take 1 particles) $ \pa -> do      
-      let txt = T.intercalate "    " pa
-      doc <- getDoc txt
-      ann <- annotate pp doc
-      pdoc <- getProtoDoc ann
-      let psents = getProtoSents pdoc
-          sents = map (convertSentence pdoc) psents
-          tktokss = map (getTKTokens) psents
-          tokss = map (mapMaybe convertToken) tktokss
-          tokss' = map (mapMaybe convertToken') tktokss
-      print tokss
-      getWikiEL txt pp >>= print
-
-convertToken' :: TK.Token -> Maybe Token
-convertToken' t = do
-  (b',e') <- (,) <$> t^.TK.beginChar <*> t^.TK.endChar
-  let (b,e) = (fromIntegral b',fromIntegral e')
-  w <- cutf8 <$> (t^.TK.originalText)
-  p <- identifyPOS . cutf8 <$> (t^.TK.pos)
-  l <- cutf8 <$> (t^.TK.lemma)
-  return (Token (b,e) w p l)
