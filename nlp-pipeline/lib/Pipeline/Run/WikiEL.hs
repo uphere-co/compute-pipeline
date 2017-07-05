@@ -19,6 +19,7 @@ import           CoreNLP.Simple.Type.Simplified
 import           WikiEL.WikiEntityClass           (orgClass,personClass)
 import           WikiEL.Type.FileFormat
 import           WikiEL                           (loadEMtagger)
+import           WikiEL.Convert
 
 getWikiEL txt pp = do
   emTagger <- loadEMtagger (EntityReprFile "/data/groups/uphere/wikidata/testset/uid")
@@ -35,4 +36,5 @@ getWikiEL txt pp = do
           neTokens =  concatMap (f.sentToNER) sents
           linked_mentions = emTagger neTokens
           text = T.unwords (map fst neTokens)
+      (getNameFromEntityMention $ head linked_mentions) >>= print
       return linked_mentions
