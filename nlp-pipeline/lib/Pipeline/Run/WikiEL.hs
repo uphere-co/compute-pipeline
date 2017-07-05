@@ -16,13 +16,14 @@ import           CoreNLP.Simple
 import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type
 import           CoreNLP.Simple.Type.Simplified
-import qualified NLP.Type.NamedEntity    as N
+import           WikiEL.WikiEntityClass           (orgClass,personClass)
+import           WikiEL.Type.FileFormat
 import           WikiEL                           (loadEMtagger)
 
 getWikiEL txt pp = do
-  emTagger <- loadEMtagger "/data/groups/uphere/wikidata/testset/uid"
-                           [(N.Org, "/data/groups/uphere/wikidata/testset/ne.org"),
-                            (N.Person, "/data/groups/uphere/wikidata/testset/ne.person")]
+  emTagger <- loadEMtagger (EntityReprFile "/data/groups/uphere/wikidata/testset/uid")
+                           [(orgClass, ItemIDFile "/data/groups/uphere/wikidata/testset/ne.org"),
+                            (personClass, ItemIDFile "/data/groups/uphere/wikidata/testset/ne.person")]
   let doc = Document txt (fromGregorian 2017 4 17)
   ann <- annotate pp doc
   rdoc <- protobufDoc ann

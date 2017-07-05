@@ -68,7 +68,7 @@ runWikiEL = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True False False False False True)
-    forM_ particles $ \pa -> do
+    forM_ (take 1 particles) $ \pa -> do
       let txt = T.intercalate "    " pa
       getWikiEL txt pp >>= print
 
