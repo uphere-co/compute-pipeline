@@ -6,7 +6,6 @@ module Pipeline.Application.Run where
 import           Control.Lens                    ((^.),_2,_3,_4)
 import           Control.Monad                   (forM,forM_)
 import qualified Data.ByteString.Char8  as B
-import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import           Data.Text.Read                  (decimal)
 import           Language.Java          as J
@@ -16,11 +15,8 @@ import           CoreNLP.Simple                  (annotate,prepare)
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple.Util
 import           PropBank
-import           WordNet.Type
 --
 import           Pipeline.Source.NewsAPI.Article
-import Pipeline.Source.NYT.Article
-import           Pipeline.View.YAML.YAYAML()
 import           Pipeline.Util
 import           Pipeline.Run
 
@@ -46,31 +42,6 @@ run = do
         let Right (n,_) = decimal (T.pack (B.unpack $ (x ^. _3)))
         let word = T.pack $ B.unpack $ (x ^. _4)
         let concept = getQueryConcept n (extractPOS $ T.pack $ B.unpack $ (x ^. _2)) db
-        {-
-        let sense = getQuerySense word n db
-        case sense of
-          Nothing -> print ("" :: String)
-          Just s  -> print ("sense : " :: String) >> print s
-        let (xs,_) = case concept of
-              Nothing -> ([],"")
-              Just c  -> c
-        flip mapM_ xs $ \x' -> do
-          print $ T.intercalate "" [_lex_word x',".",T.pack (show $ _lex_id x')]
-          queryRoleSet rdb (T.intercalate "" [_lex_word x',".",T.pack (show $ _lex_id x')])
-        return $ (T.pack $ B.unpack $ (x ^. _4))
-        -}
         return ()
       return ()
   putStrLn "Program is finished!"
-
-runWikiEL = do
-  particles <- getAllParsedNYTArticle
-  clspath <- getEnv "CLASSPATH"
-  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    pp <- prepare (PPConfig True True True False False False False True)
-    forM_ particles $ \pa -> do
-      let txt = T.intercalate "    " pa
-      getWikiEL txt pp >>= print
-
-test_text :: Text
-test_text = "United Airlines (UAL.N) and its chief executive faced mounting pressure on Tuesday from a worldwide backlash over its treatment of a passenger who was dragged from his seat on a plane on Sunday to make room for four employees on the overbooked flight."

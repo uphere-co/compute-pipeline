@@ -140,7 +140,7 @@ runProcess f db pp = do
   let psents = getProtoSents pdoc
       tokens = getAllTokens psents
       ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
-      
+
   (_,wsdlst) <- getPPR ukb_input 
   {-
   result <- forM wsdlst $ \(_,wpos',ili',_) -> do

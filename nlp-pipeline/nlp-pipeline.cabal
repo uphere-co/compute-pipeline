@@ -72,6 +72,7 @@ library
                    Pipeline.Application.RunBunch
                    Pipeline.Application.RunPropBank
                    Pipeline.Application.WikiEL
+                   Pipeline.Application.Tokenizer
                    Pipeline.Type
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article
