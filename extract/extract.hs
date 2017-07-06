@@ -42,7 +42,7 @@ import           PropBank.Query
 import           SRL.Feature
 import           SRL.Feature.Dependency
 import           SRL.Feature.Verb                            (getVerbProperty)
-import           SRL.Format                                  (formatBitree)
+import           SRL.Format                                  (formatBitree,showVerb)
 -- import           SRL.Type                                    (Level)
 import           SRL.Util
 -- import           Text.Format.Tree                            (linePrint)
@@ -140,12 +140,6 @@ verbStatisticsWithPropBank pp preddb lst = do
     let acc = foldl' (flip (HM.alter (\case { Nothing -> Just 1; Just n -> Just (n+1)}))) HM.empty $
                 (map (^.token_lemma) toks)
     (mapM_ (printEachVerb preddb) . sortBy (flip compare `on` snd) . HM.toList) acc
-
-
-
-showVerb tkmap (Left lma) = unLemma lma
-showVerb tkmap (Right (lma,is)) = unLemma lma <> " : " <> fullwords
-  where fullwords = T.intercalate " " $ map (\i -> fromMaybe "" (IM.lookup i tkmap)) is
 
 
 sentStructure pp txt = do
