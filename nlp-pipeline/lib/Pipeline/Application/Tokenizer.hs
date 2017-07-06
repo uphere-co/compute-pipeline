@@ -33,12 +33,12 @@ data TokenizedNYTArticle = TokenizedNYTArticle
 
 instance Binary TokenizedNYTArticle
 
-runTokenizer :: IO ()
-runTokenizer = do
+runTokenizer :: Int -> IO ()
+runTokenizer n = do
   particles' <- getAllParsedNYTArticle
   sanalyses <- getAllAnalyzedNYTArticle
 
-  let particles = take 100 $ filter (\(h,f) -> not (h `elem` sanalyses)) particles' 
+  let particles = take n $ filter (\(h,f) -> not (h `elem` sanalyses)) particles' 
   
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
