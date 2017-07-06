@@ -41,7 +41,7 @@ import           NLP.Type.PennTreebankII
 import           PropBank.Query
 import           SRL.Feature
 import           SRL.Feature.Dependency
-import           SRL.Feature.Verb                            (getVerbProperty)
+import           SRL.Feature.Verb
 import           SRL.Format                                  (formatBitree,showVerb)
 -- import           SRL.Type                                    (Level)
 import           SRL.Util
@@ -157,7 +157,7 @@ sentStructure pp txt = do
           lmap= mkLemmaMap psent
           iltr = lemmatize lmap itr
           idltr = depLevelTree dep iltr
-          vps = getVerbProperty (ptr,psent)
+          vps = verbPropertyFromPennTree lmap ptr
           vtree = verbTree vps idltr 
       mapM_ (T.IO.putStrLn . formatBitree (^._2.to (showVerb tkmap))) vtree
       putStrLn "---------------------------------------------------------------"
