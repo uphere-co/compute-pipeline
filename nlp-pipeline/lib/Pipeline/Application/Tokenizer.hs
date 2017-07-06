@@ -14,6 +14,7 @@ import qualified Data.Text              as T
 import           Language.Java          as J
 import           System.Environment              (getEnv)
 import           GHC.Generics
+import qualified NYT.Type               as NYT
 --
 import           CoreNLP.Simple                  (annotate,prepare)
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
@@ -32,16 +33,20 @@ data TokenizedNYTArticle = TokenizedNYTArticle
 
 instance Binary TokenizedNYTArticle
 
-runTokenizer :: IO ()
-runTokenizer = do
-  particles <- getAllParsedNYTArticle
+runTokenizer :: Int -> IO ()
+runTokenizer n = do
+  particles' <- getAllParsedNYTArticle
+  sanalyses <- getAllAnalyzedNYTArticle
+
+  let particles = take n $ filter (\(h,f) -> not (h `elem` sanalyses)) particles' 
+  
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True False False False True)
-    forM_ (take 1000 particles) $ \(fp,mtitle',msummary',maintext') -> do      
-      let title = T.intercalate "    " (fmap (fromMaybe ("" :: Text)) mtitle')
-          summary = T.intercalate "    " (fmap (fromMaybe ("" :: Text)) msummary')
-          maintext = T.intercalate "    " maintext'
+    forM_ particles $ \(hsh,article) -> do      
+      let title = T.intercalate "    " (fmap (fromMaybe ("" :: Text)) (NYT._title article))
+          summary = T.intercalate "    " (fmap (fromMaybe ("" :: Text)) (NYT._summary article))
+          maintext = T.intercalate "    " (NYT._maintext article)
       
       ttk <- getSimplifiedTokensFromText title pp
       stk <- getSimplifiedTokensFromText summary pp
@@ -52,7 +57,8 @@ runTokenizer = do
             , _tokenizedSummary = stk
             , _tokenizedMaintext = mtk }
 
-      BL.writeFile fp (encode tokenizednyt)
+      let savepath = "/data/groups/uphere/news-archive/fetchfin/nyt/NYTArticles/" ++  hsh ++ ".info/" ++ hsh ++ ".tokenized"
+      BL.writeFile savepath (encode tokenizednyt)
       
 getSimplifiedTokensFromText txt pp = do
   doc <- getDoc txt
