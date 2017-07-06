@@ -35,11 +35,15 @@ instance Binary TokenizedNYTArticle
 
 runTokenizer :: IO ()
 runTokenizer = do
-  particles <- getAllParsedNYTArticle
+  particles' <- getAllParsedNYTArticle
+  sanalyses <- getAllAnalyzedNYTArticle
+
+  let particles = take 100 $ filter (\(h,f) -> not (h `elem` sanalyses)) particles' 
+  
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True False False False True)
-    forM_ (take 1000 particles) $ \(hsh,article) -> do      
+    forM_ particles $ \(hsh,article) -> do      
       let title = T.intercalate "    " (fmap (fromMaybe ("" :: Text)) (NYT._title article))
           summary = T.intercalate "    " (fmap (fromMaybe ("" :: Text)) (NYT._summary article))
           maintext = T.intercalate "    " (NYT._maintext article)
