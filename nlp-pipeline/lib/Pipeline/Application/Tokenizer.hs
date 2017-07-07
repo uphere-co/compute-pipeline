@@ -56,9 +56,13 @@ runTokenizer n = do
         if b
           then return True
           else do            
-          lift $ setnx (B.pack hsh) ("tokenization" :: ByteString)
           -- liftIO $ print hsh
-          if (m+1 >= n) then return False else (State.put (m+1) >> return True)                        
+          if (m+1 > n)
+            then return False
+            else do
+            lift $ setnx (B.pack hsh) ("tokenization" :: ByteString)
+            State.put (m+1)
+            return True
       return pa'
     return a'
 
