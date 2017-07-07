@@ -58,6 +58,7 @@ let
             discrimination
             either
             haskeline
+            hedis
             lens
             monad-loops
             opaleye
