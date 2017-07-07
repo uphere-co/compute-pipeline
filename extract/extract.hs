@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Main where
 
@@ -11,12 +12,13 @@ import qualified Data.ByteString.Char8 as B
 import           Data.Default
 import qualified Data.HashMap.Strict   as HM
 import           Data.Function                (on)
+import qualified Data.IntMap           as IM
 import           Data.List                    (foldl',minimumBy,sort,sortBy,zip4)
-import           Data.Maybe                   (catMaybes,listToMaybe,mapMaybe)
+import           Data.Maybe
 import           Data.Monoid                  ((<>))
 import           Data.Text                    (Text)
 import qualified Data.Text             as T
-import qualified Data.Text.IO          as TIO
+import qualified Data.Text.IO          as T.IO
 import           Data.Tree
 import           Language.Java         as J
 import           System.Directory
@@ -37,9 +39,13 @@ import           NewsAPI.Type                                (SourceArticles(..)
 import           NLP.Printer.PennTreebankII
 import           NLP.Type.PennTreebankII
 import           PropBank.Query
+import           SRL.Feature
 import           SRL.Feature.Dependency
-import           SRL.Type                                    (Level)
-import           Text.Format.Tree                            (linePrint)
+import           SRL.Feature.Verb
+import           SRL.Format                                  (formatBitree,showVerb)
+-- import           SRL.Type                                    (Level)
+import           SRL.Util
+-- import           Text.Format.Tree                            (linePrint)
 
 
 runParser pp txt = do
@@ -57,10 +63,10 @@ runParser pp txt = do
   return (psents,sents,tokss,parsetrees,deps)
 
 printFormat (time,title,desc) = do
-  TIO.putStrLn time
-  TIO.putStrLn title
-  TIO.putStrLn desc
-  TIO.putStrLn ""
+  T.IO.putStrLn time
+  T.IO.putStrLn title
+  T.IO.putStrLn desc
+  T.IO.putStrLn ""
 
 
 getTimeTitleDesc :: FilePath -> IO (Maybe (Text,Text,Text))
@@ -92,13 +98,7 @@ formatPred :: (Text,Text) -> String
 formatPred (roleset,definition) = printf "                          %20s : %s" roleset definition
 
 
-formatTree :: Bitree (Int,Lemma,a) (Int,Lemma,a) -> Text
-formatTree tr = linePrint unLemma (toTree (bimap (^._2) (^._2) tr))
-  where f (_,l,_) =  l
-        toTree (PN x xs) = Node x (map toTree xs)
-        toTree (PL x)    = Node x []
         
-
 
 printEachVerb preddb (lemma,n) = do
   putStrLn (formatHist (lemma,n))
@@ -107,16 +107,12 @@ printEachVerb preddb (lemma,n) = do
   putStrLn "---------------------------------------------------------------"
 
 
-
-
-
-
 extractVerbs :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
              -> (Text,Text,Text)
              -> IO [Token]
 extractVerbs pp (time,title,desc) = do
   -- putStrLn "======"
-  -- TIO.putStrLn time  
+  -- T.IO.putStrLn time  
   -- extractVerbsFromText pp title
   extractVerbsFromText pp desc
 
@@ -125,7 +121,7 @@ extractVerbsFromText :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline"
                      -> Text
                      -> IO [Token]
 extractVerbsFromText pp txt = do
-  -- TIO.putStrLn txt
+  -- T.IO.putStrLn txt
   (_,sents,tokss,_,_) <- runParser pp txt
   -- mapM_ print tokss
   return $ concatMap (filter (\t -> isVerb (t^.token_pos))) tokss
@@ -148,52 +144,27 @@ verbStatisticsWithPropBank pp preddb lst = do
 
 sentStructure pp txt = do
   (psents,sents,tokss,mptrs,deps) <- runParser pp txt
-  TIO.putStrLn txt
+  T.IO.putStrLn txt
   putStrLn "---------------------------------------------------------------"
   mapM_ (putStrLn . formatLemmaPOS) . concatMap (filter (\t -> isVerb (t^.token_pos))) $ tokss
   putStrLn "---------------------------------------------------------------"
   flip mapM_ (zip4 psents sents mptrs deps) $ \(psent,sent,mptr,dep) -> do
     flip mapM_ mptr $ \ptr -> do
+      let tkns = zip [0..] (getTKTokens psent)
+          tkmap = IM.fromList (mapMaybe (\tk -> (tk^._1,) <$> tk^._2.TK.word.to (fmap cutf8)) tkns)
+      
       let itr = mkAnnotatable (mkPennTreeIdx ptr)
           lmap= mkLemmaMap psent
           iltr = lemmatize lmap itr
-          -- dep = 
-          idltr = depLevelTree dep iltr 
-          ptv = parseTreeVerb idltr 
-      mapM_ (TIO.putStrLn . formatTree) ptv
+          idltr = depLevelTree dep iltr
+          vps = verbPropertyFromPennTree lmap ptr
+          vtree = verbTree vps idltr 
+      mapM_ (T.IO.putStrLn . formatBitree (^._2.to (showVerb tkmap))) vtree
       putStrLn "---------------------------------------------------------------"
-      (TIO.putStrLn . prettyPrint 0) ptr
+      (T.IO.putStrLn . prettyPrint 0) ptr
       putStrLn "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-"
 
 
-
-parseTreeVerb :: PennTreeIdxG (ANAtt '[]) (ALAtt '[Maybe Level,Lemma])
-              -> Maybe (Bitree (Int,Lemma,Maybe Level) (Int,Lemma,Maybe Level))
-parseTreeVerb = fmap squash . verbTree
-  where
-    verbTree (PL (i,l)) = if isVerb (posTag l)
-                          then let mlvl = ahead (getAnnot l)
-                                   lma = ahead (atail (getAnnot l))
-                                   -- AttribCons mlvl (AttribCons lma AttribNil) = getAnnot l
-                               in Just (PL (i,lma,mlvl))  --       Just (PL (i,ahead (getAnnot l)))
-                          else Nothing 
-    verbTree (PN _ xs) = let xs' = mapMaybe verbTree xs
-                         in case xs' of
-                              []  -> Nothing
-                              lst -> let y:ys = sortBy (cmpLevel `on` getLevel) lst
-                                     in case y of
-                                          PN v _ -> Just (PN v (y:ys))
-                                          PL v   -> case ys of
-                                                      [] -> Just (PL v)
-                                                      _ -> Just (PN v ys)
-    getLevel (PL (_i,_,ml))   = ml
-    getLevel (PN (_i,_,ml) _) = ml
-              
-
-    squash (PN y [z@(PN w ws)]) = if y == w then squash z else PN y [squash z]
-    squash (PN y [z@(PL w)   ]) = if y == w then PL w     else PN y [squash z]    
-    squash (PN y ys)            = PN y (map squash ys)
-    squash x                    = x
 
     
 main :: IO ()
@@ -220,7 +191,7 @@ main = do
                        . (constituency .~ True)
                   )
     -- txts <- filterM (\txt -> doesContainVerb pp txt "run") $ map (^._3) ordered
-    -- mapM_ (\t -> TIO.putStrLn t >> TIO.putStrLn "") txts
+    -- mapM_ (\t -> T.IO.putStrLn t >> T.IO.putStrLn "") txts
       
     -- verbStatisticsWithPropBank pp preddb ordered
     -- print "hello"
