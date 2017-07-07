@@ -84,8 +84,7 @@ runTokenizer n = do
             , _tokenizedMaintext = mtk }
 
       let savepath = "/data/groups/uphere/news-archive/fetchfin/nyt/NYTArticles/" ++  hsh ++ ".info/" ++ hsh ++ ".tokenized"
-      print savepath
-      -- BL.writeFile savepath (encode tokenizednyt)
+      BL.writeFile savepath (encode tokenizednyt)
 
   void $ runRedis conn $ do
     del (map (B.pack . fst) particles)
