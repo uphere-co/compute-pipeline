@@ -47,36 +47,21 @@ runTokenizer n = do
   let particles' = filter (\(h,f) -> not (h `elem` sanalyses)) particles''
 
   conn <- checkedConnect defaultConnectInfo { connectHost = "localhost", connectPort = PortNumber 11111 }
-  result <- runRedis conn $ do
-    a' <- fmap catMaybes $ do
-      _ <- flip State.evalStateT 0 $ do
-        flip takeWhileM particles' $ \(hsh,article) -> do
-          m <- State.get
-          eb <- lift $ exists (B.pack hsh)
-          let Right b = eb
-          if b
-            then return True
-            else do            
-            lift $ setnx (B.pack hsh) ("tokenization" :: ByteString)
-            liftIO $ print hsh
-            if (m+1 >= n) then return False else (State.put (m+1) >> return True)                        
-      return [Nothing]
-    return Nothing
-
-  print ""
-
-          {-
-      eb <- exists hsh
-      case eb of
-        Left  reply -> error "error!"
-        Right b     -> if b then return Nothing else return (Just x)
-    quit
+  particles <- runRedis conn $ do
+    a' <- flip State.evalStateT 0 $ do
+      pa' <- flip takeWhileM particles' $ \(hsh,article) -> do
+        m <- State.get
+        eb <- lift $ exists (B.pack hsh)
+        let Right b = eb
+        if b
+          then return True
+          else do            
+          lift $ setnx (B.pack hsh) ("tokenization" :: ByteString)
+          -- liftIO $ print hsh
+          if (m+1 >= n) then return False else (State.put (m+1) >> return True)                        
+      return pa'
     return a'
-  print result
 
-
-  -}
-  {-
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (PPConfig True True True True False False False True)
@@ -95,9 +80,14 @@ runTokenizer n = do
             , _tokenizedMaintext = mtk }
 
       let savepath = "/data/groups/uphere/news-archive/fetchfin/nyt/NYTArticles/" ++  hsh ++ ".info/" ++ hsh ++ ".tokenized"
-      return ()
+      print savepath
       -- BL.writeFile savepath (encode tokenizednyt)
-   -}
+
+  runRedis conn $ do
+    forM_ particles $ \(hsh,_) -> do
+      del hsh
+    quit
+
 getSimplifiedTokensFromText txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
