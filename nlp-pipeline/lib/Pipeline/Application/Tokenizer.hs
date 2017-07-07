@@ -7,7 +7,7 @@ import           Control.Monad.Trans.Class       (lift)
 import           Control.Monad.IO.Class          (liftIO)
 import           Data.Maybe                      (catMaybes,fromMaybe,mapMaybe)
 import           Data.Binary                     (Binary,encode)
-import           Control.Monad                   (forM_,when)
+import           Control.Monad                   (forM_,when,void)
 import           Data.ByteString                 (ByteString)
 import qualified Data.ByteString.Char8  as B
 import qualified Data.ByteString.Lazy   as BL
@@ -83,11 +83,10 @@ runTokenizer n = do
       print savepath
       -- BL.writeFile savepath (encode tokenizednyt)
 
-  runRedis conn $ do
-    forM_ particles $ \(hsh,_) -> do
-      del hsh
+  void $ runRedis conn $ do
+    del (map (B.pack . fst) particles)
     quit
-
+    
 getSimplifiedTokensFromText txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
