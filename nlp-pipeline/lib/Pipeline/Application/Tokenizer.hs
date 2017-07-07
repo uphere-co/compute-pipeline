@@ -47,6 +47,8 @@ runTokenizer n = do
   let particles' = filter (\(h,f) -> not (h `elem` sanalyses)) particles''
 
   conn <- checkedConnect defaultConnectInfo { connectHost = "localhost", connectPort = PortNumber 11111 }
+  -- When running apps simultaneously, some of a list can be overlapped.
+  -- To avoid this, start the app with a little time difference.
   particles <- runRedis conn $ do
     a' <- flip State.evalStateT 0 $ do
       pa' <- flip takeWhileM particles' $ \(hsh,article) -> do
