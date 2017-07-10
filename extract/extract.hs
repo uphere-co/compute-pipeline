@@ -40,6 +40,7 @@ import           NLP.Printer.PennTreebankII
 import           NLP.Type.PennTreebankII
 import           PropBank.Query
 import           SRL.Feature
+import           SRL.Feature.Clause
 import           SRL.Feature.Dependency
 import           SRL.Feature.Verb
 import           SRL.Format                                  (formatBitree,showVerb)
@@ -160,6 +161,8 @@ sentStructure pp txt = do
           vps = verbPropertyFromPennTree lmap ptr
           vtree = verbTree vps idltr 
       mapM_ (T.IO.putStrLn . formatBitree (^._2.to (showVerb tkmap))) vtree
+      putStrLn "---------------------------------------------------------------"
+      showClauseStructure lmap ptr
       putStrLn "---------------------------------------------------------------"
       (T.IO.putStrLn . prettyPrint 0) ptr
       putStrLn "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-"
