@@ -1,39 +1,17 @@
-# ETL Library
+# nlp-pipeline
 
-ETL(Extract, Transform, Load) library repo includes following libraries,
+From text corpus, we need to produce annotated text for event extraction.
 
-## nlp-pipeline
-nlp-pipeline connects various nlp modules,
-* HWordNet
-* HCoreNLP
-* HUKB
-* predicate_matrix
-* intrinio (from fetchfin repo)
-* ...
+By using HCoreNLP, currently possible annotations are lemmatization, temporal
+expression and POS tagging. Currently, UKB input data from text is necessary for
+feeding FrameNet reinforced by predicate matrix.
 
-## HWordNet
-HWordNet is a haskell app for WordNet. It is now providing query function to
-find meaning of the word by using ILI or lemmatized word.
+nlp-pipeline is to read text corpus, to produce annotated text for communication between
+various language modules, and to print internal data in a pretty form for human-read(
+currently YAYAML is being used for this purpose).
 
-## HCoreNLP
-HCoreNLP is a haskell wrapper for Stanford CoreNLP. By adapting inline-java,
-it is quite easy to use java-side functions in haskell. 
-
-## HUKB
-HUKB is a haskell wrapper for UKB. From the list of words, UKB resolves
-WSD(Word Sense Disambiguation). 
-
-## predicate_matrix
-Predicate matrix is a new lexical resource resulting
-from the integration of multiple sources of predicate information including
-FrameNet, VerbNet, PropBank, WordNet and ESO.
-
-Parent project is SemLink. The purpose of SemLink is the same with predicate
-matrix, but it provides a far more incomplete mapping between sources.
-Predicate matrix is a more complete source extended from SemLink by using
-automatic predicate linking algorithm.
-
-## intrinio
-Intrinio app is retrieving data from newsapi, which provides metainfo about
-titles and description from newsapi service. Currently we are using copied
-data. 
+## Usage
+You can omit argument string by setting them in NIX_PATH.
+> nix-shell shell.nix --argstr fetchfin <fetchfin> --argstr nlp-types <nlp-types> --argstr symbolic <symbolic> --argstr textview <textview> --argstr uphere-nix-overlay <uphere-nix-overlay> --argstr HCoreNLP <HCoreNLP> --argstr HWordNet <HWordNet>
+> cabal build
+> ./dist/build/nlp-pipeline/nlp-pipeline
