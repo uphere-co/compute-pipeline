@@ -1,26 +1,25 @@
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Pipeline.Run.WikiEL where
 
 import           Control.Lens
-import qualified Data.ByteString.Char8 as B
-import           Data.Default
-import qualified Data.Text                  as T
-import qualified Data.Text.IO               as TIO
+import           Data.Text                          (Text)
 import           Data.Time.Calendar                 (fromGregorian)
-import           Language.Java         as J
-import           System.Environment               (getEnv)
+import           Language.Java                         as J
 --
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type
 import           CoreNLP.Simple.Type.Simplified
-import           WikiEL.WikiEntityClass           (orgClass,personClass)
-import           WikiEL.Type.FileFormat
+import           Text.TaggedText
 import           WikiEL                           (loadEMtagger)
 import           WikiEL.Convert
+import           WikiEL.Type.FileFormat
+import           WikiEL.WikiEntityClass           (orgClass,personClass)
 
+getWikiEL :: Text -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> IO [TagInfo Text]
 getWikiEL txt pp = do
   emTagger <- loadEMtagger (EntityReprFile "/data/groups/uphere/wikidata/testset/uid")
                            [(orgClass, ItemIDFile "/data/groups/uphere/wikidata/testset/ne.org"),
@@ -29,12 +28,10 @@ getWikiEL txt pp = do
   ann <- annotate pp doc
   rdoc <- protobufDoc ann
   case rdoc of
-    Left e -> return []
+    Left  _ -> return []
     Right d -> do
       let sents = d ^.. D.sentence . traverse
           f (NERSentence tokens) = tokens
           neTokens =  concatMap (f.sentToNER) sents
           linked_mentions = emTagger neTokens
-          text = T.unwords (map fst neTokens)
-      (getNameFromEntityMention $ head linked_mentions) >>= print
-      return linked_mentions
+      return $ map (\x -> TagInfo { _taginfo_range = getRangeFromEntityMention x, _taginfo_metainfo = Just $ MetaInfo {_metainfo_info = getNEFromEntityMention x}, _taginfo_text = getNameFromEntityMention x}) linked_mentions

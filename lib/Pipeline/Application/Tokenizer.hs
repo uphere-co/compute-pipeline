@@ -1,35 +1,34 @@
+{-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.Application.Tokenizer where
+
+import           Control.Monad                   (forM_,void)
+import           Control.Monad.Loops
+import qualified Control.Monad.State    as State
 import           Control.Monad.Trans.Class       (lift)
-import           Control.Monad.IO.Class          (liftIO)
-import           Data.Maybe                      (catMaybes,fromMaybe,mapMaybe)
 import           Data.Binary                     (Binary,encode)
-import           Control.Monad                   (forM_,when,void)
 import           Data.ByteString                 (ByteString)
 import qualified Data.ByteString.Char8  as B
 import qualified Data.ByteString.Lazy   as BL
+import           Data.Maybe                      (fromMaybe,mapMaybe)
 import           Data.Text                       (Text)
 import qualified Data.Text              as T
 import           Database.Redis
+import           GHC.Generics
 import           Language.Java          as J
 import           System.Environment              (getEnv)
-import           GHC.Generics
-import qualified NYT.Type               as NYT
-
-import qualified Control.Monad.State    as State
-import           Control.Monad.Loops
 --
 import           CoreNLP.Simple                  (annotate,prepare)
+import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple.Type.Simplified  (Token(..))
 import           CoreNLP.Simple.Util
-import           CoreNLP.Simple.Convert
 --
+import qualified NYT.Type               as NYT
 import           Pipeline.Source.NYT.Article
-import           Pipeline.Run
 
 data TokenizedNYTArticle = TokenizedNYTArticle
   { _tokenizedTitle :: [[Token]]
@@ -44,14 +43,14 @@ runTokenizer n = do
   particles'' <- getAllParsedNYTArticle
   sanalyses <- getAllAnalyzedNYTArticle
 
-  let particles' = filter (\(h,f) -> not (h `elem` sanalyses)) particles''
+  let particles' = filter (\(h,_) -> not (h `elem` sanalyses)) particles''
 
   conn <- checkedConnect defaultConnectInfo { connectHost = "localhost", connectPort = PortNumber 11111 }
   -- When running apps simultaneously, some of a list can be overlapped.
   -- To avoid this, start the app with a little time difference.
   particles <- runRedis conn $ do
     a' <- flip State.evalStateT 0 $ do
-      pa' <- flip takeWhileM particles' $ \(hsh,article) -> do
+      pa' <- flip takeWhileM particles' $ \(hsh,_) -> do
         m <- State.get
         eb <- lift $ exists (B.pack hsh)
         let Right b = eb
@@ -91,7 +90,8 @@ runTokenizer n = do
   void $ runRedis conn $ do
     del (map (B.pack . fst) particles)
     quit
-    
+
+getSimplifiedTokensFromText :: Text -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> IO [[Token]]
 getSimplifiedTokensFromText txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
