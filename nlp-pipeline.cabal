@@ -50,6 +50,8 @@ library
                   HCoreNLP-Proto,
                   HWordNet,
                   newsapi,
+                  newsapi-db,
+                  unordered-containers,
                   yaml,
                   nlp-types,
                   yayaml,
@@ -57,8 +59,11 @@ library
                   HUKB-driver,
                   predicate-matrix,
                   nyt-db,
+                  nlp-shared-types,
+                  semantic-role-labeler,
                   nyt-scrapper,
                   wiki-ner,
+                  time-tagger,
                   PropBank
   exposed-modules: Pipeline.Util
                    Pipeline.Run.CompanyNER
@@ -70,6 +75,7 @@ library
                    Pipeline.Run.Util
                    Pipeline.Run.WikiEL
                    Pipeline.Run
+                   Pipeline.Application.Construction
                    Pipeline.Application.Run
                    Pipeline.Application.RunBunch
                    Pipeline.Application.RunPropBank
@@ -79,7 +85,6 @@ library
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article
                    Pipeline.View.YAML.YAYAML
-                   Annot.SUTime
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
@@ -105,6 +110,30 @@ executable devel
   -- other-modules:       
   build-depends:       base,
                        --
+                       bytestring,
+                       data-default,
+                       filepath,
+                       jvm,
+                       lens,
+                       text,
+                       --
+                       HCoreNLP,
+                       HUKB,
+                       HUKB-driver,
+                       time-tagger,
+                       --
+                       nlp-pipeline
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
+  default-language:    Haskell2010
+
+
+executable construction_builder
+  hs-source-dirs:      app
+  main-is:             construction_builder.hs
+  -- other-modules:       
+  build-depends:       base,
+                       --
+                       bytestring,
                        filepath,
                        text,
                        HUKB,

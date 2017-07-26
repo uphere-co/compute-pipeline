@@ -22,7 +22,6 @@ import           Data.Maybe                      (fromJust,isNothing)
 import           Data.Monoid                     ((<>))
 import           Data.Text                       (Text)
 import qualified Data.Text              as T
-import           Data.Text.Read                  (decimal)
 import           GHC.Generics
 import           Language.Java          as J
 import           Options.Applicative
@@ -35,7 +34,6 @@ import           CoreNLP.Simple.Type             (PipelineConfig(PPConfig))
 import           CoreNLP.Simple.Util
 import qualified PredicateMatrix.Type   as PM
 import           PropBank
-import           WordNet.Type
 import           WordNet.Query                   (WordNetDB)
 --
 import           Pipeline.Source.NewsAPI.Article
@@ -131,17 +129,13 @@ runProcess :: FilePath
            -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
            -> IO (Text, [[(Text, Maybe Int)]])
 runProcess f db pp = do
-  let worddb  = _wordDB db
-      predmat = _predDB db
+  let predmat = _predDB db
   txt <- getDescription f    
   doc <- getDoc txt
   ann <- annotate pp doc
   pdoc <- getProtoDoc ann
   let psents = getProtoSents pdoc
-      tokens = getAllTokens psents
-      ukb_input = T.unpack $ mkUkbTextInput (mkUkbInput tokens)
 
-  (_,wsdlst) <- getPPR ukb_input 
   {-
   result <- forM wsdlst $ \(_,wpos',ili',_) -> do
     let -- wid   = T.pack (B.unpack wid')
