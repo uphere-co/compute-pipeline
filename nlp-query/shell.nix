@@ -13,6 +13,9 @@
 , uphere-opaleye        ? <uphere-opaleye>
 , nlp-shared-types      ? <nlp-shared-types>
 , time-tagger           ? <time-tagger>
+, OntoNotes             ? <OntoNotes>
+, HFrameNet             ? <HFrameNet>
+, VerbNet               ? <VerbNet>
 }:
 
 let newpkgs = import pkgs.path {
@@ -57,6 +60,9 @@ let
       "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
       "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};
       "time-tagger" = self.callPackage (import time-tagger) {};
+      "OntoNotes" = self.callPackage (import OntoNotes) {};
+      "HFrameNet" = self.callPackage (import HFrameNet) {};
+      "VerbNet" = self.callPackage (import VerbNet) {};
       };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
@@ -104,6 +110,7 @@ let
             p.nyt-db
             p.nyt-scrapper
             p.time-tagger
+            p.OntoNotes
             HUKB-driver
           ]);
 

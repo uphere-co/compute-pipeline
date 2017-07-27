@@ -3,13 +3,19 @@
 
 module Main where
 
+import qualified Data.ByteString.Char8 as B
+import qualified Data.Text             as T
+
 import Network.Transport
 import Network.Transport.TCP (createTransport, defaultTCPParameters)
 import Network.Socket.Internal (withSocketsDo)
 import Control.Concurrent
 import Data.Map
+import Data.ByteString (ByteString)
 import Control.Exception
 import System.Environment
+--
+import OntoNotes.Application.Analyze
 
 -- | Server that echoes messages straight back to the origin endpoint.
 echoServer :: EndPoint -> MVar () -> IO ()
@@ -28,9 +34,10 @@ echoServer endpoint serverDone = go empty
           go (insert cid connMVar cs)
         Received cid payload -> do
           forkIO $ do
+            runAnalysis (T.intercalate " " $ fmap (T.pack . B.unpack) payload)
             conn <- readMVar (cs ! cid)
             -- send conn payload
-            send conn (T.pack "Received")
+            send conn ["Received" :: ByteString]
             return ()
           go cs
         ConnectionClosed cid -> do
