@@ -26,19 +26,19 @@ import           OntoNotes.Application.Analyze
 
 main :: IO ()
 main = do
-  [host, port, portG] <- getArgs
+  [host, hostG, port, portG] <- getArgs
   pidref              <- newEmptyTMVarIO
   Right transport     <- createTransport host port defaultTCPParameters
   node <- newLocalNode transport initRemoteTable
   runProcess node $ do
     pid <- spawnLocal $ (liftIO $ print "Server Start!")
     liftIO $ atomically (putTMVar pidref pid)
-    liftIO $ broadcast pidref portG
+    liftIO $ broadcast pidref portG hostG
 
-broadcast :: TMVar ProcessId -> String -> IO ()
-broadcast pidref portG = do
+broadcast :: TMVar ProcessId -> String -> String -> IO ()
+broadcast pidref portG hostName = do
   pid <- atomically (takeTMVar pidref)
-  NS.serve NS.HostAny portG $ \(sock,addr) -> do
+  NS.serve (NS.Host hostName) portG $ \(sock,addr) -> do
     print $ "Request from " ++ (show addr)
     packAndSend sock pid
 
