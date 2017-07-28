@@ -8,6 +8,7 @@ import           Control.Concurrent.STM
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node
 import           Control.Exception
+import           Control.Monad           (void)
 import qualified Data.Binary             as Bi
 import           Data.ByteString         (ByteString)
 import qualified Data.ByteString         as B
@@ -31,10 +32,14 @@ main = do
   Right transport     <- createTransport host port defaultTCPParameters
   node <- newLocalNode transport initRemoteTable
   runProcess node $ do
-    pid <- spawnLocal $ (liftIO $ print "Server Start!")
-    liftIO $ atomically (putTMVar pidref pid)
-    liftIO $ broadcast pidref portG hostG
-
+    pid <- spawnLocal $ do
+      (query :: Text) <- expect
+      liftIO $ print query
+      
+    liftIO $ do
+      atomically (putTMVar pidref pid)
+      broadcast pidref portG hostG
+    
 broadcast :: TMVar ProcessId -> String -> String -> IO ()
 broadcast pidref portG hostName = do
   pid <- atomically (takeTMVar pidref)
