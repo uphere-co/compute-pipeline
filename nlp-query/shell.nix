@@ -90,6 +90,7 @@ let
             hedis
             lens
             monad-loops
+            network-simple
             opaleye
             optparse-applicative
             postgresql-simple

@@ -21,10 +21,12 @@ executable nlp-query
   -- other-extensions:    
   build-depends:       base,
                        --
+                       binary,
                        bytestring,
                        containers,
                        distributed-process,
                        network,
+                       network-simple,
                        network-transport,
                        network-transport-tcp,
                        stm,

@@ -5,66 +5,51 @@ module Main where
 
 import           Control.Concurrent
 import           Control.Concurrent.STM
+import           Control.Distributed.Process
+import           Control.Distributed.Process.Node
 import           Control.Exception
+import qualified Data.Binary             as Bi
 import           Data.ByteString         (ByteString)
-import qualified Data.ByteString.Char8   as B
+import qualified Data.ByteString         as B
+import qualified Data.ByteString.Lazy    as BL
 import           Data.Map
+import           Data.Text                    (Text)
 import qualified Data.Text               as T
+import qualified Network.Simple.TCP           as NS
 import           Network.Transport
 import           Network.Transport.TCP   (createTransport, defaultTCPParameters)
-import           Network.Socket.Internal (withSocketsDo)
 import           System.Environment
 
 import           Control.Distributed.Process.Node
 --
 import           OntoNotes.Application.Analyze
 
--- | Server that echoes messages straight back to the origin endpoint.
-echoServer :: EndPoint -> MVar () -> IO ()
-echoServer endpoint serverDone = go empty
-  where
-    go :: Map ConnectionId (MVar Connection) -> IO ()
-    go cs = do
-      event <- receive endpoint
-      case event of
-        ConnectionOpened cid rel addr -> do
-          putStrLn$ "  New connection: ID "++show cid++", reliability: "++show rel++", address: "++ show addr
-          connMVar <- newEmptyMVar
-          forkIO $ do
-            Right conn <- connect endpoint addr rel defaultConnectHints
-            putMVar connMVar conn
-          go (insert cid connMVar cs)
-        Received cid payload -> do
-          forkIO $ do
-            node <- newLocalNode transport initRemoteTable
-            runProcess node $ runAnalysis (T.intercalate " " $ fmap (T.pack . B.unpack) payload)
-            conn <- readMVar (cs ! cid)
-            send conn payload
-            return ()
-          go cs
-        ConnectionClosed cid -> do
-          putStrLn$ "    Closed connection: ID "++show cid
-          forkIO $ do
-            conn <- readMVar (cs ! cid)
-            close conn
-          go (delete cid cs)
-        EndPointClosed -> do
-          putStrLn "Echo server exiting"
-          putMVar serverDone ()
-
-onCtrlC :: IO a -> IO () -> IO a
-p `onCtrlC` q = catchJust isUserInterrupt p (const $ q >> p `onCtrlC` q)
-  where
-    isUserInterrupt :: AsyncException -> Maybe ()
-    isUserInterrupt UserInterrupt = Just ()
-    isUserInterrupt _             = Nothing
-
 main :: IO ()
-main = withSocketsDo $ do
-  [host, port]    <- getArgs
-  serverDone      <- newEmptyMVar
-  Right transport <- createTransport host port defaultTCPParameters
-  Right endpoint  <- newEndPoint transport
-  forkIO $ echoServer endpoint serverDone
-  putStrLn $ "Echo server started at " ++ show (address endpoint)
-  readMVar serverDone `onCtrlC` closeTransport transport
+main = do
+  [host, port, portG] <- getArgs
+  pidref              <- newEmptyTMVarIO
+  Right transport     <- createTransport host port defaultTCPParameters
+  node <- newLocalNode transport initRemoteTable
+  runProcess node $ do
+    pid <- spawnLocal $ (liftIO $ print "Server Start!")
+    liftIO $ atomically (putTMVar pidref pid)
+    liftIO $ broadcast pidref portG
+
+broadcast :: TMVar ProcessId -> String -> IO ()
+broadcast pidref portG = do
+  pid <- atomically (takeTMVar pidref)
+  NS.serve NS.HostAny portG $ \(sock,addr) -> do
+    print $ "Request from " ++ (show addr)
+    packAndSend sock pid
+
+packNumBytes :: B.ByteString -> B.ByteString
+packNumBytes bstr =
+  let len = (fromIntegral . B.length) bstr :: Bi.Word32
+  in BL.toStrict (Bi.encode len)
+
+packAndSend :: (Bi.Binary a) => NS.Socket -> a -> IO ()
+packAndSend sock x = do
+  let msg = (BL.toStrict . Bi.encode) x
+      sizebstr = packNumBytes msg
+  NS.send sock sizebstr
+  NS.send sock msg
