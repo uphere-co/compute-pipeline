@@ -23,9 +23,11 @@ executable nlp-query
                        --
                        bytestring,
                        containers,
+                       distributed-process,
                        network,
                        network-transport,
                        network-transport-tcp,
+                       stm,
                        text,
                        --
                        OntoNotes

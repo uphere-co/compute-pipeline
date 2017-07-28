@@ -93,6 +93,7 @@ let
             opaleye
             optparse-applicative
             postgresql-simple
+            stm
             transformers
             yaml
             yayaml
