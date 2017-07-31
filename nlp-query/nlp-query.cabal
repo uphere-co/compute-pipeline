@@ -25,12 +25,14 @@ executable nlp-query
                        bytestring,
                        containers,
                        distributed-process,
+                       jvm,
                        network,
                        network-simple,
                        network-transport,
                        network-transport-tcp,
                        stm,
                        text,
+                       transformers,
                        --
                        OntoNotes
   hs-source-dirs:      app

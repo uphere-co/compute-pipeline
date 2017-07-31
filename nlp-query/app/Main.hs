@@ -8,14 +8,17 @@ import           Control.Concurrent.STM
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node
 import           Control.Exception
-import           Control.Monad           (void)
+import           Control.Monad           (forever,void)
+import           Control.Monad.Trans.Class (lift)
 import qualified Data.Binary             as Bi
 import           Data.ByteString         (ByteString)
 import qualified Data.ByteString         as B
 import qualified Data.ByteString.Lazy    as BL
+import qualified Data.ByteString.Char8   as B8
 import           Data.Map
 import           Data.Text                    (Text)
 import qualified Data.Text               as T
+import           Language.Java              as J
 import qualified Network.Simple.TCP           as NS
 import           Network.Transport
 import           Network.Transport.TCP   (createTransport, defaultTCPParameters)
@@ -31,14 +34,19 @@ main = do
   pidref              <- newEmptyTMVarIO
   Right transport     <- createTransport host port defaultTCPParameters
   node <- newLocalNode transport initRemoteTable
-  runProcess node $ do
-    pid <- spawnLocal $ do
-      (query :: Text) <- expect
-      liftIO $ print query
-      
-    liftIO $ do
-      atomically (putTMVar pidref pid)
-      broadcast pidref portG hostG
+
+  clspath <- getEnv "CLASSPATH"
+  J.withJVM [ B8.pack ("-Djava.class.path=" ++ clspath) ] $ do 
+    pp <- loadJVM
+    runProcess node $ do
+      pid <- spawnLocal $ forever $ do
+        (query :: Text) <- expect
+        liftIO $ print query
+        liftIO $ runAnalysis query pp
+        
+      liftIO $ do
+        atomically (putTMVar pidref pid)
+        broadcast pidref portG hostG
     
 broadcast :: TMVar ProcessId -> String -> String -> IO ()
 broadcast pidref portG hostName = do
