@@ -16,6 +16,7 @@
 , OntoNotes             ? <OntoNotes>
 , HFrameNet             ? <HFrameNet>
 , VerbNet               ? <VerbNet>
+, syntactic-analysis    ? <syntactic-analysis>
 }:
 
 let newpkgs = import pkgs.path {
@@ -53,6 +54,7 @@ let
       "PropBank" = self.callPackage (import PropBank) {};
       "semantic-role-labeler" = self.callPackage (import semantic-role-labeler) {};
       "wiki-ner" = self.callPackage (import wiki-ner) {};
+      "syntactic-analysis" = self.callPackage (import syntactic-analysis) {};
       "fastText" = self.callPackage fastTextNix { inherit fasttext; };
       "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
       "nyt-db" = self.callPackage (import (fetchfin + "/nyt/db")) {};

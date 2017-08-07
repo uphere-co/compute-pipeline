@@ -42,7 +42,7 @@ main = do
       pid <- spawnLocal $ forever $ do
         (query :: Text) <- expect
         liftIO $ print query
-        liftIO $ runAnalysis query pp
+        liftIO $ getAnalysisResult query pp
         
       liftIO $ do
         atomically (putTMVar pidref pid)
