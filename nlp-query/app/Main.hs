@@ -6,6 +6,7 @@ module Main where
 import           Control.Concurrent
 import           Control.Concurrent.STM
 import           Control.Distributed.Process
+import qualified Control.Distributed.Process as Cloud
 import           Control.Distributed.Process.Node
 import           Control.Exception
 import           Control.Monad           (forever,void)
@@ -40,9 +41,12 @@ main = do
     pp <- loadJVM
     runProcess node $ do
       pid <- spawnLocal $ forever $ do
+        (pid :: ProcessId) <- expect
         (query :: Text) <- expect
+        liftIO $ print pid
         liftIO $ print query
         liftIO $ getAnalysisResult query pp
+        Cloud.send pid ("Done" :: String)
         
       liftIO $ do
         atomically (putTMVar pidref pid)

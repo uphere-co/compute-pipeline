@@ -26,7 +26,12 @@ main = do
       print received
       runInputT defaultSettings $ whileJust_ (getInputLine "% ") $ \input' -> liftIO $ do
         let input = T.pack input'
-        void $ runProcess node $ send received input
+        void $ runProcess node $ do
+          pid <- spawnLocal $ do
+            (result :: String) <- expect
+            liftIO $ print result
+          send received pid
+          send received input
       
 recvAndUnpack :: Bi.Binary a => NS.Socket -> IO (Maybe a)
 recvAndUnpack sock = do
