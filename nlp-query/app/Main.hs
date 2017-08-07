@@ -45,8 +45,8 @@ main = do
         (query :: Text) <- expect
         liftIO $ print pid
         liftIO $ print query
-        liftIO $ getAnalysisResult query pp
-        Cloud.send pid ("Done" :: String)
+        result <- liftIO $ getAnalysisResult query pp
+        Cloud.send pid result
         
       liftIO $ do
         atomically (putTMVar pidref pid)
