@@ -45,7 +45,7 @@ main = do
         (query :: Text) <- expect
         liftIO $ print pid
         liftIO $ print query
-        result <- liftIO $ getAnalysisResult query pp
+        result <- liftIO $ fmap (T.intercalate "\n") (getAnalysis query pp)
         Cloud.send pid result
         
       liftIO $ do
