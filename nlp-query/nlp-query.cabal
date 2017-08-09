@@ -30,6 +30,7 @@ executable nlp-query
                        network-simple,
                        network-transport,
                        network-transport-tcp,
+                       network-util,
                        stm,
                        text,
                        transformers,

@@ -4,7 +4,7 @@
 module Main where
 
 import           Control.Concurrent
--- import           Control.Concurrent.STM
+import           Control.Concurrent.STM
 import           Control.Distributed.Process
 import qualified Control.Distributed.Process as Cloud
 import           Control.Distributed.Process.Node
@@ -20,7 +20,6 @@ import           Data.Map
 import           Data.Text                    (Text)
 import qualified Data.Text               as T
 import           Language.Java              as J
--- import qualified Network.Simple.TCP           as NS
 import           Network.Transport
 import           Network.Transport.TCP   (createTransport, defaultTCPParameters)
 import           System.Environment
@@ -28,6 +27,10 @@ import           System.Environment
 import           Control.Distributed.Process.Node
 --
 import           OntoNotes.App.Analyze
+--
+import           Network.Util
+
+
 
 main :: IO ()
 main = do

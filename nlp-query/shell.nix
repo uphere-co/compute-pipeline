@@ -17,6 +17,7 @@
 , HFrameNet             ? <HFrameNet>
 , VerbNet               ? <VerbNet>
 , syntactic-analysis    ? <syntactic-analysis>
+, nlp-pipeline          ? <nlp-pipeline>
 }:
 
 let newpkgs = import pkgs.path {
@@ -65,6 +66,7 @@ let
       "OntoNotes" = self.callPackage (import OntoNotes) {};
       "HFrameNet" = self.callPackage (import HFrameNet) {};
       "VerbNet" = self.callPackage (import VerbNet) {};
+      "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
       };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
@@ -115,6 +117,7 @@ let
             p.nyt-scrapper
             p.time-tagger
             p.OntoNotes
+            p.network-util
             HUKB-driver
           ]);
 
