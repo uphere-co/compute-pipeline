@@ -10,6 +10,11 @@ import qualified Data.ByteString             as B
 import qualified Data.ByteString.Lazy        as BL
 import qualified Network.Simple.TCP          as NS
 
+
+-----------------
+-- Server Side --
+-----------------
+
 broadcast :: TMVar ProcessId -> String -> String -> IO ()
 broadcast pidref portB hostName = do
   pid <- atomically (takeTMVar pidref)
@@ -29,6 +34,9 @@ packAndSend sock x = do
   NS.send sock sizebstr
   NS.send sock msg
 
+-----------------
+-- Client Side --
+-----------------
 
 recvAndUnpack :: Bi.Binary a => NS.Socket -> IO (Maybe a)
 recvAndUnpack sock = do
@@ -47,4 +55,3 @@ connectBroadcast port = do
   NS.connect "127.0.0.1" port $ \(sock,addr) -> do
     (received :: Maybe ProcessId) <- recvAndUnpack sock
     return received
-

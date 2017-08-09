@@ -30,8 +30,6 @@ import           OntoNotes.App.Analyze
 --
 import           Network.Util
 
-
-
 main :: IO ()
 main = do
   [host, hostB, port, portB] <- getArgs
