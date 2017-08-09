@@ -37,6 +37,8 @@ main = do
   Right transport     <- createTransport host port defaultTCPParameters
   node <- newLocalNode transport initRemoteTable
 
+  config <- loadConfig
+
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B8.pack ("-Djava.class.path=" ++ clspath) ] $ do 
     pp <- loadJVM
@@ -46,7 +48,7 @@ main = do
         (query :: Text) <- expect
         liftIO $ print pid
         liftIO $ print query
-        result <- liftIO $ fmap (T.intercalate "\n") (getAnalysis query pp)
+        result <- liftIO $ fmap (T.intercalate "\n") (getAnalysis query config pp)
         Cloud.send pid result
         
       liftIO $ do
