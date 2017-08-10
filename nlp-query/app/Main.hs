@@ -20,7 +20,6 @@ import           Data.Map
 import           Data.Text                    (Text)
 import qualified Data.Text               as T
 import           Language.Java              as J
-import qualified Network.Simple.TCP           as NS
 import           Network.Transport
 import           Network.Transport.TCP   (createTransport, defaultTCPParameters)
 import           System.Environment
@@ -28,6 +27,8 @@ import           System.Environment
 import           Control.Distributed.Process.Node
 --
 import           OntoNotes.App.Analyze
+--
+import           Network.Util
 
 main :: IO ()
 main = do
@@ -35,6 +36,8 @@ main = do
   pidref              <- newEmptyTMVarIO
   Right transport     <- createTransport host port defaultTCPParameters
   node <- newLocalNode transport initRemoteTable
+
+  config <- loadConfig
 
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B8.pack ("-Djava.class.path=" ++ clspath) ] $ do 
@@ -45,28 +48,9 @@ main = do
         (query :: Text) <- expect
         liftIO $ print pid
         liftIO $ print query
-        result <- liftIO $ fmap (T.intercalate "\n") (getAnalysis query pp)
+        result <- liftIO $ fmap (T.intercalate "\n") (getAnalysis query config pp)
         Cloud.send pid result
         
       liftIO $ do
         atomically (putTMVar pidref pid)
         broadcast pidref portB hostB
-    
-broadcast :: TMVar ProcessId -> String -> String -> IO ()
-broadcast pidref portB hostName = do
-  pid <- atomically (takeTMVar pidref)
-  NS.serve (NS.Host hostName) portB $ \(sock,addr) -> do
-    print $ "Request from " ++ (show addr)
-    packAndSend sock pid
-
-packNumBytes :: B.ByteString -> B.ByteString
-packNumBytes bstr =
-  let len = (fromIntegral . B.length) bstr :: Bi.Word32
-  in BL.toStrict (Bi.encode len)
-
-packAndSend :: (Bi.Binary a) => NS.Socket -> a -> IO ()
-packAndSend sock x = do
-  let msg = (BL.toStrict . Bi.encode) x
-      sizebstr = packNumBytes msg
-  NS.send sock sizebstr
-  NS.send sock msg
