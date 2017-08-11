@@ -6,6 +6,7 @@
 module Pipeline.Application.CoreNLPParser where
 
 import           Control.Lens          hiding (Level)
+import qualified Data.Aeson	       as A
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default
@@ -43,8 +44,15 @@ import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           OntoNotes.App.Util
 
-runCoreNLPParser :: Text -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-                 -> IO ( [S.Sentence], [Maybe Sentence], [(SentIdx,BeginEnd,Text)], [[Token]], [Maybe PennTree], [Dependency], Maybe [(SentItem, [TagPos (Maybe Utf8)])] )
+
+readAndParse = do
+  bstr <- BL.readFile "result.txt"
+  let result = A.decode bstr :: Maybe ( [Maybe Sentence], [(SentIdx,BeginEnd,Text)], [[Token]], [Maybe PennTree], [Dependency], Maybe [(SentItem, [TagPos (Maybe Text)])] )
+  return result
+
+--runCoreNLPParser :: Text -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+--                 -> IO ( [Maybe Sentence], [(SentIdx,BeginEnd,Text)], [[Token]], [Maybe PennTree], [Dependency], Maybe [(SentItem, [TagPos (Maybe Text)])] )
+--                  -> IO ( [S.Sentence], [Maybe Sentence], [(SentIdx,BeginEnd,Text)], [[Token]], [Maybe PennTree], [Dependency], Maybe [(SentItem, [TagPos (Maybe Utf8)])] )
 runCoreNLPParser txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
@@ -53,7 +61,7 @@ runCoreNLPParser txt pp = do
   let psents = toListOf (D.sentence . traverse) pdoc
       sentidxs = getSentenceOffsets psents
       sentitems = map (addText txt) sentidxs
-  mtmx <- case fmap fst (messageGet lbstr_sutime) :: Either String T.ListTimex of
+  mtmx' <- case fmap fst (messageGet lbstr_sutime) :: Either String T.ListTimex of
     Left _ -> return Nothing
     Right rsutime -> do
       let sentswithtmx = addSUTime sentitems rsutime
@@ -64,7 +72,9 @@ runCoreNLPParser txt pp = do
 
       tktokss = map (getTKTokens) psents
       tokss = map (mapMaybe convertToken) tktokss
-  return (psents,sents,sentitems,tokss,parsetrees,deps,mtmx)
+  let mtmx = fmap (map (\(x,xs) -> map (\(i,j,z) -> (i,j,(fmap cutf8 z))) xs)) mtmx'
+  return (sents,sentitems,tokss,parsetrees,deps,mtmx)
+--  return (psents,sents,sentitems,tokss,parsetrees,deps,mtmx)
 
 {-
 printFormat :: (Text, Text, Text) -> IO ()

@@ -134,6 +134,7 @@ executable corenlp-runner
   -- other-modules:       
   build-depends:       base,
                        --
+                       aeson,
                        bytestring,
                        data-default,
                        filepath,
