@@ -64,7 +64,8 @@ library
                   nyt-scrapper,
                   wiki-ner,
                   time-tagger,
-                  PropBank
+                  PropBank,
+                  OntoNotes
   exposed-modules: Pipeline.Util
                    Pipeline.Run.CompanyNER
                    Pipeline.Run.Idiom
@@ -75,7 +76,7 @@ library
                    Pipeline.Run.Util
                    Pipeline.Run.WikiEL
                    Pipeline.Run
---                   Pipeline.Application.Construction
+                   Pipeline.Application.CoreNLPParser
                    Pipeline.Application.Run
 --                   Pipeline.Application.RunBunch
 --                   Pipeline.Application.RunPropBank
@@ -127,9 +128,9 @@ executable devel
   default-language:    Haskell2010
 
 
-executable construction_builder
+executable corenlp-runner
   hs-source-dirs:      app
-  main-is:             construction_builder.hs
+  main-is:             corenlp-runner.hs
   -- other-modules:       
   build-depends:       base,
                        --

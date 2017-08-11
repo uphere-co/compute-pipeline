@@ -3,10 +3,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 
-module Pipeline.Application.Construction where
+module Pipeline.Application.CoreNLPParser where
 
 import           Control.Lens          hiding (Level)
 import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default
 import qualified Data.HashMap.Strict   as HM
 import           Data.Function                (on)
@@ -22,8 +23,11 @@ import           Language.Java         as J
 import           System.Environment
 import           Text.Printf
 --
+import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
+import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
+import qualified CoreNLP.Proto.HCoreNLPProto.TimexWithOffset as T
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type
@@ -34,34 +38,35 @@ import           NLP.Shared.Type
 import           NLP.Type.PennTreebankII
 import qualified NLP.Type.PennTreebankII.Separated as N
 import           PropBank.Query
-import           SRL.Feature
-import           SRL.Feature.Clause
-import           SRL.Feature.Dependency
-import           SRL.Feature.Verb
-import           SRL.Format                                  (formatBitree,formatVerbArgs,formatVerbProperty,showVerb)
-import           SRL.Type.Clause
-import           SRL.Type.Verb
+import           Text.ProtocolBuffers.Basic       (Utf8)
+import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
-import           Pipeline.Source.NewsAPI.Article
-import           Pipeline.Run
+import           OntoNotes.App.Util
 
-runParser :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-          -> Text
-          -> IO ([S.Sentence], [Maybe Sentence], [[Token]], [Maybe PennTree], [Dependency])
-runParser pp txt = do
+runCoreNLPParser :: Text -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+                 -> IO ( [S.Sentence], [Maybe Sentence], [(SentIdx,BeginEnd,Text)], [[Token]], [Maybe PennTree], [Dependency], Maybe [(SentItem, [TagPos (Maybe Utf8)])] )
+runCoreNLPParser txt pp = do
   doc <- getDoc txt
   ann <- annotate pp doc
   pdoc <- getProtoDoc ann
-  let psents = getProtoSents pdoc
-  
-      parsetrees = map (\x -> pure . decodeToPennTree =<< (x^.S.parseTree) ) psents
+  lbstr_sutime <- BL.fromStrict <$> serializeTimex ann
+  let psents = toListOf (D.sentence . traverse) pdoc
+      sentidxs = getSentenceOffsets psents
+      sentitems = map (addText txt) sentidxs
+  mtmx <- case fmap fst (messageGet lbstr_sutime) :: Either String T.ListTimex of
+    Left _ -> return Nothing
+    Right rsutime -> do
+      let sentswithtmx = addSUTime sentitems rsutime
+      return (Just sentswithtmx)
+  let parsetrees = map (\x -> pure . decodeToPennTree =<< (x^.S.parseTree) ) psents
       sents = map (convertSentence pdoc) psents
       Right deps = mapM sentToDep psents
 
       tktokss = map (getTKTokens) psents
-      tokss = map (mapMaybe convertToken') tktokss
-  return (psents,sents,tokss,parsetrees,deps)
+      tokss = map (mapMaybe convertToken) tktokss
+  return (psents,sents,sentitems,tokss,parsetrees,deps,mtmx)
 
+{-
 printFormat :: (Text, Text, Text) -> IO ()
 printFormat (time,title,desc) = do
   T.IO.putStrLn time
@@ -263,3 +268,4 @@ getConstruction txt pp = do
             tkmap' = mapMaybe (\tk -> (tk^._1,) <$> tk^._2.TK.word.to (fmap cutf8)) tkns          
             lmap' = mkLemmaMap psent
         getClauseStructureExplicitly lmap' ptr tkmap'
+-}

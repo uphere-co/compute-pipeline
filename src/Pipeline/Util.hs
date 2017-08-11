@@ -69,14 +69,6 @@ processAnnotation pp forest doc = runEitherT $ do
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
 
-getSentenceOffsets :: D.Document -> [(SentIdx,BeginEnd)]
-getSentenceOffsets doc = 
-  let sents = toListOf (D.sentence . traverse) doc
-  in zip ([1..] :: [Int]) $ flip map sents $ \s -> 
-       let b = fromJust $ fromJust $ firstOf (S.token . traverse . TK.beginChar) s
-           e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
-       in (fromIntegral b+1,fromIntegral e)
-
 addText :: Text -> (SentIdx,BeginEnd) -> SentItem
 addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
 
@@ -84,15 +76,6 @@ addTag :: [TagPos a] -> SentItem -> (SentItem,[TagPos a])
 addTag lst i@(_,(b,e),_) = (i,filter check lst)
   where check (b',e',_) = b' >= b && e' <= e 
 
-addSUTime :: [SentItem] -> T.ListTimex
-          -> [(SentItem,[TagPos (Maybe Utf8)])]
-addSUTime sents tmxs =
-  let f t = ( fromIntegral (t^.T.characterOffsetBegin) + 1
-            , fromIntegral (t^.T.characterOffsetEnd)
-            , t^. T.timex . Tmx.value
-            )
-  in filter (not.null.(^._2)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
-                     
 addNER :: [SentItem]
        -> [TagPos String]
        -> [(SentItem,[TagPos String])]
