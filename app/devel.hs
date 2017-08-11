@@ -13,11 +13,6 @@ import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 import           TimeTagger.TemporalExpression
 --
-import Pipeline.Run.WikiEL
-import Pipeline.Application.Construction
-import Pipeline.Application.Run
-import Pipeline.Application.RunBunch
-import Pipeline.Application.Tokenizer
 
 main :: IO ()
 main = do
@@ -31,12 +26,15 @@ main = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
+    return ()
+    {-
     let tt = "This week, this week nothing nothing this week!! Also next week!"
     let tt' = "S&P Global Ratings is proving to be a better predictor of U.S. partisan political discord than an adjudicator of creditworthiness in the eyes of the bond market."
     print tt'
     getTemporalExp tt' pp >>= print
     getWikiEL tt' pp >>= print
     getConstruction tt' pp >>= print
+    -}
   -- (n :: Int) <- (read . (!! 0)) <$> getArgs
   -- runTokenizer n
 

@@ -3,8 +3,7 @@
 module Main where
 
 --
-import Pipeline.Application.Construction
 
 main :: IO ()
-main = runConstructionWithText "Floyd Mayweather, Conor McGregor trade insults as press tour begins."
+main = return () -- runConstructionWithText "Floyd Mayweather, Conor McGregor trade insults as press tour begins."
   

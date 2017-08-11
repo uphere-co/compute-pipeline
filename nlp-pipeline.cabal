@@ -75,10 +75,10 @@ library
                    Pipeline.Run.Util
                    Pipeline.Run.WikiEL
                    Pipeline.Run
-                   Pipeline.Application.Construction
+--                   Pipeline.Application.Construction
                    Pipeline.Application.Run
-                   Pipeline.Application.RunBunch
-                   Pipeline.Application.RunPropBank
+--                   Pipeline.Application.RunBunch
+--                   Pipeline.Application.RunPropBank
                    Pipeline.Application.WikiEL
                    Pipeline.Application.Tokenizer
                    Pipeline.Type
