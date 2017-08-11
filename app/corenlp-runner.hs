@@ -2,8 +2,16 @@
 
 module Main where
 
-
+import           Control.Lens
+import           Language.Java         as J
+import qualified Data.ByteString.Char8 as B
+import System.Environment              (getArgs,getEnv)
+import           Data.Default
 --
+import           CoreNLP.Simple
+import           CoreNLP.Simple.Type
+--
+import  Pipeline.Application.CoreNLPParser
 
 main :: IO ()
 main = do
@@ -17,4 +25,5 @@ main = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-  
+    result <- runCoreNLPParser "Hello" pp
+    print result

@@ -135,11 +135,15 @@ executable corenlp-runner
   build-depends:       base,
                        --
                        bytestring,
+                       data-default,
                        filepath,
+                       jvm,
+                       lens,
                        text,
-                       HUKB,
-                       HUKB-driver,                  
                        --
+                       HCoreNLP,
+                       time-tagger,
+                       -- 
                        nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
