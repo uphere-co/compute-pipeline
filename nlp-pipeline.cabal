@@ -16,7 +16,7 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
-  hs-source-dirs: lib
+  hs-source-dirs: src
   build-depends:  base,
                   --
                   aeson,

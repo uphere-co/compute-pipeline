@@ -13,6 +13,8 @@
 , uphere-opaleye        ? <uphere-opaleye>
 , nlp-shared-types      ? <nlp-shared-types>
 , time-tagger           ? <time-tagger>
+, syntactic-analysis    ? <syntactic-analysis>
+, nlp-pipeline          ? <nlp-pipeline>
 }:
 
 let newpkgs = import pkgs.path {
@@ -57,6 +59,8 @@ let
       "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
       "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};
       "time-tagger" = self.callPackage (import time-tagger) {};
+      "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
+      "syntactic-analysis" = self.callPackage (import syntactic-analysis) {};
       };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
