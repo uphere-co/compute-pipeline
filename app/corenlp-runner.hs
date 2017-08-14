@@ -16,13 +16,13 @@ import           CoreNLP.Simple.Type
 --
 import  Pipeline.Application.CoreNLPParser
 
-main' :: IO ()
-main' = do
+main :: IO ()
+main = do
   result <- readAndParse
   print result
   
-main :: IO ()
-main = do
+main' :: IO ()
+main' = do
   txt <- TIO.readFile "data.txt"
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
