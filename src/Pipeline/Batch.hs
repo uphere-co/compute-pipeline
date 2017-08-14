@@ -11,7 +11,7 @@ data BatchSource = NYT | NewsAPI
 runBatch action NewsAPI = runNewsAPIbatch action
 
 runNewsAPIbatch action = do
-  articles' <- (fmap (take 10) $ getTimeTitleDescFromSrcWithHash "bloomberg")
+  articles' <- getTimeTitleDescFromSrcWithHash "bloomberg"
   flip mapM (catMaybes articles') $ \(hsh,_,_,x) -> do
     result <- action x
     return (hsh,result)

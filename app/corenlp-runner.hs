@@ -8,6 +8,7 @@ import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default
+import           Data.Maybe                 (catMaybes)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
 import           Language.Java              as J
@@ -18,6 +19,7 @@ import           CoreNLP.Simple.Type
 --
 import           Pipeline.Application.CoreNLPParser
 import           Pipeline.Batch
+import           Pipeline.Source.NewsAPI.Article
 
 main' :: IO ()
 main' = do
@@ -36,6 +38,7 @@ main = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    results <- runNewsAPIbatch $ flip runCoreNLPParser pp
-    forM_ results $ \(h,x) -> do
-      BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack h)) (A.encode x)
+    articles <- getTimeTitleDescFromSrcWithHash "bloomberg"
+    forM_ (catMaybes articles) $ \(hsh,_,_,x) -> do
+      result <- runCoreNLPParser x pp
+      BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (A.encode result)
