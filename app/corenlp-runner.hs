@@ -3,7 +3,9 @@
 module Main where
 
 import qualified Data.Aeson            as A
+import qualified Data.Text as T
 import           Control.Lens
+import           Control.Monad     (forM_)
 import           Language.Java         as J
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.ByteString.Char8 as B
@@ -36,5 +38,7 @@ main = do
                        . (ner .~ True)
                   )
     results <- runNewsAPIbatch $ flip runCoreNLPParser pp
-    print results
+    forM_ results $ \(h,x) -> do
+      BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack h)) (A.encode x)
+
     -- BL.writeFile "result.txt" (A.encode result)

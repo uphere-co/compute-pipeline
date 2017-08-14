@@ -12,6 +12,8 @@ runBatch NewsAPI = runNewsAPIbatch
 -- runNYTbatch = return ()
 
 runNewsAPIbatch action = do
-  articles' <- getTimeTitleDescFromSrc "bloomberg"
-  mapM action (map (\(_,_,x) -> x) $ (take 10 $ catMaybes articles') :: [Text])
+  articles' <- (fmap (take 10) $ getTimeTitleDescFromSrcWithHash "bloomberg")
+  flip mapM (catMaybes articles') $ \(hsh,_,_,x) -> do
+    result <- action x
+    return (hsh,result)
   

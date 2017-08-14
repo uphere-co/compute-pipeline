@@ -17,10 +17,10 @@ import           NewsAPI.DB
 import qualified NewsAPI.DB.Article         as A
 import           NewsAPI.Type
 
-type NewsAPIArticleContent = (Text, Text, Text)
+type NewsAPIArticleContent = (Text, Text, Text, Text)
 
-getTimeTitleDescFromSrc :: String -> IO [Maybe NewsAPIArticleContent]
-getTimeTitleDescFromSrc src = do
+getTimeTitleDescFromSrcWithHash :: String -> IO [Maybe NewsAPIArticleContent]
+getTimeTitleDescFromSrcWithHash src = do
   let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
   conn <- PGS.connectPostgreSQL dbconfig
   articles <- getArticleBySource src conn
@@ -32,17 +32,17 @@ getTimeTitleDescFromSrc src = do
     case fchk of
       True -> do
         bstr <- B.readFile filepath
-        getTimeTitleDescFromByteString bstr
+        getTimeTitleDescFromByteStringWithHash bstr hsh
       False -> print hsh >> error "error"
   PGS.close conn
   return result
 
-getTimeTitleDescFromByteString :: Monad m => B.ByteString -> m (Maybe NewsAPIArticleContent)
-getTimeTitleDescFromByteString bstr = do
+getTimeTitleDescFromByteStringWithHash :: Monad m => B.ByteString -> String -> m (Maybe NewsAPIArticleContent)
+getTimeTitleDescFromByteStringWithHash bstr str = do
   let esrc = eitherDecodeStrict bstr :: Either String SourceArticles
   case esrc of
     Left  _   -> return Nothing
-    Right src -> return ((,,) <$> _publishedAt src <*> _title src <*> _description src)
+    Right src -> return ((,,,) <$> Just (T.pack str) <*> _publishedAt src <*> _title src <*> _description src)
 
 getDescription :: FilePath -> IO Text
 getDescription f = do
