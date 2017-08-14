@@ -17,7 +17,9 @@ import           NewsAPI.DB
 import qualified NewsAPI.DB.Article         as A
 import           NewsAPI.Type
 
-getTimeTitleDescFromSrc :: String -> IO [Maybe (Text, Text, Text)]
+type NewsAPIArticleContent = (Text, Text, Text)
+
+getTimeTitleDescFromSrc :: String -> IO [Maybe NewsAPIArticleContent]
 getTimeTitleDescFromSrc src = do
   let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
   conn <- PGS.connectPostgreSQL dbconfig
@@ -35,7 +37,7 @@ getTimeTitleDescFromSrc src = do
   PGS.close conn
   return result
 
-getTimeTitleDescFromByteString :: Monad m => B.ByteString -> m (Maybe (Text, Text, Text))
+getTimeTitleDescFromByteString :: Monad m => B.ByteString -> m (Maybe NewsAPIArticleContent)
 getTimeTitleDescFromByteString bstr = do
   let esrc = eitherDecodeStrict bstr :: Either String SourceArticles
   case esrc of

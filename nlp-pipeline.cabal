@@ -66,7 +66,8 @@ library
                   time-tagger,
                   PropBank,
                   OntoNotes
-  exposed-modules: Pipeline.Util
+  exposed-modules: Pipeline.Batch
+                   Pipeline.Util
                    Pipeline.Run.CompanyNER
                    Pipeline.Run.Idiom
                    Pipeline.Run.PredicateMatrix

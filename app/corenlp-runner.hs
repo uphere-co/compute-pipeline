@@ -15,14 +15,15 @@ import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 --
 import  Pipeline.Application.CoreNLPParser
+import  Pipeline.Batch
 
-main :: IO ()
-main = do
+main' :: IO ()
+main' = do
   result <- readAndParse
   print result
   
-main' :: IO ()
-main' = do
+main :: IO ()
+main = do
   txt <- TIO.readFile "data.txt"
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
@@ -34,6 +35,6 @@ main' = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    result <- runCoreNLPParser txt pp
-    print result
-    BL.writeFile "result.txt" (A.encode result)
+    results <- runNewsAPIbatch $ flip runCoreNLPParser pp
+    print results
+    -- BL.writeFile "result.txt" (A.encode result)
