@@ -2,22 +2,22 @@
 
 module Main where
 
-import qualified Data.Aeson            as A
-import qualified Data.Text as T
 import           Control.Lens
-import           Control.Monad     (forM_)
-import           Language.Java         as J
+import           Control.Monad              (forM_)
+import qualified Data.Aeson                 as A
+import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
-import qualified Data.ByteString.Char8 as B
-import System.Environment              (getArgs,getEnv)
 import           Data.Default
-import qualified Data.Text.IO   as TIO
+import qualified Data.Text                  as T
+import qualified Data.Text.IO               as TIO
+import           Language.Java              as J
+import           System.Environment         (getArgs,getEnv)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 --
-import  Pipeline.Application.CoreNLPParser
-import  Pipeline.Batch
+import           Pipeline.Application.CoreNLPParser
+import           Pipeline.Batch
 
 main' :: IO ()
 main' = do
@@ -26,7 +26,6 @@ main' = do
   
 main :: IO ()
 main = do
-  txt <- TIO.readFile "data.txt"
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -40,5 +39,3 @@ main = do
     results <- runNewsAPIbatch $ flip runCoreNLPParser pp
     forM_ results $ \(h,x) -> do
       BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack h)) (A.encode x)
-
-    -- BL.writeFile "result.txt" (A.encode result)
