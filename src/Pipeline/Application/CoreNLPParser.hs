@@ -73,7 +73,7 @@ runCoreNLPParser txt pp = do
       tktokss = map (getTKTokens) psents
       tokss = map (mapMaybe convertToken) tktokss
   let mtmx = fmap (map (\(x,xs) -> map (\(i,j,z) -> (i,j,(fmap cutf8 z))) xs)) mtmx'
-  return (sents,sentitems,tokss,parsetrees,deps,mtmx)
+  return ((map convertPsent psents),sents,sentitems,tokss,parsetrees,deps,mtmx)
 --  return (psents,sents,sentitems,tokss,parsetrees,deps,mtmx)
 
 {-
