@@ -19,15 +19,15 @@ import           CoreNLP.Simple.Type
 --
 import           Pipeline.Application.CoreNLPParser
 import           Pipeline.Batch
+import           Pipeline.Load
 import           Pipeline.Source.NewsAPI.Article
+
+main :: IO ()
+main = do
+  loadCoreNLPResult "/home/modori/data/newsapianalyzed"
 
 main' :: IO ()
 main' = do
-  result <- readAndParse
-  print result
-  
-main :: IO ()
-main = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)

@@ -67,6 +67,7 @@ library
                   PropBank,
                   OntoNotes
   exposed-modules: Pipeline.Batch
+                   Pipeline.Load
                    Pipeline.Util
                    Pipeline.Run.CompanyNER
                    Pipeline.Run.Idiom

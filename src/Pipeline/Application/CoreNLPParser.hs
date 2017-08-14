@@ -44,14 +44,6 @@ import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           OntoNotes.App.Util
 
-
-readAndParse = do
-  bstr <- BL.readFile "result.txt"
-  let result = A.decode bstr :: Maybe ([[Text]], [Maybe Sentence], [SentItem], [[Token]],
-                                       [Maybe PennTree], [Dependency],
-                                       Maybe [[(CharIdx, CharIdx, Maybe Text)]])
-  return result
-
 --runCoreNLPParser :: Text -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
 --                 -> IO ( [Maybe Sentence], [(SentIdx,BeginEnd,Text)], [[Token]], [Maybe PennTree], [Dependency], Maybe [(SentItem, [TagPos (Maybe Text)])] )
 --                  -> IO ( [S.Sentence], [Maybe Sentence], [(SentIdx,BeginEnd,Text)], [[Token]], [Maybe PennTree], [Dependency], Maybe [(SentItem, [TagPos (Maybe Utf8)])] )
