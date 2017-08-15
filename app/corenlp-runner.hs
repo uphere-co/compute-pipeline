@@ -23,19 +23,20 @@ import           Pipeline.Batch
 import           Pipeline.Load
 import           Pipeline.Source.NewsAPI.Article
 
-main' :: IO ()
-main' = return ()
-  -- loadCoreNLPResult "/home/modori/data/newsapianalyzed"
+main'' :: IO ()
+main'' = loadCoreNLPResult "/home/modori/data/newsapianalyzed" >>= print
 
-main :: IO ()
-main = do
+main' :: IO ()
+main' = do
   (sensemap,sensestat,framedb,ontomap,emTagger) <- loadConfig
   loaded' <- loadCoreNLPResult "/home/modori/data/newsapianalyzed"
   let loaded = catMaybes loaded'
   forM_ loaded $ \x -> do
     sentStructure' sensemap sensestat framedb ontomap emTagger x
 
-  {-
+
+main :: IO ()
+main = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -46,11 +47,7 @@ main = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
--}
-  
-          {-
-    articles <- getTimeTitleDescFromSrcWithHash "bloomberg"
+    articles <- take 10 <$> getTimeTitleDescFromSrcWithHash "bloomberg"
     forM_ (catMaybes articles) $ \(hsh,_,_,x) -> do
       result <- runCoreNLPParser x pp
       BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (A.encode result)
--}

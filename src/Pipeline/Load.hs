@@ -19,8 +19,9 @@ loadCoreNLPResult fp = do
   let list =  map ((++) (fp ++ "/")) list'
   result <- forM list $ \l -> do
     bstr <- B.readFile l
-    let result' = A.decode (BL.fromStrict bstr) :: Maybe ([[Text]], [Maybe Sentence], [SentItem], [[Token]],
+    let result' = A.decode (BL.fromStrict bstr) :: Maybe ([([Text],[Maybe Token], [Maybe Text], [Maybe Text])],
+                                                          [Maybe Sentence], [SentItem], [[Token]],
                                                           [Maybe PennTree], [Dependency],
-                                                          Maybe [[(CharIdx, CharIdx, Maybe Text)]])
+                                                          Maybe [(SentItem,[TagPos (Maybe Text)])])
     return result'
   return result
