@@ -140,8 +140,10 @@ executable corenlp-runner
                        bytestring,
                        data-default,
                        filepath,
+                       jni,
                        jvm,
                        lens,
+                       split,
                        text,
                        --
                        HCoreNLP,
