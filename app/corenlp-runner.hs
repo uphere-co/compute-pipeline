@@ -21,7 +21,6 @@ import           CoreNLP.Simple.Type
 import           OntoNotes.App.Analyze
 --
 import           Pipeline.Application.CoreNLPParser
-import           Pipeline.Batch
 import           Pipeline.Load
 import           Pipeline.Source.NewsAPI.Article
 

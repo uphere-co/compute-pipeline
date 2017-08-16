@@ -18,20 +18,15 @@ import           Data.Attoparsec.Text             (parseOnly)
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Discrimination              (outer)
 import           Data.Discrimination.Grouping     (hashing)
-import           Data.Function                    (on)
-import           Data.List                        (sortBy)
 import           Data.Maybe                       (fromJust, isJust)
-import           Data.Monoid
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
-import qualified Data.Text.IO               as TIO
-import           Data.Time.Calendar               (fromGregorian,Day)
+import           Data.Time.Calendar               (Day)
 import           Data.Time.Format                 (defaultTimeLocale, formatTime)
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
 import           System.FilePath                  (takeFileName)
-import           Text.ProtocolBuffers.Basic (Utf8)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           CoreNLP.Simple
@@ -40,15 +35,9 @@ import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
-import qualified CoreNLP.Proto.CoreNLPProtos.Timex     as Tmx
-import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
-import qualified CoreNLP.Proto.HCoreNLPProto.TimexWithOffset as T
 import           Text.Annotation.Util.Doc
-import           Text.Annotation.Type
-import           Text.Annotation.View
-import 	       	 Text.Search.SearchTree
-import           Text.Search.ParserCustom
+import           Text.Search.SearchTree
 import           Pipeline.Type
 --
 import           NLP.Type.PennTreebankII
@@ -116,8 +105,6 @@ simpleMap p = case p of
   RP   -> Just POS_R
   _    -> Nothing
 
-
-
 processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([Sentence], [Token])
 processDoc ann = do
   pdoc <- getProtoDoc ann
@@ -131,16 +118,6 @@ myaction = do
   sent <- getInputLine "Input Sentence : "
   lift (print sent)
   return sent
-
--- parseSen :: Text -> Result
--- parseSen :: Text -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> IO ()
--- parseSen st pp = do
-  -- day <- fmap utctDay getCurrentTime
-  -- let doc = Document st day -- (fromGregorian 2017 4 17)
-  -- ann <- annotate pp doc
-  -- (r1, r2) <- processDoc ann
-
---  return ()
 
 mkUkbInput :: [Token] -> [(Text,Maybe WordNet.POS)]
 mkUkbInput r2 = filter (\(_,y) -> isJust y) $ zip (map _token_lemma r2) (map simpleMap $ map _token_pos r2)

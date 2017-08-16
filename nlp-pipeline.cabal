@@ -67,7 +67,6 @@ library
                   PropBank,
                   OntoNotes
   exposed-modules: Pipeline.Application.CoreNLPParser
-                   Pipeline.Batch
                    Pipeline.Load
                    Pipeline.Run
                    Pipeline.Run.WikiEL
