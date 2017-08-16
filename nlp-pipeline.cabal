@@ -66,37 +66,17 @@ library
                   time-tagger,
                   PropBank,
                   OntoNotes
-  exposed-modules: Pipeline.Util
-                   Pipeline.Run.WikiEL
+  exposed-modules: Pipeline.Application.CoreNLPParser
                    Pipeline.Run
-                   Pipeline.Application.CoreNLPParser
-                   Pipeline.Application.Run
---                   Pipeline.Application.RunBunch
---                   Pipeline.Application.RunPropBank
-                   Pipeline.Application.WikiEL
-                   Pipeline.Application.Tokenizer
-                   Pipeline.Type
+                   Pipeline.Run.WikiEL
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article
+                   Pipeline.Type
+                   Pipeline.Util
                    Pipeline.View.YAML.YAYAML
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
-
-executable nlp-pipeline
-  hs-source-dirs:      app
-  main-is:             main.hs
-  -- other-modules:       
-  build-depends:       base,
-                       --
-                       filepath,
-                       text,
-                       HUKB,
-                       HUKB-driver,                  
-                       --
-                       nlp-pipeline
-  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
-  default-language:    Haskell2010
 
 executable corenlp-runner
   hs-source-dirs:      app
