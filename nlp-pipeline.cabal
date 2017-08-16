@@ -67,6 +67,7 @@ library
                   PropBank,
                   OntoNotes
   exposed-modules: Pipeline.Application.CoreNLPParser
+                   Pipeline.Load
                    Pipeline.Run
                    Pipeline.Run.WikiEL
                    Pipeline.Source.NewsAPI.Article
@@ -88,11 +89,14 @@ executable corenlp-runner
                        bytestring,
                        data-default,
                        filepath,
+                       jni,
                        jvm,
                        lens,
+                       split,
                        text,
                        --
                        HCoreNLP,
+                       OntoNotes,
                        time-tagger,
                        -- 
                        nlp-pipeline
