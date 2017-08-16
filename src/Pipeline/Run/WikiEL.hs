@@ -9,21 +9,19 @@ import           CoreNLP.Simple.Type.Simplified
 import           WikiEL.EntityLinking
 import           WikiEL.WikiNamedEntityTagger
 
-getWikiResolvedMentions loaded emTagger = do
+prepareNETokens loaded =
   let (all,_,_,_,_,_,_) = loaded
       mws = map (\(_,_,xs,_) -> xs) all
       mns = map (\(_,_,_,xs) -> xs) all
       unNER (NERSentence tokens) = tokens
       neTokens = concat $ map (\(x,y) -> (unNER $ sentToNER' x y)) (zip mws mns)
-      linked_mentions_all = emTagger neTokens
-      linked_mentions_resolved = filter (\x -> let (_,_,pne) = _info x in case pne of Resolved _ -> True ; _ -> False) linked_mentions_all
-  return linked_mentions_resolved
+  in neTokens
 
-getWikiAllMentions loaded emTagger = do
-  let (all,_,_,_,_,_,_) = loaded
-      mws = map (\(_,_,xs,_) -> xs) all
-      mns = map (\(_,_,_,xs) -> xs) all
-      unNER (NERSentence tokens) = tokens
-      neTokens = concat $ map (\(x,y) -> (unNER $ sentToNER' x y)) (zip mws mns)
+getWikiResolvedMentions loaded emTagger =
+  let linked_mentions_all = getWikiAllMentions loaded emTagger
+  in filter (\x -> let (_,_,pne) = _info x in case pne of Resolved _ -> True ; _ -> False) linked_mentions_all
+
+getWikiAllMentions loaded emTagger =
+  let neTokens = prepareNETokens loaded
       linked_mentions_all = emTagger neTokens
-  return linked_mentions_all
+  in linked_mentions_all
