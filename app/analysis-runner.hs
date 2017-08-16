@@ -1,5 +1,6 @@
 module Main where
 
+import Pipeline.App.AnalysisRunner
+
 main :: IO ()
-main = do
-  return ()
+main = runAnalysis 
