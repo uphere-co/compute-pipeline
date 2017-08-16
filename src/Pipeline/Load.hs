@@ -17,14 +17,7 @@ loadCoreNLPResult :: FilePath
                         [Maybe Sentence], [SentItem], [[Token]], [Maybe PennTree],
                         [Dependency], Maybe [(SentItem, [TagPos (Maybe Text)])])]
 loadCoreNLPResult fp = do
-  list' <- listDirectory fp
-  -- list <- mapM makeAbsolute list'
-  let list =  map ((++) (fp ++ "/")) list'
-  result <- forM list $ \l -> do
+  list <- map ((++) (fp ++ "/")) <$> listDirectory fp
+  forM list $ \l -> do
     bstr <- B.readFile l
-    let result' = A.decode (BL.fromStrict bstr) :: Maybe ([([Text],[Maybe Token], [Maybe Text], [Maybe Text])],
-                                                          [Maybe Sentence], [SentItem], [[Token]],
-                                                          [Maybe PennTree], [Dependency],
-                                                          Maybe [(SentItem,[TagPos (Maybe Text)])])
-    return result'
-  return result
+    return $ A.decode (BL.fromStrict bstr)

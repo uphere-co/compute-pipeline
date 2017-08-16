@@ -24,9 +24,7 @@ import           Pipeline.Application.CoreNLPParser
 import           Pipeline.Load
 import           Pipeline.Source.NewsAPI.Article
 
-main'' :: IO ()
-main'' = loadCoreNLPResult "/home/modori/data/newsapianalyzed" >>= print
-
+-- Load and Run
 main' :: IO ()
 main' = do
   (sensemap,sensestat,framedb,ontomap,emTagger) <- loadConfig
@@ -36,7 +34,7 @@ main' = do
   forM_ loaded $ \x -> do
     sentStructure' sensemap sensestat framedb ontomap emTagger x
 
-
+-- Parse and Save
 main :: IO ()
 main = do
   [src] <- getArgs
