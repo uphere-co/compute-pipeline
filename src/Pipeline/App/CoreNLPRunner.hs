@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 
-module Pipeline.Application.CoreNLPParser where
+module Pipeline.App.CoreNLPRunner where
 
 import           Control.Lens
 import qualified Data.ByteString.Lazy.Char8            as BL
