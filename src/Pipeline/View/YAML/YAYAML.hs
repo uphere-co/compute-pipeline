@@ -30,7 +30,8 @@ instance MakeYaml Text where
   makeYaml _ txt = YPrim (YString Plain (TL.fromStrict txt))
 
 instance MakeYaml Token where
-    makeYaml n t = YObject [ ("range", makeYaml n (t^.token_range))
+    makeYaml n t = YObject [ ("range_tok", makeYaml n (t^.token_tok_idx_range))
+                           , ("range_char", makeYaml n (t^.token_char_idx_range))
                            , ("text" , makeYaml n (t^.token_text))
                            , ("pos"  , makeYaml n (T.pack (show (t^.token_pos))))
                            , ("lemma", makeYaml n (t^.token_lemma))

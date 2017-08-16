@@ -44,11 +44,11 @@ import qualified CoreNLP.Proto.CoreNLPProtos.Timex     as Tmx
 import qualified CoreNLP.Proto.CoreNLPProtos.Token     as TK
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.HCoreNLPProto.TimexWithOffset as T
-import           SearchTree
-import           Type
-import           Util.Doc (slice,tagText)
-import           View
---
+import           Text.Annotation.Util.Doc
+import           Text.Annotation.Type
+import           Text.Annotation.View
+import 	       	 Text.Search.SearchTree
+import           Text.Search.ParserCustom
 import           Pipeline.Type
 --
 import           NLP.Type.PennTreebankII
@@ -69,14 +69,6 @@ processAnnotation pp forest doc = runEitherT $ do
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
 
-getSentenceOffsets :: D.Document -> [(SentIdx,BeginEnd)]
-getSentenceOffsets doc = 
-  let sents = toListOf (D.sentence . traverse) doc
-  in zip ([1..] :: [Int]) $ flip map sents $ \s -> 
-       let b = fromJust $ fromJust $ firstOf (S.token . traverse . TK.beginChar) s
-           e = fromJust $ fromJust $ lastOf  (S.token . traverse . TK.endChar) s
-       in (fromIntegral b+1,fromIntegral e)
-
 addText :: Text -> (SentIdx,BeginEnd) -> SentItem
 addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
 
@@ -84,15 +76,6 @@ addTag :: [TagPos a] -> SentItem -> (SentItem,[TagPos a])
 addTag lst i@(_,(b,e),_) = (i,filter check lst)
   where check (b',e',_) = b' >= b && e' <= e 
 
-addSUTime :: [SentItem] -> T.ListTimex
-          -> [(SentItem,[TagPos (Maybe Utf8)])]
-addSUTime sents tmxs =
-  let f t = ( fromIntegral (t^.T.characterOffsetBegin) + 1
-            , fromIntegral (t^.T.characterOffsetEnd)
-            , t^. T.timex . Tmx.value
-            )
-  in filter (not.null.(^._2)) $ map (addTag (map f (tmxs^..T.timexes.traverse))) sents
-                     
 addNER :: [SentItem]
        -> [TagPos String]
        -> [(SentItem,[TagPos String])]
@@ -106,53 +89,11 @@ combine lst1 lst2 = concat $ outer hashing joiner m1 m2 f1 f2 lst1 lst2
         f1 (a1,_) = a1^._1
         f2 (b1,_) = b1^._1
 
-underlineText :: BeginEnd -> Text -> [TagPos a] -> IO ()
-underlineText (b0,_e0) txt lst = do
-  let f (b,e,_) = ((),b-b0+1,e-b0+1)
-      tagged = map f lst
-      ann = (AnnotText . map (\(t,m)-> (t,isJust m)) . tagText tagged) txt
-      xss = lineSplitAnnot 80 ann
-  sequence_ (concatMap (map cutePrintAnnot) xss)
-
-formatResult :: (SentItem,[TagPos (Maybe Utf8)],[TagPos String]) -> IO ()
-formatResult (s,a,b) = do 
-  TIO.putStrLn $ "Sentence " <> T.pack (show (s^._1)) 
-  underlineText (s^._2) (s^._3) a
-  TIO.putStrLn "----------"
-  print a
-  TIO.putStrLn "----------"
-  print b
-  TIO.putStrLn "=========="
-
 showHeader :: FilePath -> Day -> IO ()
 showHeader fp day = do
   putStrLn "==========================================================="
   putStrLn $ "file: " ++ takeFileName fp
   putStrLn $ "date: " ++ formatTime defaultTimeLocale "%F" day
-
-process :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-        -> Forest (Maybe Char)
-        -> FilePath
-        -> IO ()
-process pp forest fp = do
-  -- let sha256 = takeBaseName fp
-  -- day <- getArticlePubDay pgconn (B.pack sha256)
-  let day = fromGregorian 2099 1 1
-  txt <- TIO.readFile fp
-  let docu = Document txt day 
-  r <- processAnnotation pp forest docu
-  case r of
-    Left err -> error err
-    Right (TaggedResult rsutime rner rdoc) -> do
-      print (T._timexes rsutime)
-      showHeader fp day
-      putStrLn "-----------------------------------------------------------"
-      let sentidxs = getSentenceOffsets rdoc
-          sents = map (addText txt) sentidxs
-          sentswithtmx = addSUTime sents rsutime
-          sentswithner = addNER sents rner
-      mapM_ formatResult . sortBy (compare `on` view (_1._1)) $ combine sentswithtmx sentswithner
-      putStrLn "==========================================================="
 
 simpleMap :: POSTag -> Maybe WordNet.POS
 simpleMap p = case p of
