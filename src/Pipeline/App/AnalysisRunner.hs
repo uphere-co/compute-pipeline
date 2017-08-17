@@ -10,7 +10,7 @@ import           Pipeline.Load
 import           Pipeline.Run
 
 runWiki loaded emTagger = do
-  print (getWikiAllMentions loaded emTagger)
+  print (getWikiResolvedMentions loaded emTagger)
 
 runAnalysis :: IO ()
 runAnalysis = do
