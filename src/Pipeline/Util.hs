@@ -105,7 +105,7 @@ simpleMap p = case p of
   RP   -> Just POS_R
   _    -> Nothing
 
-processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([Sentence], [Token])
+processDoc :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ([SentenceIndex], [Token])
 processDoc ann = do
   pdoc <- getProtoDoc ann
   let sents = getProtoSents pdoc

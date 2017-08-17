@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 
-module Pipeline.Application.CoreNLPParser where
+module Pipeline.App.CoreNLPRunner where
 
 import           Control.Lens
 import qualified Data.ByteString.Lazy.Char8            as BL
@@ -24,8 +24,8 @@ import           Text.ProtocolBuffers.WireMessage            (messageGet)
 import           OntoNotes.App.Util
 
 runCoreNLPParser :: Text -> J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-                 -> IO ([([Text], [Maybe Token], [Maybe Text], [Maybe Text])],
-                        [Maybe Sentence], [SentItem], [[Token]], [Maybe PennTree],
+                 -> IO ([Sentence],
+                        [Maybe SentenceIndex], [SentItem], [[Token]], [Maybe PennTree],
                         [Dependency], Maybe [(SentItem, [(CharIdx, CharIdx, Maybe Text)])])
 runCoreNLPParser txt pp = do
   doc <- getDoc txt

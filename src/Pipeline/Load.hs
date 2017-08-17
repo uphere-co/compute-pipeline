@@ -13,8 +13,7 @@ import           NLP.Type.PennTreebankII
 import           OntoNotes.App.Util
 
 loadCoreNLPResult :: FilePath
-                  -> IO [Maybe ([([Text], [Maybe Token], [Maybe Text], [Maybe Text])],
-                        [Maybe Sentence], [SentItem], [[Token]], [Maybe PennTree],
+                  -> IO [Maybe ([Sentence], [Maybe SentenceIndex], [SentItem], [[Token]], [Maybe PennTree],
                         [Dependency], Maybe [(SentItem, [TagPos (Maybe Text)])])]
 loadCoreNLPResult fp = do
   list <- map ((++) (fp ++ "/")) <$> listDirectory fp

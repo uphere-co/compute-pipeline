@@ -21,7 +21,7 @@ instance MakeYaml Int where
 instance MakeYaml (Int,Int) where
   makeYaml n (x,y) = YLArray Inline [ makeYaml n x, makeYaml n y ]
 
-instance MakeYaml Sentence where
+instance MakeYaml SentenceIndex where
   makeYaml n s = YObject [ ("index"     , makeYaml n (s^.sent_index))
                          , ("charRange" , makeYaml n (s^.sent_charRange))
                          , ("tokenRange", makeYaml n (s^.sent_tokenRange)) ]
