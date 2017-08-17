@@ -3,6 +3,7 @@
 
 module Pipeline.Run.WikiEL where
 
+import           Control.Lens
 --
 import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type.Simplified
@@ -11,8 +12,8 @@ import           WikiEL.WikiNamedEntityTagger
 
 prepareNETokens loaded =
   let (all,_,_,_,_,_,_) = loaded
-      mws = map (\(_,_,xs,_) -> xs) all
-      mns = map (\(_,_,_,xs) -> xs) all
+      mws = all ^.. traverse . sentenceWord
+      mns = all ^.. traverse . sentenceNER
       unNER (NERSentence tokens) = tokens
       neTokens = concat $ map (\(x,y) -> (unNER $ sentToNER' x y)) (zip mws mns)
   in neTokens
