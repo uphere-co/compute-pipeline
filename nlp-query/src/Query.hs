@@ -23,12 +23,10 @@ import           Language.Java              as J
 import           Network.Transport
 import           Network.Transport.TCP   (createTransport, defaultTCPParameters)
 import           System.Environment
-
 import           Control.Distributed.Process.Node
 --
-import           OntoNotes.App.Analyze
---
 import           Network.Util
+import           Pipeline.Run
 
 runQueryServer :: IO ()
 runQueryServer = do

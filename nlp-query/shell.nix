@@ -58,6 +58,7 @@ let
       "syntactic-analysis" = self.callPackage (import syntactic-analysis) {};
       "fastText" = self.callPackage fastTextNix { inherit fasttext; };
       "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
+      "nlp-pipeline" = self.callPackage (import nlp-pipeline) {};
       "nyt-db" = self.callPackage (import (fetchfin + "/nyt/db")) {};
       "nyt-scrapper" = self.callPackage (import (fetchfin + "/nyt")) {};
       "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
@@ -113,6 +114,7 @@ let
             p.PropBank
             p.semantic-role-labeler
             p.wiki-ner
+            p.nlp-pipeline
             p.nyt-db
             p.nyt-scrapper
             p.time-tagger

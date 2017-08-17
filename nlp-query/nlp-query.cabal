@@ -33,7 +33,7 @@ library
                   text,
                   transformers,
                   --
-                  OntoNotes
+                  nlp-pipeline
   exposed-modules:  Query
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
