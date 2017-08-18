@@ -27,12 +27,12 @@ import           Pipeline.Source.NewsAPI.Article
 -- Load and Run
 main' :: IO ()
 main' = do
-  (sensemap,sensestat,framedb,ontomap,emTagger) <- loadConfig
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   loaded' <- loadCoreNLPResult "/home/modori/data/newsapianalyzed"
   putStrLn "Loading Completed."
   let loaded = catMaybes loaded'
   forM_ loaded $ \x -> do
-    sentStructure' sensemap sensestat framedb ontomap emTagger x
+    sentStructure' sensemap sensestat framedb ontomap emTagger rolemap subcats x
 
 -- Parse and Save
 main :: IO ()
