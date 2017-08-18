@@ -46,6 +46,7 @@ library
                   textview,
                   time,
                   transformers,
+                  vector,
                   HCoreNLP,
                   HCoreNLP-Proto,
                   HWordNet,
