@@ -9,6 +9,7 @@ import           Data.Foldable                     (toList)
 import           Data.List                         (sort)
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T   
+import           Data.Time.Clock                   (UTCTime)
 import qualified Database.PostgreSQL.Simple as PGS 
 import           System.Directory                  (doesFileExist)
 import           System.Directory.Tree             (dirTree,readDirectoryWith)
@@ -18,6 +19,13 @@ import qualified NewsAPI.DB.Article         as A
 import           NewsAPI.Type
 
 type NewsAPIArticleContent = (Text, Text, Text, Text)
+
+getHashByTime :: UTCTime -> IO [(Text,Text)]
+getHashByTime time = do
+  let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
+  conn <- PGS.connectPostgreSQL dbconfig
+  articles <- getArticleByTime time conn
+  return (map (\x -> (A._source x, A._content_hash x)) articles)
 
 getTimeTitleDescFromSrcWithHash :: String -> IO [Maybe NewsAPIArticleContent]
 getTimeTitleDescFromSrcWithHash src = do

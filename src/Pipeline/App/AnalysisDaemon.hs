@@ -19,6 +19,7 @@ import qualified Data.ByteString.Char8   as B8
 import           Data.Map
 import           Data.Text                    (Text)
 import qualified Data.Text               as T
+import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Network.Transport
 import           Network.Transport.TCP   (createTransport, defaultTCPParameters)
 import           System.Environment
@@ -28,7 +29,16 @@ import           Network.Util
 import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Article
 
+nominalDay :: NominalDiffTime
+nominalDay = 86400
+
+runDaemon :: IO ()
 runDaemon = do
+  ctime <- getCurrentTime
+  print $ addUTCTime (-nominalDay) ctime
+  return ()
+  
+{-
   [host, hostB, port, portB] <- getArgs
   pidref              <- newEmptyTMVarIO
   Right transport     <- createTransport host port defaultTCPParameters
@@ -47,3 +57,4 @@ runDaemon = do
     liftIO $ do
       atomically (putTMVar pidref pid)
       broadcast pidref portB hostB
+-}
