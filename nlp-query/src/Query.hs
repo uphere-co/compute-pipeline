@@ -27,6 +27,7 @@ import           Control.Distributed.Process.Node
 --
 import           Network.Util
 import           Pipeline.Run
+import Pipeline.Source.NewsAPI.Article
 
 runQueryServer :: IO ()
 runQueryServer = do

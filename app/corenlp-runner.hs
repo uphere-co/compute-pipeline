@@ -19,6 +19,7 @@ import           System.Environment         (getArgs,getEnv)
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 import           OntoNotes.App.Analyze
+import           OntoNotes.App.Analyze.SentenceStructure
 --
 import           Pipeline.App.CoreNLPRunner
 import           Pipeline.Load
