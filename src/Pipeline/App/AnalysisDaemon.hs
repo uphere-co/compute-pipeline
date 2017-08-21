@@ -36,25 +36,25 @@ runDaemon :: IO ()
 runDaemon = do
   ctime <- getCurrentTime
   let obday = addUTCTime (-nominalDay) ctime
-  getHashByTime obday >>= print
-  
-{-
+  result <- getHashByTime obday
+
   [host, hostB, port, portB] <- getArgs
   pidref              <- newEmptyTMVarIO
+  rstref              <- newEmptyTMVarIO
+  
   Right transport     <- createTransport host port defaultTCPParameters
   node <- newLocalNode transport initRemoteTable
 
-  config <- loadConfig
-
+  atomically (putTMVar rstref result)
+  rr <- atomically (takeTMVar rstref)
+  
   runProcess node $ do
     pid <- spawnLocal $ forever $ do
       (pid :: ProcessId) <- expect
       (query :: Text) <- expect
       liftIO $ print pid
       liftIO $ print query
-      Cloud.send pid query
-
+      Cloud.send pid (show rr)
     liftIO $ do
       atomically (putTMVar pidref pid)
       broadcast pidref portB hostB
--}

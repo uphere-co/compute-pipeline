@@ -18,6 +18,7 @@
 , VerbNet               ? <VerbNet>
 , syntactic-analysis    ? <syntactic-analysis>
 , nlp-pipeline          ? <nlp-pipeline>
+, lexicon               ? <lexicon>
 }:
 
 let newpkgs = import pkgs.path {
@@ -68,6 +69,7 @@ let
       "HFrameNet" = self.callPackage (import HFrameNet) {};
       "VerbNet" = self.callPackage (import VerbNet) {};
       "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
+      "lexicon" = self.callPackage (import lexicon) {};
       };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };

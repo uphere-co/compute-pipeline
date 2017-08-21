@@ -33,7 +33,7 @@ main' = do
   putStrLn "Loading Completed."
   let loaded = catMaybes loaded'
   forM_ loaded $ \x -> do
-    showSentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x
+    mapM_ TIO.putStrLn (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
 
 -- Parse and Save
 main :: IO ()
