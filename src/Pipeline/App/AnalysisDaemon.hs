@@ -35,8 +35,8 @@ nominalDay = 86400
 runDaemon :: IO ()
 runDaemon = do
   ctime <- getCurrentTime
-  print $ addUTCTime (-nominalDay) ctime
-  return ()
+  let obday = addUTCTime (-nominalDay) ctime
+  getHashByTime obday >>= print
   
 {-
   [host, hostB, port, portB] <- getArgs

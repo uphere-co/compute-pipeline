@@ -33,7 +33,7 @@ main' = do
   putStrLn "Loading Completed."
   let loaded = catMaybes loaded'
   forM_ loaded $ \x -> do
-    sentStructure' sensemap sensestat framedb ontomap emTagger rolemap subcats x
+    showSentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x
 
 -- Parse and Save
 main :: IO ()
@@ -54,7 +54,7 @@ runCoreNLP articles = do
                        . (ner .~ True)
                   )
     forM_ (catMaybes articles) $ \(hsh,_,_,x) -> do
-      eresult <- try $ runCoreNLPParser x pp
+      eresult <- try $ runCoreNLPParser pp x
       case eresult of
         Left  (e :: SomeException) -> return ()
         Right result               -> BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (A.encode result)
