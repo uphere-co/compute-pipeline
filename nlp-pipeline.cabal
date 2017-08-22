@@ -47,6 +47,8 @@ library
                   postgresql-simple,
                   process,
                   protocol-buffers,
+                  scientific,
+                  split,
                   stm,
                   text,
                   textview,
