@@ -13,12 +13,16 @@ import           Data.Default
 import           Data.Maybe                 (catMaybes)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
+import qualified Database.PostgreSQL.Simple as PGS
 import           Language.Java              as J
 import           System.Directory           (doesFileExist)
 import           System.Environment         (getArgs,getEnv)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
+import           NewsAPI.DB                 (uploadAnalysis)
+import qualified NewsAPI.DB.Article         as A
+import           NewsAPI.Type               (NewsAPIAnalysisDB(..))
 import           OntoNotes.App.Analyze
 import           OntoNotes.App.Analyze.SentenceStructure
 --
@@ -43,7 +47,19 @@ main = do
   articles <- getTimeTitleDescFromSrcWithHash src
   runCoreNLP articles
 
+mkNewsAPIAnalysisDB article =
+  NewsAPIAnalysisDB { analysis_sha256 = (A._sha256 article)
+                    , analysis_source = (A._source article)
+                    , analysis_analysis = ("corenlp" :: T.Text)
+                    , analysis_created = (A._created article)
+                    }
+
+  
 runCoreNLP articles = do
+
+  let dbconfig  = BL.toStrict . BL.pack $ "dbname=mydb host=localhost port=65432 user=modori"
+  conn <- PGS.connectPostgreSQL dbconfig
+  
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -54,10 +70,13 @@ runCoreNLP articles = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    forM_ (catMaybes articles) $ \(hsh,_,_,x) -> do
+    forM_ (catMaybes articles) $ \(article,(hsh,_,_,x)) -> do
       fchk <- doesFileExist ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh))
       when (not fchk) $ do
         eresult <- try $ runCoreNLPParser pp x
         case eresult of
           Left  (e :: SomeException) -> return ()
-          Right result               -> BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (A.encode result)
+          Right result               -> do
+            BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (A.encode result)
+            uploadAnalysis conn (mkNewsAPIAnalysisDB article)
+            

@@ -104,10 +104,13 @@ executable corenlp-runner
                        filepath,
                        jvm,
                        lens,
+                       postgresql-simple,
                        split,
                        text,
                        --
                        HCoreNLP,
+                       newsapi,
+                       newsapi-db,
                        OntoNotes,
                        time-tagger,
                        -- 
