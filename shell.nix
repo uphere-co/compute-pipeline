@@ -87,6 +87,8 @@ let
             data-default
             directory-tree
             discrimination
+            distributed-process distributed-process-lifted
+            distributed-process-simplelocalnet
             either
             haskeline
             hedis
@@ -109,6 +111,7 @@ let
             p.PropBank
             p.semantic-role-labeler
             p.wiki-ner
+            p.network-util
             p.nyt-db
             p.nyt-scrapper
             p.time-tagger

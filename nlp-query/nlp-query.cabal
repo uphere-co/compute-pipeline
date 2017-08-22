@@ -15,26 +15,37 @@ build-type:          Simple
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
+library
+  hs-source-dirs: src
+  build-depends:  base,
+                  --
+                  binary,
+                  bytestring,
+                  containers,
+                  distributed-process,
+                  jvm,
+                  network,
+                  network-simple,
+                  network-transport,
+                  network-transport-tcp,
+                  network-util,
+                  stm,
+                  text,
+                  transformers,
+                  --
+                  nlp-pipeline
+  exposed-modules:  Query
+                    Query.DB.NewsAPI
+  other-extensions: TemplateHaskell
+  ghc-prof-options: -fprof-auto
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+                     
 executable nlp-query
   main-is:             Main.hs
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base,
                        --
-                       binary,
-                       bytestring,
-                       containers,
-                       distributed-process,
-                       jvm,
-                       network,
-                       network-simple,
-                       network-transport,
-                       network-transport-tcp,
-                       network-util,
-                       stm,
-                       text,
-                       transformers,
-                       --
-                       OntoNotes
+                       nlp-query
   hs-source-dirs:      app
   default-language:    Haskell2010

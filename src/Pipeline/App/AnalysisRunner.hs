@@ -14,7 +14,7 @@ runWiki loaded emTagger = do
 
 runAnalysis :: IO ()
 runAnalysis = do
-  (sensemap,sensestat,framedb,ontomap,emTagger) <- loadConfig
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   loaded <- catMaybes <$> loadCoreNLPResult "/home/modori/data/newsapianalyzed"
   flip mapM_ loaded $ \x -> do
     runWiki x emTagger
