@@ -18,6 +18,7 @@
 , OntoNotes             ? <OntoNotes>
 , HFrameNet             ? <HFrameNet>
 , VerbNet               ? <VerbNet>
+, lexicon               ? <lexicon>
 }:
 
 let newpkgs = import pkgs.path {
@@ -67,6 +68,7 @@ let
       "OntoNotes" = self.callPackage (import OntoNotes) {};
       "HFrameNet" = self.callPackage (import HFrameNet) {};
       "VerbNet" = self.callPackage (import VerbNet) {};
+      "lexicon" = self.callPackage (import lexicon) {};
       };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };

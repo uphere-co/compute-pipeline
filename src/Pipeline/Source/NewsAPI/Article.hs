@@ -27,7 +27,7 @@ getHashByTime time = do
   articles <- getArticleByTime time conn
   return (map (\x -> (A._source x, A._content_hash x)) articles)
 
-getTimeTitleDescFromSrcWithHash :: String -> IO [Maybe NewsAPIArticleContent]
+getTimeTitleDescFromSrcWithHash :: String -> IO [Maybe (A.ArticleH,NewsAPIArticleContent)]
 getTimeTitleDescFromSrcWithHash src = do
   let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
   conn <- PGS.connectPostgreSQL dbconfig
@@ -40,7 +40,8 @@ getTimeTitleDescFromSrcWithHash src = do
     case fchk of
       True -> do
         bstr <- B.readFile filepath
-        getTimeTitleDescFromByteStringWithHash bstr hsh
+        content <- getTimeTitleDescFromByteStringWithHash bstr hsh
+        return ((,) <$> Just x <*> content)
       False -> print hsh >> error "error"
   PGS.close conn
   return result
