@@ -5,7 +5,7 @@ module Main where
 
 import           Control.Exception          (SomeException,try)
 import           Control.Lens
-import           Control.Monad              (forM_,replicateM_,void)
+import           Control.Monad              (forM_,replicateM_,void,when)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -14,6 +14,7 @@ import           Data.Maybe                 (catMaybes)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
 import           Language.Java              as J
+import           System.Directory           (doesFileExist)
 import           System.Environment         (getArgs,getEnv)
 --
 import           CoreNLP.Simple
@@ -54,7 +55,9 @@ runCoreNLP articles = do
                        . (ner .~ True)
                   )
     forM_ (catMaybes articles) $ \(hsh,_,_,x) -> do
-      eresult <- try $ runCoreNLPParser pp x
-      case eresult of
-        Left  (e :: SomeException) -> return ()
-        Right result               -> BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (A.encode result)
+      fchk <- doesFileExist ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh))
+      when (not fchk) $ do
+        eresult <- try $ runCoreNLPParser pp x
+        case eresult of
+          Left  (e :: SomeException) -> return ()
+          Right result               -> BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (A.encode result)

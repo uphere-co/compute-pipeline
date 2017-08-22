@@ -23,6 +23,7 @@ import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addU
 import           Network.Transport
 import           Network.Transport.TCP   (createTransport, defaultTCPParameters)
 import           System.Environment
+import           System.Process
 import           Control.Distributed.Process.Node
 --                                                                                   
 import           Network.Util
@@ -34,6 +35,10 @@ nominalDay = 86400
 
 runDaemon :: IO ()
 runDaemon = do
+  void $ forkIO $ forever $ do
+    callCommand "./dist/build/corenlp-runner/corenlp-runner bloomberg"
+
+  {-
   ctime <- getCurrentTime
   let obday = addUTCTime (-nominalDay) ctime
   result <- getHashByTime obday
@@ -58,3 +63,4 @@ runDaemon = do
     liftIO $ do
       atomically (putTMVar pidref pid)
       broadcast pidref portB hostB
+  -}
