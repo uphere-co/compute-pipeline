@@ -15,6 +15,7 @@ import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEither)
 import           Data.Attoparsec.Text             (parseOnly)
+import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Discrimination              (outer)
 import           Data.Discrimination.Grouping     (hashing)
@@ -171,7 +172,16 @@ getSents' txt pp = do
       return (Just sents)
 
 
-saveHashInPrefixSubDirs fp file = do
+saveHashNameBSFileInPrefixSubDirs fp file = do
+  let hsh       = takeFileName fp
+      storepath = takeDirectory fp
+      prefix    = take 2 hsh
+      
+  withCurrentDirectory storepath $ do
+    createDirectoryIfMissing True prefix
+    B.writeFile (storepath </> prefix </> hsh) file
+
+saveHashNameTextFileInPrefixSubDirs fp file = do
   let hsh       = takeFileName fp
       storepath = takeDirectory fp
       prefix    = take 2 hsh
