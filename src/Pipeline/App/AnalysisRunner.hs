@@ -2,6 +2,7 @@
 
 module Pipeline.App.AnalysisRunner where
 
+import qualified Data.Aeson            as A
 import           Data.Maybe
 import           System.FilePath       ((</>))
 --
@@ -11,14 +12,15 @@ import           Pipeline.Load
 import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Article
 
-runWiki loaded emTagger = do
-  print (getWikiResolvedMentions loaded emTagger)
+wikiEL emTagger loaded = getWikiResolvedMentions emTagger loaded
+
+saveWikiEL wikiel = do
+  A.encode wikiel
 
 runAnalysis :: IO ()
 runAnalysis = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   fps <- getAnalysisFilePath
-  print $ length fps
   loaded <- catMaybes <$> loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") fps)
   flip mapM_ loaded $ \x -> do
-    runWiki x emTagger
+    print $ wikiEL emTagger x

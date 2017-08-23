@@ -21,14 +21,14 @@ prepareNETokens loaded =
       neTokens = concat $ map (\(x,y) -> (unNER $ sentToNER' x y)) (zip mws mns)
   in neTokens
 
-getWikiResolvedMentions loaded emTagger =
+getWikiResolvedMentions emTagger loaded =
   let (_,_,_,tokens,_,_,_) = loaded
-      linked_mentions_all = getWikiAllMentions loaded emTagger
+      linked_mentions_all = getWikiAllMentions emTagger loaded
       input_pos = V.fromList (map (^. token_pos) $ concat tokens)
       linked_mentions_all_unfiltered = (EMP.filterEMbyPOS input_pos linked_mentions_all)
   in filter (\x -> let (_,_,pne) = _info x in case pne of Resolved _ -> True ; _ -> False) linked_mentions_all_unfiltered
 
-getWikiAllMentions loaded emTagger =
+getWikiAllMentions emTagger loaded =
   let neTokens = prepareNETokens loaded
       linked_mentions_all = emTagger neTokens
   in linked_mentions_all
