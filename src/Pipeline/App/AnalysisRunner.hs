@@ -3,6 +3,7 @@
 module Pipeline.App.AnalysisRunner where
 
 import           Data.Maybe
+import           System.FilePath       ((</>))
 --
 import           OntoNotes.App.Analyze
 --
@@ -16,7 +17,8 @@ runWiki loaded emTagger = do
 runAnalysis :: IO ()
 runAnalysis = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
-  fps <- getAnalysisFilePath 
-  loaded <- catMaybes <$> loadCoreNLPResult (map ((++) "/home/modori/data/newsapianalyzed") fps)
+  fps <- getAnalysisFilePath
+  print $ length fps
+  loaded <- catMaybes <$> loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") fps)
   flip mapM_ loaded $ \x -> do
     runWiki x emTagger

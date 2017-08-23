@@ -77,7 +77,7 @@ getFileList fp = do
 ----
 
 mkNewsAPIAnalysisDB article =
-  NewsAPIAnalysisDB { analysis_sha256 = (Ar._sha256 article)
+  NewsAPIAnalysisDB { analysis_sha256 = (fst . B16.decode . L8.toStrict . L8.pack . T.unpack $ Ar._content_hash article)
                     , analysis_source = (Ar._source article)
                     , analysis_analysis = ("corenlp" :: T.Text)
                     , analysis_created = (Ar._created article)
