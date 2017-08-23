@@ -27,6 +27,7 @@ import           OntoNotes.App.Analyze.SentenceStructure
 --
 import           Pipeline.App.CoreNLPRunner
 import           Pipeline.Load
+import           Pipeline.Operation.DB
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Util
 
@@ -34,7 +35,8 @@ import           Pipeline.Util
 main' :: IO ()
 main' = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
-  loaded' <- loadCoreNLPResult "/home/modori/data/newsapianalyzed"
+  fps <- getFileListRecursively "/home/modori/data/newsapianalyzed"
+  loaded' <- loadCoreNLPResult fps
   putStrLn "Loading Completed."
   let loaded = catMaybes loaded'
   forM_ loaded $ \x -> do

@@ -8,6 +8,7 @@ import           OntoNotes.App.Analyze
 --
 import           Pipeline.Load
 import           Pipeline.Run
+import           Pipeline.Source.NewsAPI.Article
 
 runWiki loaded emTagger = do
   print (getWikiResolvedMentions loaded emTagger)
@@ -15,6 +16,7 @@ runWiki loaded emTagger = do
 runAnalysis :: IO ()
 runAnalysis = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
-  loaded <- catMaybes <$> loadCoreNLPResult "/home/modori/data/newsapianalyzed"
+  fps <- getAnalysisFilePath 
+  loaded <- catMaybes <$> loadCoreNLPResult (map ((++) "/home/modori/data/newsapianalyzed") fps)
   flip mapM_ loaded $ \x -> do
     runWiki x emTagger

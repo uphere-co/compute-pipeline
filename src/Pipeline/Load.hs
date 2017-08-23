@@ -14,7 +14,7 @@ import           CoreNLP.Simple.Type.Simplified
 import           NLP.Type.PennTreebankII
 import           OntoNotes.App.Util
 
-loadCoreNLPResult :: FilePath
+loadCoreNLPResult :: [FilePath]
                   -> IO [Maybe ( [Sentence]
                                , [Maybe SentenceIndex]
                                , [SentItem CharIdx]
@@ -24,9 +24,12 @@ loadCoreNLPResult :: FilePath
                                , Maybe [TagPos TokIdx (Maybe Text)]
                                )
                         ]
-loadCoreNLPResult fp = do
-  list' <- readDirectoryWith return fp
-  let list = sort . toList $ dirTree list'
-  forM list $ \l -> do
-    bstr <- B.readFile l
+loadCoreNLPResult fps = do
+  forM fps $ \fp -> do
+    bstr <- B.readFile fp
     return $ A.decode (BL.fromStrict bstr)
+
+getFileListRecursively fp = do
+  list' <- readDirectoryWith return fp
+  let filelist = sort . toList $ dirTree list'
+  return filelist
