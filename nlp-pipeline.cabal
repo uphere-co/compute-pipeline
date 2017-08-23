@@ -79,6 +79,7 @@ library
                    Pipeline.App.AnalysisRunner
                    Pipeline.App.CoreNLPRunner
                    Pipeline.Load
+                   Pipeline.Operation.DB
                    Pipeline.Run
                    Pipeline.Run.WikiEL
                    Pipeline.Run.OntoNotes

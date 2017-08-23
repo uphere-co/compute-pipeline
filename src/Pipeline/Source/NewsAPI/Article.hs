@@ -66,3 +66,13 @@ getFileList fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . toList $ dirTree list'
   return filelist
+
+
+----
+
+mkNewsAPIAnalysisDB article =
+  NewsAPIAnalysisDB { analysis_sha256 = (A._sha256 article)
+                    , analysis_source = (A._source article)
+                    , analysis_analysis = ("corenlp" :: T.Text)
+                    , analysis_created = (A._created article)
+                    }

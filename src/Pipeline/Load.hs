@@ -5,8 +5,10 @@ import           Control.Monad                  (forM)
 import qualified Data.Aeson                     as A
 import qualified Data.ByteString.Char8          as B
 import qualified Data.ByteString.Lazy.Char8     as BL
+import           Data.Foldable                  (toList)
+import           Data.List                      (sort)
 import           Data.Text                      (Text)
-import           System.Directory               (listDirectory)
+import           System.Directory.Tree
 --
 import           CoreNLP.Simple.Type.Simplified
 import           NLP.Type.PennTreebankII
@@ -23,7 +25,8 @@ loadCoreNLPResult :: FilePath
                                )
                         ]
 loadCoreNLPResult fp = do
-  list <- map ((++) (fp ++ "/")) <$> listDirectory fp
+  list' <- readDirectoryWith return fp
+  let list = sort . toList $ dirTree list'
   forM list $ \l -> do
     bstr <- B.readFile l
     return $ A.decode (BL.fromStrict bstr)
