@@ -10,6 +10,7 @@ import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default
+import           Data.List                  (foldl')
 import           Data.Maybe                 (catMaybes)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
@@ -46,6 +47,9 @@ main' = do
   forM_ loaded $ \(fp,x) -> do
     mapM_ TIO.putStrLn (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
 
+contained (a,b) (c,d) = if (a >= c && b <=d) then True else False
+isContained (a,b) xs = foldl' (\acc x -> if ((a,b) `contained` x) then (acc || True) else (acc || False)) False xs
+
 -- Parse and Save
 main :: IO ()
 main = do
@@ -58,8 +62,8 @@ main = do
   let tokenss = catMaybes <$> sents ^.. traverse . sentenceToken
 
   let constraint = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ getWikiResolvedMentions emTagger sents
-
-  print $ map (\ts -> map (\t -> _token_char_idx_range t) $ filter (\t -> (_token_tok_idx_range t) `elem` constraint) ts) tokenss
+  print constraint
+  print $ map (\ts -> map (\t -> _token_text t) $ filter (\t -> (_token_tok_idx_range t) `isContained` constraint) ts) tokenss
 
 
   
