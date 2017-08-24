@@ -38,8 +38,8 @@ main' = do
   fps <- getFileListRecursively "/home/modori/data/newsapianalyzed"
   loaded' <- loadCoreNLPResult fps
   putStrLn "Loading Completed."
-  let loaded = catMaybes loaded'
-  forM_ loaded $ \x -> do
+  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
+  forM_ loaded $ \(fp,x) -> do
     mapM_ TIO.putStrLn (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
 
 -- Parse and Save

@@ -15,19 +15,19 @@ import           NLP.Type.PennTreebankII
 import           OntoNotes.App.Util
 
 loadCoreNLPResult :: [FilePath]
-                  -> IO [Maybe ( [Sentence]
+                  -> IO [(FilePath, Maybe ( [Sentence]
                                , [Maybe SentenceIndex]
                                , [SentItem CharIdx]
                                , [[Token]]
                                , [Maybe PennTree]
                                , [Dependency]
                                , Maybe [TagPos TokIdx (Maybe Text)]
-                               )
+                               ))
                         ]
 loadCoreNLPResult fps = do
   forM fps $ \fp -> do
     bstr <- B.readFile fp
-    return $ A.decode (BL.fromStrict bstr)
+    return $ (fp,A.decode (BL.fromStrict bstr))
 
 getFileListRecursively fp = do
   list' <- readDirectoryWith return fp
