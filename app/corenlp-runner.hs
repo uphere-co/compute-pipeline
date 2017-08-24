@@ -19,6 +19,7 @@ import           System.Environment         (getArgs,getEnv)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
+import           CoreNLP.Simple.Type.Simplified
 import           NewsAPI.DB                 (uploadAnalysis)
 import qualified NewsAPI.DB.Article         as A
 import           NewsAPI.Type               (NewsAPIAnalysisDB(..))
@@ -47,8 +48,13 @@ main :: IO ()
 main = do
   -- [src] <- getArgs
   -- articles <- getTimeTitleDescFromSrcWithHash src
-  preRunCoreNLP "This is the sample sentence."
+  -- runCoreNLP articles
 
+  sents <- preRunCoreNLP "This is the sample sentence."
+  let mws = sents ^.. traverse . sentenceWord
+  print mws
+
+  
 preRunCoreNLP txt = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
@@ -58,7 +64,7 @@ preRunCoreNLP txt = do
                        . (lemma .~ True)
                        . (ner .~ True)
                   )
-    preRunCoreNLPParser pp txt >>= print
+    preRunCoreNLPParser pp txt
   
 runCoreNLP articles = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
