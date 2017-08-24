@@ -1,3 +1,4 @@
+
 module Pipeline.Load where
 
 
@@ -5,25 +6,39 @@ import           Control.Monad                  (forM)
 import qualified Data.Aeson                     as A
 import qualified Data.ByteString.Char8          as B
 import qualified Data.ByteString.Lazy.Char8     as BL
+import           Data.Foldable                  (toList)
+import           Data.List                      (sort)
 import           Data.Text                      (Text)
-import           System.Directory               (listDirectory)
+import           System.Directory.Tree
 --
 import           CoreNLP.Simple.Type.Simplified
 import           NLP.Type.PennTreebankII
 import           OntoNotes.App.Util
+import           WikiEL.EntityLinking           (EntityMention)
 
-loadCoreNLPResult :: FilePath
-                  -> IO [Maybe ( [Sentence]
+loadCoreNLPResult :: [FilePath]
+                  -> IO [(FilePath, Maybe ( [Sentence]
                                , [Maybe SentenceIndex]
                                , [SentItem CharIdx]
                                , [[Token]]
                                , [Maybe PennTree]
                                , [Dependency]
                                , Maybe [TagPos TokIdx (Maybe Text)]
-                               )
+                               ))
                         ]
-loadCoreNLPResult fp = do
-  list <- map ((++) (fp ++ "/")) <$> listDirectory fp
-  forM list $ \l -> do
-    bstr <- B.readFile l
-    return $ A.decode (BL.fromStrict bstr)
+loadCoreNLPResult fps = do
+  forM fps $ \fp -> do
+    bstr <- B.readFile fp
+    return $ (fp,A.decode (BL.fromStrict bstr))
+
+loadWikiELResult :: [FilePath] -> IO [(FilePath,Maybe [EntityMention Text])]
+loadWikiELResult fps = do
+  forM fps $ \fp -> do
+    bstr <- B.readFile fp
+    return $ (fp,A.decode (BL.fromStrict bstr))
+
+getFileListRecursively fp = do
+  list' <- readDirectoryWith return fp
+  let filelist = sort . toList $ dirTree list'
+  return filelist
+

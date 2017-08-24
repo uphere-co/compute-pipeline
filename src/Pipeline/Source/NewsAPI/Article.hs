@@ -3,6 +3,7 @@
 module Pipeline.Source.NewsAPI.Article where
 
 import           Data.Aeson                        (eitherDecodeStrict)
+import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B   
 import qualified Data.ByteString.Lazy.Char8 as L8  
 import           Data.Foldable                     (toList)
@@ -13,10 +14,15 @@ import           Data.Time.Clock                   (UTCTime)
 import qualified Database.PostgreSQL.Simple as PGS 
 import           System.Directory                  (doesFileExist)
 import           System.Directory.Tree             (dirTree,readDirectoryWith)
+import           System.FilePath                   ((</>))
 --
 import           NewsAPI.DB
-import qualified NewsAPI.DB.Article         as A
+import qualified NewsAPI.DB.Article         as Ar
+import qualified NewsAPI.DB.Analysis        as An
 import           NewsAPI.Type
+--
+import           Pipeline.Operation.DB
+
 
 type NewsAPIArticleContent = (Text, Text, Text, Text)
 
@@ -25,15 +31,15 @@ getHashByTime time = do
   let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
   conn <- PGS.connectPostgreSQL dbconfig
   articles <- getArticleByTime time conn
-  return (map (\x -> (A._source x, A._content_hash x)) articles)
+  return (map (\x -> (Ar._source x, Ar._content_hash x)) articles)
 
-getTimeTitleDescFromSrcWithHash :: String -> IO [Maybe (A.ArticleH,NewsAPIArticleContent)]
+getTimeTitleDescFromSrcWithHash :: String -> IO [Maybe (Ar.ArticleH,NewsAPIArticleContent)]
 getTimeTitleDescFromSrcWithHash src = do
   let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
   conn <- PGS.connectPostgreSQL dbconfig
   articles <- getArticleBySource src conn
   result <- flip mapM articles $ \x -> do
-    let hsh = T.unpack $ A._content_hash x
+    let hsh = T.unpack $ Ar._content_hash x
         fileprefix = "/data/groups/uphere/repo/fetchfin/newsapi/Articles/" ++ src ++ "/"
         filepath = fileprefix ++ hsh
     fchk <- doesFileExist filepath
@@ -66,3 +72,21 @@ getFileList fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . toList $ dirTree list'
   return filelist
+
+
+----
+
+mkNewsAPIAnalysisDB article =
+  NewsAPIAnalysisDB { analysis_sha256 = (fst . B16.decode . L8.toStrict . L8.pack . T.unpack $ Ar._content_hash article)
+                    , analysis_source = (Ar._source article)
+                    , analysis_analysis = ("corenlp" :: T.Text)
+                    , analysis_created = (Ar._created article)
+                    }
+  
+getAnalysisFilePath :: IO ([FilePath])
+getAnalysisFilePath = do
+  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
+  analyses <- getAnalysisAll conn
+  let list' = map (L8.unpack . L8.fromStrict . B16.encode . An._sha256) analyses
+      list = map (\x -> (take 2 x) </> x) list'
+  return list

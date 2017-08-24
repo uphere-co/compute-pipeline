@@ -13,7 +13,6 @@ import           Data.Default
 import           Data.Maybe                 (catMaybes)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
-import qualified Database.PostgreSQL.Simple as PGS
 import           Language.Java              as J
 import           System.Directory           (doesFileExist)
 import           System.Environment         (getArgs,getEnv)
@@ -28,6 +27,7 @@ import           OntoNotes.App.Analyze.SentenceStructure
 --
 import           Pipeline.App.CoreNLPRunner
 import           Pipeline.Load
+import           Pipeline.Operation.DB
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Util
 
@@ -35,10 +35,11 @@ import           Pipeline.Util
 main' :: IO ()
 main' = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
-  loaded' <- loadCoreNLPResult "/home/modori/data/newsapianalyzed"
+  fps <- getFileListRecursively "/home/modori/data/newsapianalyzed"
+  loaded' <- loadCoreNLPResult fps
   putStrLn "Loading Completed."
-  let loaded = catMaybes loaded'
-  forM_ loaded $ \x -> do
+  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
+  forM_ loaded $ \(fp,x) -> do
     mapM_ TIO.putStrLn (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
 
 -- Parse and Save
@@ -47,19 +48,9 @@ main = do
   [src] <- getArgs
   articles <- getTimeTitleDescFromSrcWithHash src
   runCoreNLP articles
-
-mkNewsAPIAnalysisDB article =
-  NewsAPIAnalysisDB { analysis_sha256 = (A._sha256 article)
-                    , analysis_source = (A._source article)
-                    , analysis_analysis = ("corenlp" :: T.Text)
-                    , analysis_created = (A._created article)
-                    }
-
   
 runCoreNLP articles = do
-
-  let dbconfig  = BL.toStrict . BL.pack $ "dbname=mydb host=localhost port=65432 user=modori"
-  conn <- PGS.connectPostgreSQL dbconfig
+  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
   
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do

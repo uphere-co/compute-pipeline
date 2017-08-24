@@ -2,19 +2,39 @@
 
 module Pipeline.App.AnalysisRunner where
 
+import qualified Data.Aeson            as A
+import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Maybe
+import           System.FilePath       ((</>),takeExtension)
 --
 import           OntoNotes.App.Analyze
 --
 import           Pipeline.Load
 import           Pipeline.Run
+import           Pipeline.Source.NewsAPI.Article
 
-runWiki loaded emTagger = do
-  print (getWikiResolvedMentions loaded emTagger)
+wikiEL emTagger loaded = getWikiResolvedMentions emTagger loaded
+
+saveWikiEL fp wikiel = do
+  B.writeFile (fp ++ ".wiki") (BL.toStrict $ A.encode wikiel)
+
+runAnalysis' :: IO ()
+runAnalysis' = do
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  fps <- getAnalysisFilePath
+  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") fps)
+  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
+  flip mapM_ loaded $ \(fp,x) -> do
+    saveWikiEL fp (wikiEL emTagger x)
+    print $ wikiEL emTagger x
 
 runAnalysis :: IO ()
 runAnalysis = do
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
-  loaded <- catMaybes <$> loadCoreNLPResult "/home/modori/data/newsapianalyzed"
-  flip mapM_ loaded $ \x -> do
-    runWiki x emTagger
+  fps' <- getFileListRecursively "/home/modori/data/newsapianalyzed"
+  let fps = filter (\x -> takeExtension x == ".wiki") fps'
+  loaded <- loadWikiELResult fps
+  flip mapM_ loaded $ \(fp,x) -> do
+    print (fp,x)
+
+
