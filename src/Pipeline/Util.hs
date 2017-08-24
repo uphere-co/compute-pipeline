@@ -15,18 +15,21 @@ import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEither)
 import           Data.Attoparsec.Text             (parseOnly)
+import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Discrimination              (outer)
 import           Data.Discrimination.Grouping     (hashing)
 import           Data.Maybe                       (fromJust, isJust)
 import           Data.Text                        (Text)
 import qualified Data.Text                  as T
+import qualified Data.Text.IO               as TIO
 import           Data.Time.Calendar               (Day)
 import           Data.Time.Format                 (defaultTimeLocale, formatTime)
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
-import           System.FilePath                  (takeFileName)
+import           System.Directory                 (createDirectoryIfMissing,withCurrentDirectory)
+import           System.FilePath                  ((</>),takeDirectory,takeFileName)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           CoreNLP.Simple
@@ -167,3 +170,22 @@ getSents' txt pp = do
     Right d -> do
       let sents = d ^.. D.sentence . traverse
       return (Just sents)
+
+
+saveHashNameBSFileInPrefixSubDirs fp file = do
+  let hsh       = takeFileName fp
+      storepath = takeDirectory fp
+      prefix    = take 2 hsh
+      
+  withCurrentDirectory storepath $ do
+    createDirectoryIfMissing True prefix
+    B.writeFile (storepath </> prefix </> hsh) file
+
+saveHashNameTextFileInPrefixSubDirs fp file = do
+  let hsh       = takeFileName fp
+      storepath = takeDirectory fp
+      prefix    = take 2 hsh
+      
+  withCurrentDirectory storepath $ do
+    createDirectoryIfMissing True prefix
+    TIO.writeFile (storepath </> prefix </> hsh) file

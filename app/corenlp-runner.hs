@@ -29,6 +29,7 @@ import           OntoNotes.App.Analyze.SentenceStructure
 import           Pipeline.App.CoreNLPRunner
 import           Pipeline.Load
 import           Pipeline.Source.NewsAPI.Article
+import           Pipeline.Util
 
 -- Load and Run
 main' :: IO ()
@@ -77,6 +78,6 @@ runCoreNLP articles = do
         case eresult of
           Left  (e :: SomeException) -> return ()
           Right result               -> do
-            BL.writeFile ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (A.encode result)
+            saveHashNameBSFileInPrefixSubDirs ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (BL.toStrict $ A.encode result)
             uploadAnalysis conn (mkNewsAPIAnalysisDB article)
             
