@@ -1,3 +1,4 @@
+
 module Pipeline.Load where
 
 
@@ -13,6 +14,7 @@ import           System.Directory.Tree
 import           CoreNLP.Simple.Type.Simplified
 import           NLP.Type.PennTreebankII
 import           OntoNotes.App.Util
+import           WikiEL.EntityLinking           (EntityMention)
 
 loadCoreNLPResult :: [FilePath]
                   -> IO [(FilePath, Maybe ( [Sentence]
@@ -29,7 +31,14 @@ loadCoreNLPResult fps = do
     bstr <- B.readFile fp
     return $ (fp,A.decode (BL.fromStrict bstr))
 
+loadWikiELResult :: [FilePath] -> IO [(FilePath,Maybe [EntityMention Text])]
+loadWikiELResult fps = do
+  forM fps $ \fp -> do
+    bstr <- B.readFile fp
+    return $ (fp,A.decode (BL.fromStrict bstr))
+
 getFileListRecursively fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . toList $ dirTree list'
   return filelist
+

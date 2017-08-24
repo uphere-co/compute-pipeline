@@ -6,7 +6,7 @@ import qualified Data.Aeson            as A
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Maybe
-import           System.FilePath       ((</>))
+import           System.FilePath       ((</>),takeExtension)
 --
 import           OntoNotes.App.Analyze
 --
@@ -19,8 +19,8 @@ wikiEL emTagger loaded = getWikiResolvedMentions emTagger loaded
 saveWikiEL fp wikiel = do
   B.writeFile (fp ++ ".wiki") (BL.toStrict $ A.encode wikiel)
 
-runAnalysis :: IO ()
-runAnalysis = do
+runAnalysis' :: IO ()
+runAnalysis' = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   fps <- getAnalysisFilePath
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") fps)
@@ -28,3 +28,13 @@ runAnalysis = do
   flip mapM_ loaded $ \(fp,x) -> do
     saveWikiEL fp (wikiEL emTagger x)
     print $ wikiEL emTagger x
+
+runAnalysis :: IO ()
+runAnalysis = do
+  fps' <- getFileListRecursively "/home/modori/data/newsapianalyzed"
+  let fps = filter (\x -> takeExtension x == ".wiki") fps'
+  loaded <- loadWikiELResult fps
+  flip mapM_ loaded $ \(fp,x) -> do
+    print (fp,x)
+
+
