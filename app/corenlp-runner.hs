@@ -25,10 +25,13 @@ import qualified NewsAPI.DB.Article         as A
 import           NewsAPI.Type               (NewsAPIAnalysisDB(..))
 import           OntoNotes.App.Analyze
 import           OntoNotes.App.Analyze.SentenceStructure
+import           WikiEL.EntityLinking
+import           WikiEL.Misc
 --
 import           Pipeline.App.CoreNLPRunner
 import           Pipeline.Load
 import           Pipeline.Operation.DB
+import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Util
 
@@ -49,10 +52,15 @@ main = do
   -- [src] <- getArgs
   -- articles <- getTimeTitleDescFromSrcWithHash src
   -- runCoreNLP articles
+  txt <- TIO.readFile "test.txt"
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  sents <- preRunCoreNLP txt
+  let tokenss = catMaybes <$> sents ^.. traverse . sentenceToken
 
-  sents <- preRunCoreNLP "This is the sample sentence."
-  let mws = sents ^.. traverse . sentenceWord
-  print mws
+  let constraint = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ getWikiResolvedMentions emTagger sents
+
+  print $ map (\ts -> map (\t -> _token_char_idx_range t) $ filter (\t -> (_token_tok_idx_range t) `elem` constraint) ts) tokenss
+
 
   
 preRunCoreNLP txt = do
