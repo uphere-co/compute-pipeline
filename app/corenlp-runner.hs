@@ -45,9 +45,20 @@ main' = do
 -- Parse and Save
 main :: IO ()
 main = do
-  [src] <- getArgs
-  articles <- getTimeTitleDescFromSrcWithHash src
-  runCoreNLP articles
+  -- [src] <- getArgs
+  -- articles <- getTimeTitleDescFromSrcWithHash src
+  preRunCoreNLP "This is the sample sentence."
+
+preRunCoreNLP txt = do
+  clspath <- getEnv "CLASSPATH"
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    pp <- prepare (def & (tokenizer .~ True)
+                       . (words2sentences .~ True)
+                       . (postagger .~ True)
+                       . (lemma .~ True)
+                       . (ner .~ True)
+                  )
+    preRunCoreNLPParser pp txt >>= print
   
 runCoreNLP articles = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
