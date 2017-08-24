@@ -10,7 +10,7 @@ import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default
-import           Data.List                  (foldl')
+import           Data.List                  (foldl',groupBy)
 import           Data.Maybe                 (catMaybes)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
@@ -63,10 +63,8 @@ main = do
 
   let constraint = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ getWikiResolvedMentions emTagger sents
   print constraint
-  print $ map (\ts -> map (\t -> _token_text t) $ filter (\t -> (_token_tok_idx_range t) `isContained` constraint) ts) tokenss
-
-
-  
+  print $ map (\ts -> groupBy (\x -> \y -> (T.take 2 x) == "NE" && (T.take 2 y) == "NE") $ map (\t -> if ((_token_tok_idx_range t) `isContained` constraint) then (T.append "NE" (_token_text t)) else (_token_text t)) ts) tokenss
+        
 preRunCoreNLP txt = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
