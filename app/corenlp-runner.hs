@@ -63,10 +63,10 @@ main = preProcessing
 
 
 convertConstraintInCharIdx (b,e) tokss =
-  let tb' = find (\t -> (fst $ _token_tok_idx_range t) == b) (concat tokss)
-      te' = find (\t -> (snd $ _token_tok_idx_range t) == e) (concat tokss)
+  let tb' = find (\t -> (t ^. token_tok_idx_range ^. _1) == b) (concat tokss)
+      te' = find (\t -> (t ^. token_tok_idx_range ^. _2) == e) (concat tokss)
   in case (tb',te') of
-    (Just tb, Just te) -> Just $ (fst $ _token_char_idx_range tb, snd $ _token_char_idx_range te)
+    (Just tb, Just te) -> Just $ (tb ^. token_char_idx_range ^. _1, te ^. token_char_idx_range ^. _2)
     otherwise          -> Nothing
     
 preProcessing = do
@@ -77,15 +77,16 @@ preProcessing = do
 
   let constraint = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ getWikiResolvedMentions emTagger sents
       constraint' = catMaybes $ map (\c -> convertConstraintInCharIdx c tokenss) constraint
+      
   a <- flip evalStateT constraint $ do
     forM tokenss $ \tokens -> do
       forM tokens $ \t -> do
         s <- get
         if (not $ null s)
           then do
-          if (_token_tok_idx_range t `contained` (head s))
+          if ((t ^. token_tok_idx_range) `contained` (head s))
             then do
-            if ((snd $ _token_tok_idx_range t) == (snd (head s)))
+            if ((t ^. token_tok_idx_range ^. _2) == (snd (head s)))
               then do
               modify' $ (\xs -> drop 1 xs)
               return (t,2)
@@ -97,9 +98,9 @@ preProcessing = do
         0 -> fillGap t1 t2 " "
         1 -> fillGap t1 t2 "-"
         2 -> fillGap t1 t2 " "
-      gapLength t1 t2 = (fst $ _token_char_idx_range t2) - (snd $ _token_char_idx_range t1)
-      fillGap t1 t2 char = (T.append (_token_text t1) (T.replicate (gapLength t1 t2) char)) 
-      result' = (map (\xs -> (map (\((t1,n1),(t2,n2)) -> f t1 t2 n1 n2) (zip xs (drop 1 xs))) ++ [(_token_text $ fst $ last xs)] ) a)
+      gapLength t1 t2 = (t2 ^. token_char_idx_range ^. _1) - (t1 ^. token_char_idx_range ^. _2)
+      fillGap t1 t2 char = (T.append (t1 ^. token_text) (T.replicate (gapLength t1 t2) char)) 
+      result' = (map (\xs -> (map (\((t1,n1),(t2,n2)) -> f t1 t2 n1 n2) (zip xs (drop 1 xs))) ++ [last xs ^. _1 ^. token_text] ) a)
       result = T.intercalate "" $ concat result'
 
   TIO.putStrLn result
