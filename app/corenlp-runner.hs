@@ -12,7 +12,7 @@ import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default
 import           Data.List                  (find,foldl',groupBy)
-import           Data.Maybe                 (catMaybes)
+import           Data.Maybe                 (catMaybes,isJust)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
 import           Language.Java              as J
@@ -103,10 +103,26 @@ preProcessing = do
       result' = (map (\xs -> (map (\((t1,n1),(t2,n2)) -> f t1 t2 n1 n2) (zip xs (drop 1 xs))) ++ [last xs ^. _1 ^. token_text] ) a)
       result = T.intercalate "" $ concat result'
 
+  
   TIO.putStrLn result
   print constraint'
   print tokenss
+  mkNewWikiEL constraint' tokenss >>= print
   
+
+
+findNETokens con tokss = filter (\t -> (t ^. token_char_idx_range) `contained` con) (concat tokss)
+mkNewWikiEL cons tokss = do
+  result <- flip evalStateT (0 :: Int) $ do
+    forM cons $ \(a,b) -> do
+      s <- get
+      liftIO $ print s
+      liftIO $ print $ filter (\t -> '.' `elem` (T.unpack (t ^. token_text))) $ findNETokens (a,b) tokss 
+      let ff (a,b) = (*) 6 $ length $ filter (\t -> '.' `elem` (T.unpack (t ^. token_text))) $ findNETokens (a,b) tokss 
+      modify' $ (\s' -> s' + (ff (a,b)))
+      return (a + s, b + s + ff (a,b))
+  return result
+
 preRunCoreNLP txt = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
