@@ -11,7 +11,7 @@ import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default
-import           Data.List                  (find,foldl',groupBy)
+import           Data.List                  (find,foldl',groupBy,intersperse)
 import           Data.Maybe                 (catMaybes,isJust)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
@@ -70,7 +70,7 @@ convertConstraintInCharIdx (b,e) tokss =
     otherwise          -> Nothing
     
 preProcessing = do
-  txt <- TIO.readFile "test.txt"
+  txt <- TIO.readFile "test2.txt"
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   sents <- preRunCoreNLP txt
   let tokenss = catMaybes <$> sents ^.. traverse . sentenceToken
@@ -95,14 +95,15 @@ preProcessing = do
           else return (t,0)
 
   let f t1 t2 n1 n2 = case n1 of
-        0 -> fillGap t1 t2 " "
-        1 -> fillGap t1 t2 "-"
-        2 -> fillGap t1 t2 " "
+        0 -> fillGap t1 t2 n1 n2 " "
+        1 -> fillGap t1 t2 n1 n2 "-"
+        2 -> fillGap t1 t2 n1 n2 " "
       gapLength t1 t2 = (t2 ^. token_char_idx_range ^. _1) - (t1 ^. token_char_idx_range ^. _2)
-      fillGap t1 t2 char = T.replace "&" "AND" $ T.replace "." "-PERIOD" $ (T.append (t1 ^. token_text) (T.replicate (gapLength t1 t2) char)) 
-
+      fillGap t1 t2 n1 n2 char = if (n1 == 1 || n1 == 2)
+                                 then T.replace "&" "AND" $ T.replace "." "-PERIOD" $ (T.append (t1 ^. token_text) (T.replicate (gapLength t1 t2) char)) 
+                                 else (T.append (t1 ^. token_text) (T.replicate (gapLength t1 t2) char))
       result' = (map (\xs -> (map (\((t1,n1),(t2,n2)) -> f t1 t2 n1 n2) (zip xs (drop 1 xs))) ++ [last xs ^. _1 ^. token_text] ) a)
-      result = T.intercalate "" $ concat result'
+      result = T.intercalate "" $ concat $ intersperse ["\n"] result'
 
   print tokenss
   TIO.putStrLn result
