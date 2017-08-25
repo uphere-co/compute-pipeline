@@ -34,14 +34,14 @@ import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
-import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
+import 	       	 NLP.Type.CoreNLP
+import           Pipeline.Type
 import           Text.Annotation.Util.Doc
 import           Text.Search.SearchTree
-import           Pipeline.Type
 --
 import           NLP.Type.PennTreebankII
 import           WordNet.Type.POS

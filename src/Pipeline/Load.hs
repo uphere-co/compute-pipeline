@@ -11,7 +11,7 @@ import           Data.List                      (sort)
 import           Data.Text                      (Text)
 import           System.Directory.Tree
 --
-import           CoreNLP.Simple.Type.Simplified
+import 	       	 NLP.Type.CoreNLP
 import           NLP.Type.PennTreebankII
 import           OntoNotes.App.Util
 import           WikiEL.EntityLinking           (EntityMention)

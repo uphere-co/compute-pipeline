@@ -17,8 +17,8 @@ import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Convert
-import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
+import 	       	 NLP.Type.CoreNLP
 import           Text.ProtocolBuffers.WireMessage            (messageGet)
 --
 import           OntoNotes.App.Analyze.CoreNLP               (preRunParser,runParser)

@@ -114,6 +114,7 @@ executable corenlp-runner
                        multi-word-tagger,
                        newsapi,
                        newsapi-db,
+                       nlp-types,
                        OntoNotes,
                        time-tagger,
                        wiki-ner,

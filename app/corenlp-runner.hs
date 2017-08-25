@@ -21,11 +21,11 @@ import           System.Environment         (getArgs,getEnv)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
-import           CoreNLP.Simple.Type.Simplified
 import           MWE
 import           NewsAPI.DB                 (uploadAnalysis)
 import qualified NewsAPI.DB.Article         as A
 import           NewsAPI.Type               (NewsAPIAnalysisDB(..))
+import 	       	 NLP.Type.CoreNLP
 import           OntoNotes.App.Analyze
 import           OntoNotes.App.Analyze.SentenceStructure
 import           WikiEL.EntityLinking
