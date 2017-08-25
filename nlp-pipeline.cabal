@@ -111,6 +111,7 @@ executable corenlp-runner
                        text,
                        --
                        HCoreNLP,
+                       multi-word-tagger,
                        newsapi,
                        newsapi-db,
                        OntoNotes,

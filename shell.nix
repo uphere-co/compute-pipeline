@@ -19,6 +19,7 @@
 , HFrameNet             ? <HFrameNet>
 , VerbNet               ? <VerbNet>
 , lexicon               ? <lexicon>
+, multi-word-tagger     ? <multi-word-tagger>
 }:
 
 let newpkgs = import pkgs.path {
@@ -69,6 +70,7 @@ let
       "HFrameNet" = self.callPackage (import HFrameNet) {};
       "VerbNet" = self.callPackage (import VerbNet) {};
       "lexicon" = self.callPackage (import lexicon) {};
+      "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
       };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
@@ -118,6 +120,7 @@ let
             p.nyt-scrapper
             p.time-tagger
             p.OntoNotes
+            p.multi-word-tagger
             HUKB-driver
           ]);
 
