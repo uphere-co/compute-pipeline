@@ -105,6 +105,7 @@ executable corenlp-runner
                        filepath,
                        jvm,
                        lens,
+                       mtl,
                        postgresql-simple,
                        split,
                        text,
@@ -114,6 +115,7 @@ executable corenlp-runner
                        newsapi-db,
                        OntoNotes,
                        time-tagger,
+                       wiki-ner,
                        -- 
                        nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2

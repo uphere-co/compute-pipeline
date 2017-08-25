@@ -21,7 +21,9 @@ import           CoreNLP.Simple.Type.Simplified
 import           CoreNLP.Simple.Util
 import           Text.ProtocolBuffers.WireMessage            (messageGet)
 --
-import           OntoNotes.App.Analyze.CoreNLP               (runParser)
+import           OntoNotes.App.Analyze.CoreNLP               (preRunParser,runParser)
 import           OntoNotes.App.Util
 
 runCoreNLPParser = runParser
+
+preRunCoreNLPParser = preRunParser
