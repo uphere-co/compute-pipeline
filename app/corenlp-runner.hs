@@ -99,14 +99,14 @@ preProcessing = do
         1 -> fillGap t1 t2 "-"
         2 -> fillGap t1 t2 " "
       gapLength t1 t2 = (t2 ^. token_char_idx_range ^. _1) - (t1 ^. token_char_idx_range ^. _2)
-      fillGap t1 t2 char = (T.append (t1 ^. token_text) (T.replicate (gapLength t1 t2) char)) 
+      fillGap t1 t2 char = T.replace "&" "AND" $ T.replace "." "-PERIOD" $ (T.append (t1 ^. token_text) (T.replicate (gapLength t1 t2) char)) 
+
       result' = (map (\xs -> (map (\((t1,n1),(t2,n2)) -> f t1 t2 n1 n2) (zip xs (drop 1 xs))) ++ [last xs ^. _1 ^. token_text] ) a)
       result = T.intercalate "" $ concat result'
 
-  
+  print tokenss
   TIO.putStrLn result
   print constraint'
-  print tokenss
   mkNewWikiEL constraint' tokenss >>= print
   
 
@@ -116,9 +116,8 @@ mkNewWikiEL cons tokss = do
   result <- flip evalStateT (0 :: Int) $ do
     forM cons $ \(a,b) -> do
       s <- get
-      liftIO $ print s
-      liftIO $ print $ filter (\t -> '.' `elem` (T.unpack (t ^. token_text))) $ findNETokens (a,b) tokss 
-      let ff (a,b) = (*) 6 $ length $ filter (\t -> '.' `elem` (T.unpack (t ^. token_text))) $ findNETokens (a,b) tokss 
+      let ff (a,b) = ((*) 6 $ length $ filter (\t -> '.' `elem` (T.unpack (t ^. token_text))) $ findNETokens (a,b) tokss ) +
+                     ((*) 2 $ length $ filter (\t -> '&' `elem` (T.unpack (t ^. token_text))) $ findNETokens (a,b) tokss )
       modify' $ (\s' -> s' + (ff (a,b)))
       return (a + s, b + s + ff (a,b))
   return result
