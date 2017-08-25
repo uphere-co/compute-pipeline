@@ -105,6 +105,7 @@ executable corenlp-runner
                        filepath,
                        jvm,
                        lens,
+                       mtl,
                        postgresql-simple,
                        split,
                        text,

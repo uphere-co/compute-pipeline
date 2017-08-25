@@ -6,6 +6,7 @@ module Main where
 import           Control.Exception          (SomeException,try)
 import           Control.Lens
 import           Control.Monad              (forM_,replicateM_,void,when)
+import           Control.Monad.State
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -64,7 +65,33 @@ main = do
   let constraint = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ getWikiResolvedMentions emTagger sents
   print constraint
   print $ map (\ts -> groupBy (\x -> \y -> (T.take 2 x) == "NE" && (T.take 2 y) == "NE") $ map (\t -> if ((_token_tok_idx_range t) `isContained` constraint) then (T.append "NE" (_token_text t)) else (_token_text t)) ts) tokenss
-        
+
+  a <- flip evalStateT constraint $ do
+    forM tokenss $ \tokens -> do
+      forM tokens $ \t -> do
+        s <- get
+        if (not $ null s)
+          then do
+          if (_token_tok_idx_range t `contained` (head s))
+            then do
+            if ((snd $ _token_tok_idx_range t) == (snd (head s)))
+              then do
+              modify' $ (\xs -> drop 1 xs)
+              return (t,2)
+              else return (t,1)
+            else return (t,0)
+          else return (t,0)
+
+  let f t1 t2 n1 n2 = case n1 of
+        0 -> (T.append (_token_text t1) (T.replicate ((fst $ _token_char_idx_range t2) - (snd $ _token_char_idx_range t1)) " "))
+        1 -> (T.append (_token_text t1) (T.replicate ((fst $ _token_char_idx_range t2) - (snd $ _token_char_idx_range t1)) "-"))
+        2 -> (T.append (_token_text t1) (T.replicate ((fst $ _token_char_idx_range t2) - (snd $ _token_char_idx_range t1)) " "))
+      result' = (map (\xs -> (map (\((t1,n1),(t2,n2)) -> f t1 t2 n1 n2) (zip xs (drop 1 xs))) ++ [(_token_text $ fst $ last xs)] ) a)
+      result = T.intercalate "" $ concat result'
+
+  TIO.putStrLn result
+
+  
 preRunCoreNLP txt = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
