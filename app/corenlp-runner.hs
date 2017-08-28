@@ -1,4 +1,6 @@
 module Main where
 
+import Pipeline.App.CoreNLPRunner
+
 main :: IO ()
-main = return ()
+main = runCoreNLPforNewsAPISource "bloomberg"

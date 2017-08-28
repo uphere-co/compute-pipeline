@@ -19,7 +19,8 @@ import qualified Data.Text                             as T
 import qualified Data.Text.IO                          as TIO
 import           Language.Java                         as J
 import           System.Directory                             (doesFileExist)
-import           System.Environment                           (getArgs,getEnv)
+import           System.Environment                           (getEnv)
+import           System.FilePath                              ((</>))
 --
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
@@ -60,8 +61,8 @@ preRunCoreNLP txt = do
                   )
     preRunParser pp txt
 
-runCoreNLP :: [Maybe (Ar.ArticleH,NewsAPIArticleContent)] -> IO ()
-runCoreNLP articles = do
+runCoreNLPAndSave :: [Maybe (Ar.ArticleH,NewsAPIArticleContent)] -> FilePath -> IO ()
+runCoreNLPAndSave articles savepath = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
 
   clspath <- getEnv "CLASSPATH"
@@ -75,13 +76,13 @@ runCoreNLP articles = do
                        . (ner .~ True)
                   )
     forM_ (catMaybes articles) $ \(article,(hsh,_,_,x)) -> do
-      fchk <- doesFileExist ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh))
+      fchk <- doesFileExist (savepath </> (T.unpack hsh))
       when (not fchk) $ do
         eresult <- try $ runParser pp x
         case eresult of
           Left  (e :: SomeException) -> return ()
           Right result               -> do
-            saveHashNameBSFileInPrefixSubDirs ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (BL.toStrict $ A.encode result)
+            saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
             uploadAnalysis conn (mkNewsAPIAnalysisDB article)
 
 -- | Load and Run
@@ -98,14 +99,12 @@ loadAndRunNLPAnalysis = do
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
-runCoreNLPforNewsAPISource :: IO ()
-runCoreNLPforNewsAPISource = do
-  [src] <- getArgs
+runCoreNLPforNewsAPISource :: String -> IO ()
+runCoreNLPforNewsAPISource src = do
   articles <- getTimeTitleDescFromSrcWithHash src
-  runCoreNLP articles
+  runCoreNLPAndSave articles "/home/modori/data/newsapianalyzed"
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.
-
 preRunForTaggingNE :: IO ()
 preRunForTaggingNE = do
   txt <- TIO.readFile "test2.txt"
