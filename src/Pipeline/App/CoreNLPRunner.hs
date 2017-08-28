@@ -28,7 +28,7 @@ import           CoreNLP.Simple
 import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type
 import           CoreNLP.Simple.Util
-import           MWE
+import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysis)
 import qualified NewsAPI.DB.Article                    as Ar
 import           NLP.Type.CoreNLP                             (Sentence)
@@ -38,16 +38,14 @@ import           OntoNotes.App.Analyze.CoreNLP                (preRunParser,runP
 import           OntoNotes.App.Analyze.SentenceStructure
 import           OntoNotes.App.Util
 import           Text.ProtocolBuffers.WireMessage             (messageGet)
+import           WikiEL.EntityLinking
+import           WikiEL.Misc
 --
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Load
 import           Pipeline.Operation.DB
 import           Pipeline.Run
 import           Pipeline.Util
-
-
-import           WikiEL.EntityLinking
-import           WikiEL.Misc
 
 
 preRunCoreNLP :: T.Text -> IO [Sentence]
@@ -86,11 +84,10 @@ runCoreNLP articles = do
             saveHashNameBSFileInPrefixSubDirs ("/home/modori/data/newsapianalyzed/" ++ (T.unpack hsh)) (BL.toStrict $ A.encode result)
             uploadAnalysis conn (mkNewsAPIAnalysisDB article)
 
-
-
--- Load and Run
-main'' :: IO ()
-main'' = do
+-- | Load and Run
+-- This loads parsed result and runs NLP analysis. The result is printed on stdout.
+loadAndRunNLPAnalysis :: IO ()
+loadAndRunNLPAnalysis = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   fps <- getFileListRecursively "/home/modori/data/newsapianalyzed"
   loaded' <- loadCoreNLPResult fps
@@ -99,19 +96,23 @@ main'' = do
   forM_ loaded $ \(fp,x) -> do
     mapM_ TIO.putStrLn (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
 
--- Parse and Save
-main' :: IO ()
-main' = do
+-- | Parse and Save
+-- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
+runCoreNLPforNewsAPISource :: IO ()
+runCoreNLPforNewsAPISource = do
   [src] <- getArgs
   articles <- getTimeTitleDescFromSrcWithHash src
   runCoreNLP articles
 
-main :: IO ()
-main = do
+-- | Pre-run of CoreNLP for changing named entity with special rule.
+
+preRunForTaggingNE :: IO ()
+preRunForTaggingNE = do
   txt <- TIO.readFile "test2.txt"
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   sents <- preRunCoreNLP txt
   let wikiel = getWikiResolvedMentions emTagger sents
-      constraint = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ wikiel
+      constraint = mkConstraintFromWikiEL wikiel
   preProcessing sents constraint
 
+mkConstraintFromWikiEL wikiel = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ wikiel
