@@ -33,12 +33,13 @@ import           CoreNLP.Simple.Util
 import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysis)
 import qualified NewsAPI.DB.Article                    as Ar
-import           NLP.Type.CoreNLP                             (NERToken,Sentence(..))
+import           NLP.Type.CoreNLP
 import           NLP.Type.PennTreebankII
 import           SRL.Analyze
 import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
+import           SRL.Analyze.Format
 import           SRL.Analyze.SentenceStructure
-import           SRL.Analyze.Type                             (AnalyzePredata(..))
+import           SRL.Analyze.Type
 import           SRL.Analyze.Util
 import           Text.ProtocolBuffers.WireMessage             (messageGet)
 import           WikiEL.EntityLinking
@@ -89,9 +90,10 @@ loadAndRunNLPAnalysis = do
   putStrLn "Loading Completed."
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   forM_ loaded $ \(fp,x) -> do
-    let (sents,_,_,_,mptrs,_,_) = x
+    let sents = x ^. dainput_sents
+        mptrs = x ^. dainput_mptrs
         lmass = sents ^.. traverse . sentenceLemma . to (map Lemma)
-    print $ map (sentStructure apredata) (zip3 ([0..] :: [Int]) lmass mptrs) -- (i,lmas,mptr))
+    mapM_ (print . (formatSentStructure True)) $ catMaybes $ map (sentStructure apredata) (zip3 ([0..] :: [Int]) lmass mptrs) -- (i,lmas,mptr))
     -- (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
 
 -- | Parse and Save
