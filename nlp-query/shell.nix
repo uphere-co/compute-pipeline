@@ -19,6 +19,7 @@
 , syntactic-analysis    ? <syntactic-analysis>
 , nlp-pipeline          ? <nlp-pipeline>
 , lexicon               ? <lexicon>
+, multi-word-tagger     ? <multi-word-tagger>
 }:
 
 let newpkgs = import pkgs.path {
@@ -70,6 +71,7 @@ let
       "VerbNet" = self.callPackage (import VerbNet) {};
       "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
       "lexicon" = self.callPackage (import lexicon) {};
+      "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
       };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };

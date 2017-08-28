@@ -65,8 +65,8 @@ runCoreNLPAndSave articles savepath = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt')) -> do
-      (txt,xs) <- preRunForTaggingNE pp emTagger txt'
+    forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
+      -- (txt,xs) <- preRunForTaggingNE pp emTagger txt'
       fchk <- doesFileExist (savepath </> (T.unpack hsh))
       when (not fchk) $ do
         eresult <- try $ runParser pp txt
