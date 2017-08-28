@@ -11,7 +11,7 @@ import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 
 
-import           CoreNLP.Simple.Type.Simplified
+import 	       	 NLP.Type.CoreNLP
 import           YAML.Builder
 
 

@@ -19,70 +19,41 @@ library
   hs-source-dirs: src
   build-depends:  base,
                   --
-                  aeson,
-                  attoparsec,
-                  base16-bytestring,
-                  binary,
-                  bytestring,
+                  aeson, attoparsec,
+                  base16-bytestring, binary, bytestring,
                   containers,
-                  data-default,
-                  directory,
-                  directory-tree,
-                  distributed-process,
-                  network-transport,
-                  network-transport-tcp,
-                  network-util,
-                  discrimination,
+                  data-default, directory, directory-tree, discrimination, distributed-process, 
                   either,
                   filepath,
-                  haskeline,
-                  hedis,
-                  jni,
-                  jvm,
+                  haskeline, hedis,
+                  jni, jvm,
                   lens,
-                  monad-loops,
-                  mtl,
-                  opaleye,
-                  optparse-applicative,
-                  postgresql-simple,
-                  process,
-                  protocol-buffers,
-                  scientific,
-                  split,
-                  stm,
-                  text,
-                  textview,
-                  time,
-                  transformers,
+                  monad-loops, mtl,
+                  network-transport, network-transport-tcp, 
+                  opaleye, optparse-applicative,
+                  postgresql-simple, process, protocol-buffers,
+                  scientific, split, stm,
+                  text, textview, time, transformers,
                   vector,
-                  HCoreNLP,
-                  HCoreNLP-Proto,
-                  HWordNet,
-                  newsapi,
-                  newsapi-db,
-                  unordered-containers,
-                  yaml,
-                  nlp-types,
-                  yayaml,
-                  HUKB,
-                  HUKB-driver,
-                  predicate-matrix,
-                  nyt-db,
-                  nlp-shared-types,
+                  --
+                  HCoreNLP, HCoreNLP-Proto, HUKB, HUKB-driver, HWordNet,                  
+                  multi-word-tagger,                
+                  network-util, newsapi, newsapi-db, nlp-shared-types, nlp-types, nyt-scrapper, nyt-db,
+                  OntoNotes,
+                  predicate-matrix, PropBank,
                   semantic-role-labeler,
-                  nyt-scrapper,
-                  wiki-ner,
                   time-tagger,
-                  PropBank,
-                  OntoNotes
+                  unordered-containers,
+                  wiki-ner,
+                  yaml, yayaml
   exposed-modules: Pipeline.App.AnalysisDaemon
                    Pipeline.App.AnalysisRunner
                    Pipeline.App.CoreNLPRunner
                    Pipeline.Load
                    Pipeline.Operation.DB
                    Pipeline.Run
-                   Pipeline.Run.WikiEL
                    Pipeline.Run.OntoNotes
+                   Pipeline.Run.WikiEL
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article
                    Pipeline.Type
@@ -98,25 +69,6 @@ executable corenlp-runner
   -- other-modules:       
   build-depends:       base,
                        --
-                       aeson,
-                       bytestring,
-                       data-default,
-                       directory,
-                       filepath,
-                       jvm,
-                       lens,
-                       mtl,
-                       postgresql-simple,
-                       split,
-                       text,
-                       --
-                       HCoreNLP,
-                       newsapi,
-                       newsapi-db,
-                       OntoNotes,
-                       time-tagger,
-                       wiki-ner,
-                       -- 
                        nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
