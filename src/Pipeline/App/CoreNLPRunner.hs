@@ -32,7 +32,7 @@ import           CoreNLP.Simple.Util
 import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysis)
 import qualified NewsAPI.DB.Article                    as Ar
-import           NLP.Type.CoreNLP                             (Sentence)
+import           NLP.Type.CoreNLP                             (NERToken,Sentence)
 import           NLP.Type.PennTreebankII
 import           OntoNotes.App.Analyze
 import           OntoNotes.App.Analyze.CoreNLP                (preRunParser,runParser)
@@ -49,21 +49,11 @@ import           Pipeline.Run
 import           Pipeline.Util
 
 
-preRunCoreNLP :: T.Text -> IO [Sentence]
-preRunCoreNLP txt = do
-  clspath <- getEnv "CLASSPATH"
-  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    pp <- prepare (def & (tokenizer .~ True)
-                       . (words2sentences .~ True)
-                       . (postagger .~ True)
-                       . (lemma .~ True)
-                       . (ner .~ True)
-                  )
-    preRunParser pp txt
-
 runCoreNLPAndSave :: [Maybe (Ar.ArticleH,NewsAPIArticleContent)] -> FilePath -> IO ()
 runCoreNLPAndSave articles savepath = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
+
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
 
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
@@ -75,10 +65,11 @@ runCoreNLPAndSave articles savepath = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    forM_ (catMaybes articles) $ \(article,(hsh,_,_,x)) -> do
+    forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt')) -> do
+      (txt,xs) <- preRunForTaggingNE pp emTagger txt'
       fchk <- doesFileExist (savepath </> (T.unpack hsh))
       when (not fchk) $ do
-        eresult <- try $ runParser pp x
+        eresult <- try $ runParser pp txt
         case eresult of
           Left  (e :: SomeException) -> return ()
           Right result               -> do
@@ -105,13 +96,13 @@ runCoreNLPforNewsAPISource src = do
   runCoreNLPAndSave articles "/home/modori/data/newsapianalyzed"
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.
-preRunForTaggingNE :: IO ()
-preRunForTaggingNE = do
-  txt <- TIO.readFile "test2.txt"
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
-  sents <- preRunCoreNLP txt
+preRunForTaggingNE :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+                   -> ([NERToken] -> [EntityMention Text])
+                   -> Text -> IO (Text,[(Int,Int)])
+preRunForTaggingNE pp emTagger txt = do
+  sents <- preRunParser pp txt
   let wikiel = getWikiResolvedMentions emTagger sents
       constraint = mkConstraintFromWikiEL wikiel
-  preProcessing sents constraint
+  getReplacedTextWithNewWikiEL sents constraint
 
 mkConstraintFromWikiEL wikiel = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ wikiel
