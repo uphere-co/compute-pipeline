@@ -5,14 +5,12 @@ module Main where
 
 import           Control.Exception          (SomeException,try)
 import           Control.Lens
-import           Control.Monad              (forM_,replicateM_,void,when)
-import           Control.Monad.State
+import           Control.Monad              (forM_,when)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default
-import           Data.List                  (find,foldl',groupBy,intersperse)
-import           Data.Maybe                 (catMaybes,isJust)
+import           Data.Maybe                 (catMaybes)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
 import           Language.Java              as J
@@ -23,9 +21,8 @@ import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 import           MWE
 import           NewsAPI.DB                 (uploadAnalysis)
-import qualified NewsAPI.DB.Article         as A
-import           NewsAPI.Type               (NewsAPIAnalysisDB(..))
-import 	       	 NLP.Type.CoreNLP
+import qualified NewsAPI.DB.Article         as Ar
+import           NLP.Type.CoreNLP           (Sentence)
 import           OntoNotes.App.Analyze
 import           OntoNotes.App.Analyze.SentenceStructure
 import           WikiEL.EntityLinking
@@ -37,7 +34,7 @@ import           Pipeline.Operation.DB
 import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Util
-
+ 
 -- Load and Run
 main'' :: IO ()
 main'' = do
@@ -65,6 +62,7 @@ main = do
       constraint = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ wikiel
   preProcessing sents constraint
 
+preRunCoreNLP :: T.Text -> IO [Sentence]
 preRunCoreNLP txt = do
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
@@ -75,7 +73,8 @@ preRunCoreNLP txt = do
                        . (ner .~ True)
                   )
     preRunCoreNLPParser pp txt
-  
+
+runCoreNLP :: [Maybe (Ar.ArticleH,NewsAPIArticleContent)] -> IO ()
 runCoreNLP articles = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
   
