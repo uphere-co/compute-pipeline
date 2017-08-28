@@ -9,7 +9,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Maybe
 import           System.FilePath       ((</>),takeExtension)
 --
-import           OntoNotes.App.Analyze
+import           SRL.Analyze
 --
 import           Pipeline.Load
 import           Pipeline.Run

@@ -13,7 +13,7 @@ import           System.Directory.Tree
 --
 import 	       	 NLP.Type.CoreNLP
 import           NLP.Type.PennTreebankII
-import           OntoNotes.App.Util
+import           SRL.Analyze.Util
 import           WikiEL.EntityLinking           (EntityMention)
 
 loadCoreNLPResult :: [FilePath]

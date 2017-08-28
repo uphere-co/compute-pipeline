@@ -52,7 +52,7 @@ library
                    Pipeline.Load
                    Pipeline.Operation.DB
                    Pipeline.Run
-                   Pipeline.Run.OntoNotes
+                   Pipeline.Run.SRL
                    Pipeline.Run.WikiEL
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article

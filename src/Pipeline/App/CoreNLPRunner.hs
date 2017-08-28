@@ -32,12 +32,13 @@ import           CoreNLP.Simple.Util
 import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysis)
 import qualified NewsAPI.DB.Article                    as Ar
-import           NLP.Type.CoreNLP                             (NERToken,Sentence)
+import           NLP.Type.CoreNLP                             (NERToken,Sentence(..))
 import           NLP.Type.PennTreebankII
-import           OntoNotes.App.Analyze
-import           OntoNotes.App.Analyze.CoreNLP                (preRunParser,runParser)
-import           OntoNotes.App.Analyze.SentenceStructure
-import           OntoNotes.App.Util
+import           SRL.Analyze
+import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
+import           SRL.Analyze.SentenceStructure
+import           SRL.Analyze.Type                             (AnalyzePredata(..))
+import           SRL.Analyze.Util
 import           Text.ProtocolBuffers.WireMessage             (messageGet)
 import           WikiEL.EntityLinking
 import           WikiEL.Misc
@@ -81,12 +82,16 @@ runCoreNLPAndSave articles savepath = do
 loadAndRunNLPAnalysis :: IO ()
 loadAndRunNLPAnalysis = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   fps <- getFileListRecursively "/home/modori/data/newsapianalyzed"
   loaded' <- loadCoreNLPResult fps
   putStrLn "Loading Completed."
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   forM_ loaded $ \(fp,x) -> do
-    mapM_ TIO.putStrLn (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
+    let (sents,_,_,_,mptrs,_,_) = x
+        lmass = sents ^.. traverse . sentenceLemma . to (map Lemma)
+    print $ map (sentStructure apredata) (zip3 ([0..] :: [Int]) lmass mptrs) -- (i,lmas,mptr))
+    -- (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
