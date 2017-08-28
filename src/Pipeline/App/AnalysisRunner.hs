@@ -10,6 +10,7 @@ import           Data.Maybe
 import           System.FilePath       ((</>),takeExtension)
 --
 import           SRL.Analyze
+import           SRL.Analyze.Type
 --
 import           Pipeline.Load
 import           Pipeline.Run
@@ -27,8 +28,8 @@ runAnalysis' = do
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") fps)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   flip mapM_ loaded $ \(fp,x) -> do
-    saveWikiEL fp (wikiEL emTagger (x ^. _1))
-    print $ wikiEL emTagger (x ^. _1)
+    saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
+    print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysis :: IO ()
 runAnalysis = do

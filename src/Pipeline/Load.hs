@@ -13,19 +13,12 @@ import           System.Directory.Tree
 --
 import 	       	 NLP.Type.CoreNLP
 import           NLP.Type.PennTreebankII
+import           SRL.Analyze.Type
 import           SRL.Analyze.Util
 import           WikiEL.EntityLinking           (EntityMention)
 
 loadCoreNLPResult :: [FilePath]
-                  -> IO [(FilePath, Maybe ( [Sentence]
-                               , [Maybe SentenceIndex]
-                               , [SentItem CharIdx]
-                               , [[Token]]
-                               , [Maybe PennTree]
-                               , [Dependency]
-                               , Maybe [TagPos TokIdx (Maybe Text)]
-                               ))
-                        ]
+                  -> IO [(FilePath, Maybe DocAnalysisInput)]
 loadCoreNLPResult fps = do
   forM fps $ \fp -> do
     bstr <- B.readFile fp
