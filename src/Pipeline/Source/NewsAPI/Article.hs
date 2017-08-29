@@ -31,7 +31,7 @@ getHashByTime time = do
   let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
   conn <- PGS.connectPostgreSQL dbconfig
   articles <- getArticleByTime time conn
-  return (map (\x -> (Ar._source x, Ar._content_hash x)) articles)
+  return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x)) articles)
 
 getTimeTitleDescFromSrcWithHash :: String -> IO [Maybe (Ar.ArticleH,NewsAPIArticleContent)]
 getTimeTitleDescFromSrcWithHash src = do
@@ -39,7 +39,7 @@ getTimeTitleDescFromSrcWithHash src = do
   conn <- PGS.connectPostgreSQL dbconfig
   articles <- getArticleBySource src conn
   result <- flip mapM articles $ \x -> do
-    let hsh = T.unpack $ Ar._content_hash x
+    let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x
         fileprefix = "/data/groups/uphere/repo/fetchfin/newsapi/Articles/" ++ src ++ "/"
         filepath = fileprefix ++ hsh
     fchk <- doesFileExist filepath
@@ -77,7 +77,7 @@ getFileList fp = do
 ----
 
 mkNewsAPIAnalysisDB article =
-  NewsAPIAnalysisDB { analysis_sha256 = (fst . B16.decode . L8.toStrict . L8.pack . T.unpack $ Ar._content_hash article)
+  NewsAPIAnalysisDB { analysis_sha256 = (Ar._sha256 article)
                     , analysis_source = (Ar._source article)
                     , analysis_analysis = ("corenlp" :: T.Text)
                     , analysis_created = (Ar._created article)
