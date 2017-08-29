@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TupleSections       #-}
 
 module Pipeline.App.CoreNLPRunner where
@@ -32,12 +33,14 @@ import           CoreNLP.Simple.Util
 import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysis)
 import qualified NewsAPI.DB.Article                    as Ar
-import           NLP.Type.CoreNLP                             (NERToken,Sentence)
+import           NLP.Type.CoreNLP
 import           NLP.Type.PennTreebankII
-import           OntoNotes.App.Analyze
-import           OntoNotes.App.Analyze.CoreNLP                (preRunParser,runParser)
-import           OntoNotes.App.Analyze.SentenceStructure
-import           OntoNotes.App.Util
+import           SRL.Analyze
+import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
+import           SRL.Analyze.Format
+import           SRL.Analyze.SentenceStructure
+import           SRL.Analyze.Type
+import           SRL.Analyze.Util
 import           Text.ProtocolBuffers.WireMessage             (messageGet)
 import           WikiEL.EntityLinking
 import           WikiEL.Misc
@@ -65,8 +68,8 @@ runCoreNLPAndSave articles savepath = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt')) -> do
-      (txt,xs) <- preRunForTaggingNE pp emTagger txt'
+    forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
+      -- (txt,xs) <- preRunForTaggingNE pp emTagger txt'
       fchk <- doesFileExist (savepath </> (T.unpack hsh))
       when (not fchk) $ do
         eresult <- try $ runParser pp txt
@@ -81,12 +84,17 @@ runCoreNLPAndSave articles savepath = do
 loadAndRunNLPAnalysis :: IO ()
 loadAndRunNLPAnalysis = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   fps <- getFileListRecursively "/home/modori/data/newsapianalyzed"
   loaded' <- loadCoreNLPResult fps
   putStrLn "Loading Completed."
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   forM_ loaded $ \(fp,x) -> do
-    mapM_ TIO.putStrLn (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
+    let sents = x ^. dainput_sents
+        mptrs = x ^. dainput_mptrs
+        lmass = sents ^.. traverse . sentenceLemma . to (map Lemma)
+    mapM_ (print . (formatSentStructure True)) $ catMaybes $ map (sentStructure apredata) (zip3 ([0..] :: [Int]) lmass mptrs) -- (i,lmas,mptr))
+    -- (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.

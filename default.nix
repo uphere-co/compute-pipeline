@@ -1,7 +1,7 @@
 { mkDerivation, aeson, attoparsec, base, base16-bytestring
 , bytestring, containers, distributed-process, directory, directory-tree, discrimination
 , either, filepath, haskeline, HCoreNLP, HCoreNLP-Proto, hedis, HUKB, HUKB-driver
-, HWordNet, newsapi, nyt-db, nyt-scrapper, jvm, lens, mtl, network-transport, network-transport-tcp, network-util
+, HWordNet, newsapi, nyt-db, nyt-scrapper, jvm, lens, mtl, multi-word-tagger, network-transport, network-transport-tcp, network-util
 , nlp-types, nlp-shared-types
 , optparse-applicative, OntoNotes, postgresql-simple, predicate-matrix
 , PropBank, protocol-buffers, semantic-role-labeler, stdenv, text, textview, time, time-tagger
@@ -17,7 +17,7 @@ mkDerivation {
   libraryHaskellDepends = [
     aeson attoparsec base base16-bytestring bytestring containers distributed-process
     directory directory-tree discrimination either filepath haskeline
-    HCoreNLP HCoreNLP-Proto hedis HUKB HUKB-driver HWordNet newsapi nyt-db nyt-scrapper jvm lens mtl
+    HCoreNLP HCoreNLP-Proto hedis HUKB HUKB-driver HWordNet newsapi nyt-db nyt-scrapper jvm lens mtl multi-word-tagger
     network-transport network-transport-tcp network-util nlp-types nlp-shared-types
     optparse-applicative OntoNotes postgresql-simple predicate-matrix PropBank semantic-role-labeler
     protocol-buffers text textview time time-tagger transformers yaml yayaml
