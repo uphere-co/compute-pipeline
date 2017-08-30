@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Pipeline.App.AnalysisRunner where
 
@@ -8,9 +9,12 @@ import qualified Data.Aeson            as A
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Maybe
+import qualified Data.Text             as T
+import qualified Data.Text.IO          as TIO
 import           System.FilePath       ((</>),takeExtension,takeFileName)
 import           System.Process        (readProcess)
 --
+import           NLP.Type.CoreNLP
 import           SRL.Analyze
 import           SRL.Analyze.Format            (dotMeaningGraph)
 import           SRL.Analyze.Match             (meaningGraph)
@@ -26,14 +30,20 @@ wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
 saveWikiEL fp wikiel = do
   B.writeFile (fp ++ ".wiki") (BL.toStrict $ A.encode wikiel)
 
+mkTextFromToken mtokss = 
+
 mkMGs apredata emTagger fp loaded = do
   let filename = takeFileName fp
   let dstr = docStructure apredata emTagger loaded
   let sstrs1 = catMaybes (dstr ^. ds_sentStructures)
+      mtokss = map catMaybes (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs1
-  forM_ (zip [1..] mgs) $ \(i,mg) -> do
-    let dotstr = dotMeaningGraph mg
+  forM_ (zip mtokss (zip [1..] mgs)) $ \(mtks,(i,mg)) -> do
+    let title = T.unpack $ T.intercalate " " (mtks ^.. traverse . token_text)
+        dotstr = dotMeaningGraph title mg
     putStrLn dotstr
+    print mtokss
+    putStrLn title
     writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
     void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
   
