@@ -8,12 +8,14 @@ import           Control.Monad         (forM_,void)
 import qualified Data.Aeson            as A
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
+import           Data.Char
 import           Data.Maybe
 import qualified Data.Text             as T
 import qualified Data.Text.IO          as TIO
 import           System.FilePath       ((</>),takeExtension,takeFileName)
 import           System.Process        (readProcess)
 --
+import           MWE.Util
 import           NLP.Type.CoreNLP
 import           SRL.Analyze
 import           SRL.Analyze.Format            (dotMeaningGraph)
@@ -30,20 +32,16 @@ wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
 saveWikiEL fp wikiel = do
   B.writeFile (fp ++ ".wiki") (BL.toStrict $ A.encode wikiel)
 
-mkTextFromToken mtokss = 
-
 mkMGs apredata emTagger fp loaded = do
   let filename = takeFileName fp
   let dstr = docStructure apredata emTagger loaded
   let sstrs1 = catMaybes (dstr ^. ds_sentStructures)
-      mtokss = map catMaybes (dstr ^. ds_mtokenss)
+      mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs1
   forM_ (zip mtokss (zip [1..] mgs)) $ \(mtks,(i,mg)) -> do
-    let title = T.unpack $ T.intercalate " " (mtks ^.. traverse . token_text)
-        dotstr = dotMeaningGraph title mg
+    title <- mkTextFromToken mtks
+    let dotstr = dotMeaningGraph (T.unpack (T.replace ("\"") ("\\\"") (T.dropWhile isSpace title))) mg
     putStrLn dotstr
-    print mtokss
-    putStrLn title
     writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
     void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
   
@@ -54,7 +52,7 @@ runAnalysis' = do
   fps <- getAnalysisFilePath
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") fps)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
-  flip mapM_ (take 50 loaded) $ \(fp,x) -> do
+  flip mapM_ (take 300 loaded) $ \(fp,x) -> do
     mkMGs apredata emTagger fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
