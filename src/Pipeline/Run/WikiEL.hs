@@ -8,7 +8,7 @@ import           Data.Maybe
 --
 import           CoreNLP.Simple.Convert
 import qualified Data.Vector                    as V
-import 	       	 NLP.Type.CoreNLP
+import           NLP.Type.CoreNLP
 import           WikiEL.EntityLinking
 import qualified WikiEL.EntityMentionPruning    as EMP
 import           WikiEL.WikiNamedEntityTagger

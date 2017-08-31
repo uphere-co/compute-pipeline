@@ -8,7 +8,6 @@ import           Control.Monad         (forM_,void)
 import qualified Data.Aeson            as A
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
-import           Data.Char
 import           Data.Maybe
 import qualified Data.Text             as T
 import qualified Data.Text.IO          as TIO
@@ -22,6 +21,7 @@ import           SRL.Analyze.Format            (dotMeaningGraph)
 import           SRL.Analyze.Match             (meaningGraph)
 import           SRL.Analyze.SentenceStructure (docStructure)
 import           SRL.Analyze.Type
+import           Text.Format.Dot               (mkLabelText)
 --
 import           Pipeline.Load
 import           Pipeline.Run
@@ -40,11 +40,11 @@ mkMGs apredata emTagger fp loaded = do
       mgs = map meaningGraph sstrs1
   forM_ (zip mtokss (zip [1..] mgs)) $ \(mtks,(i,mg)) -> do
     title <- mkTextFromToken mtks
-    let dotstr = dotMeaningGraph (T.unpack (T.replace ("\"") ("\\\"") (T.dropWhile isSpace title))) mg
+    let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
     putStrLn dotstr
     writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
     void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
-  
+
 runAnalysis' :: IO ()
 runAnalysis' = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
