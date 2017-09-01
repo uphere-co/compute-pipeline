@@ -21,6 +21,7 @@ import           SRL.Analyze.Format            (dotMeaningGraph)
 import           SRL.Analyze.Match             (meaningGraph)
 import           SRL.Analyze.SentenceStructure (docStructure)
 import           SRL.Analyze.Type
+import qualified SRL.Analyze.WikiEL    as SRLWiki
 import           Text.Format.Dot               (mkLabelText)
 --
 import           Pipeline.Load
@@ -38,8 +39,11 @@ mkMGs apredata emTagger fp loaded = do
   let sstrs1 = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs1
-  forM_ (zip mtokss (zip [1..] mgs)) $ \(mtks,(i,mg)) -> do
-    title <- mkTextFromToken mtks
+      wikilst = SRLWiki.mkWikiList dstr
+      
+  forM_ (zip mtokss (zip [1..] mgs)) $ \(mtks,(i,mg')) -> do
+    let title = mkTextFromToken mtks  
+        mg = tagMG mg' wikilst
     let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
     putStrLn dotstr
     writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
@@ -55,7 +59,7 @@ runAnalysis' = do
   flip mapM_ (take 300 loaded) $ \(fp,x) -> do
     mkMGs apredata emTagger fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
-    -- print $ wikiEL emTagger (x ^. dainput_sents)
+    print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysis :: IO ()
 runAnalysis = do
@@ -64,5 +68,3 @@ runAnalysis = do
   loaded <- loadWikiELResult fps
   flip mapM_ loaded $ \(fp,x) -> do
     print (fp,x)
-
-
