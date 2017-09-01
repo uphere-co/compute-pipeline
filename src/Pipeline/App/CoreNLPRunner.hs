@@ -70,7 +70,7 @@ runCoreNLPAndSave articles savepath = do
                   )
     forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
       -- (txt,xs) <- preRunForTaggingNE pp emTagger txt'
-      fchk <- doesFileExist (savepath </> (T.unpack hsh))
+      fchk <- doesHashNameFileExistInPrefixSubDirs (savepath </> (T.unpack hsh))
       when (not fchk) $ do
         eresult <- try $ runParser pp txt
         case eresult of

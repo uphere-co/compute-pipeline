@@ -189,3 +189,11 @@ saveHashNameTextFileInPrefixSubDirs fp file = do
   withCurrentDirectory storepath $ do
     createDirectoryIfMissing True prefix
     TIO.writeFile (storepath </> prefix </> hsh) file
+
+doesHashNameFileExistInPrefixSubDirs fp = do
+  let hsh       = takeFileName fp
+      storepath = takeDirectory fp
+      prefix    = take 2 hsh
+
+  b <- doesFileExist (storepath </> prefix </> hsh)
+  return b
