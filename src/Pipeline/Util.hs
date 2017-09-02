@@ -28,7 +28,7 @@ import           Data.Time.Format                 (defaultTimeLocale, formatTime
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
-import           System.Directory                 (createDirectoryIfMissing,withCurrentDirectory)
+import           System.Directory                 (createDirectoryIfMissing,doesFileExist,withCurrentDirectory)
 import           System.FilePath                  ((</>),takeDirectory,takeFileName)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
