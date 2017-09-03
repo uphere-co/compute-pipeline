@@ -4,7 +4,6 @@
 , graph-algorithms      ? <graph-algorithms>
 , HCoreNLP              ? <HCoreNLP>
 , HFrameNet             ? <HFrameNet>
-, HUKB                  ? <HUKB>
 , HWordNet              ? <HWordNet>
 , lexicon               ? <lexicon>
 , multi-word-tagger     ? <multi-word-tagger>
@@ -75,27 +74,20 @@ let
       "wiki-ner" = self.callPackage (import wiki-ner) {};
 
       };
-  ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
-  config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
-  config4 =
-    self: super: {
-      "HUKB-driver" = self.callPackage (import (HUKB + "/HUKB-driver")) {}; 
-    };  
-  myhaskellpkgs = haskell.packages.ghc802.override {
-    overrides = self: super: config1 self super // config2 self super // config3 self super // config4 self super;
+  newHaskellPackages = haskellPackages.override {
+    overrides = self: super: config1 self super // config2 self super;
   }; 
 
-  hsenv = myhaskellpkgs.ghcWithPackages (p: with p; [
+  hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
             inline-java
             aeson
             attoparsec
             base16-bytestring
-            cabal-install
             data-default
             directory-tree
             discrimination
             distributed-process distributed-process-lifted
-            distributed-process-simplelocalnet
+            #distributed-process-simplelocalnet
             either
             haskeline
             hedis
@@ -124,14 +116,14 @@ let
             p.time-tagger
             p.OntoNotes
             p.multi-word-tagger
-            HUKB-driver
+
           ]);
 
 in
 
 stdenv.mkDerivation {
   name = "eventextractor-dev";
-  buildInputs = [ hsenv jdk ukb graphviz ];
+  buildInputs = [ hsenv jdk graphviz ];
   shellHook = ''
     CLASSPATH="${corenlp_models}:${corenlp}/stanford-corenlp-3.7.0.jar:${corenlp}/protobuf.jar:${corenlp}/joda-time.jar:${corenlp}/jollyday.jar:${hsenv}/share/x86_64-linux-ghc-8.0.2/HCoreNLP-0.1.0.0/HCoreNLPProto.jar";
   '';
