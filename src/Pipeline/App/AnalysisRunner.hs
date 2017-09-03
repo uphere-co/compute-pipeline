@@ -10,7 +10,6 @@ import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Maybe
 import qualified Data.Text             as T
-import qualified Data.Text.IO          as TIO
 import           System.FilePath       ((</>),takeExtension,takeFileName)
 import           System.Process        (readProcess)
 --

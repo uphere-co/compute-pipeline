@@ -17,7 +17,6 @@ import           Data.Default
 import           Data.Maybe
 import           Data.Text                                    (Text)
 import qualified Data.Text                             as T
-import qualified Data.Text.IO                          as TIO
 import           Language.Java                         as J
 import           System.Directory                             (doesFileExist)
 import           System.Environment                           (getEnv)
