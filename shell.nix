@@ -1,25 +1,26 @@
 { pkgs                  ? import <nixpkgs> {}
 , uphere-nix-overlay    ? <uphere-nix-overlay>
 , fetchfin              ? <fetchfin>
+, graph-algorithms      ? <graph-algorithms>
 , HCoreNLP              ? <HCoreNLP>
+, HFrameNet             ? <HFrameNet>
 , HUKB                  ? <HUKB>
 , HWordNet              ? <HWordNet>
+, lexicon               ? <lexicon>
+, multi-word-tagger     ? <multi-word-tagger>
+, nlp-pipeline          ? <nlp-pipeline>
+, nlp-shared-types      ? <nlp-shared-types>
 , nlp-types             ? <nlp-types>
+, OntoNotes             ? <OntoNotes>
 , predicate-matrix      ? <predicate-matrix>
 , PropBank              ? <PropBank>
 , semantic-role-labeler ? <semantic-role-labeler>
-, wiki-ner              ? <wiki-ner>
-, textview              ? <textview>
-, uphere-opaleye        ? <uphere-opaleye>
-, nlp-shared-types      ? <nlp-shared-types>
-, time-tagger           ? <time-tagger>
 , syntactic-analysis    ? <syntactic-analysis>
-, nlp-pipeline          ? <nlp-pipeline>
-, OntoNotes             ? <OntoNotes>
-, HFrameNet             ? <HFrameNet>
+, textview              ? <textview>
+, time-tagger           ? <time-tagger>
+, uphere-opaleye        ? <uphere-opaleye>
 , VerbNet               ? <VerbNet>
-, lexicon               ? <lexicon>
-, multi-word-tagger     ? <multi-word-tagger>
+, wiki-ner              ? <wiki-ner>
 }:
 
 let newpkgs = import pkgs.path {
@@ -47,52 +48,46 @@ let
   };
   config2 =
     self: super: {
-      "nlp-types" = self.callPackage (import nlp-types) {};
-      "textview" = self.callPackage (import textview) {};
-      "newsapi" = self.callPackage (import (fetchfin + "/newsapi")) {};
+      "fastText" = self.callPackage fastTextNix { inherit fasttext; };
+      "graph-algorithms" = self.callPackage (import graph-algorithms) {};
       "HCoreNLP" = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
       "HCoreNLP-Proto" = self.callPackage (import (HCoreNLP + "/HCoreNLP-Proto")) {};       
+      "HFrameNet" = self.callPackage (import HFrameNet) {};
       "HWordNet" = self.callPackage (import HWordNet) {};
+      "lexicon" = self.callPackage (import lexicon) {};
+      "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
+      "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
+      "newsapi" = self.callPackage (import (fetchfin + "/newsapi")) {};
+      "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
+      "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};      
+      "nlp-types" = self.callPackage (import nlp-types) {};
+      "nyt-db" = self.callPackage (import (fetchfin + "/nyt/db")) {};
+      "nyt-scrapper" = self.callPackage (import (fetchfin + "/nyt")) {};
+      "OntoNotes" = self.callPackage (import OntoNotes) {};           
       "predicate-matrix" = self.callPackage (import predicate-matrix) {};
       "PropBank" = self.callPackage (import PropBank) {};
       "semantic-role-labeler" = self.callPackage (import semantic-role-labeler) {};
-      "wiki-ner" = self.callPackage (import wiki-ner) {};
-      "fastText" = self.callPackage fastTextNix { inherit fasttext; };
-      "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
-      "nyt-db" = self.callPackage (import (fetchfin + "/nyt/db")) {};
-      "nyt-scrapper" = self.callPackage (import (fetchfin + "/nyt")) {};
-      "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
-      "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};
-      "time-tagger" = self.callPackage (import time-tagger) {};
-      "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
       "syntactic-analysis" = self.callPackage (import syntactic-analysis) {};
-      "OntoNotes" = self.callPackage (import OntoNotes) {};
-      "HFrameNet" = self.callPackage (import HFrameNet) {};
+      "textview" = self.callPackage (import textview) {};
+      "time-tagger" = self.callPackage (import time-tagger) {};
+      "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
       "VerbNet" = self.callPackage (import VerbNet) {};
-      "lexicon" = self.callPackage (import lexicon) {};
-      "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
+      "wiki-ner" = self.callPackage (import wiki-ner) {};
+
       };
-  ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
-  config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
-  config4 =
-    self: super: {
-      "HUKB-driver" = self.callPackage (import (HUKB + "/HUKB-driver")) {}; 
-    };  
-  myhaskellpkgs = haskell.packages.ghc802.override {
-    overrides = self: super: config1 self super // config2 self super // config3 self super // config4 self super;
+  newHaskellPackages = haskell.packages.ghc802.override {
+    overrides = self: super: config1 self super // config2 self super;
   }; 
 
-  hsenv = myhaskellpkgs.ghcWithPackages (p: with p; [
+  hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
             inline-java
             aeson
             attoparsec
             base16-bytestring
-            cabal-install
             data-default
             directory-tree
             discrimination
             distributed-process distributed-process-lifted
-            distributed-process-simplelocalnet
             either
             haskeline
             hedis
@@ -121,14 +116,13 @@ let
             p.time-tagger
             p.OntoNotes
             p.multi-word-tagger
-            HUKB-driver
           ]);
 
 in
 
 stdenv.mkDerivation {
   name = "eventextractor-dev";
-  buildInputs = [ hsenv jdk ukb graphviz ];
+  buildInputs = [ hsenv jdk graphviz ];
   shellHook = ''
     CLASSPATH="${corenlp_models}:${corenlp}/stanford-corenlp-3.7.0.jar:${corenlp}/protobuf.jar:${corenlp}/joda-time.jar:${corenlp}/jollyday.jar:${hsenv}/share/x86_64-linux-ghc-8.0.2/HCoreNLP-0.1.0.0/HCoreNLPProto.jar";
   '';

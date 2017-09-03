@@ -11,13 +11,13 @@ import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 
 
-import 	       	 NLP.Type.CoreNLP
+import           NLP.Type.CoreNLP
 import           YAML.Builder
 
 
 instance MakeYaml Int where
   makeYaml _ x = YPrim (YInteger x)
-  
+
 instance MakeYaml (Int,Int) where
   makeYaml n (x,y) = YLArray Inline [ makeYaml n x, makeYaml n y ]
 

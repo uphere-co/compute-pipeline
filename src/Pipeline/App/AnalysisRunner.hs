@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Pipeline.App.AnalysisRunner where
 
@@ -8,14 +9,19 @@ import qualified Data.Aeson            as A
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Maybe
+import qualified Data.Text             as T
 import           System.FilePath       ((</>),takeExtension,takeFileName)
 import           System.Process        (readProcess)
 --
+import           MWE.Util
+import           NLP.Type.CoreNLP
 import           SRL.Analyze
 import           SRL.Analyze.Format            (dotMeaningGraph)
 import           SRL.Analyze.Match             (meaningGraph)
 import           SRL.Analyze.SentenceStructure (docStructure)
 import           SRL.Analyze.Type
+import qualified SRL.Analyze.WikiEL    as SRLWiki
+import           Text.Format.Dot               (mkLabelText)
 --
 import           Pipeline.Load
 import           Pipeline.Run
@@ -30,13 +36,18 @@ mkMGs apredata emTagger fp loaded = do
   let filename = takeFileName fp
   let dstr = docStructure apredata emTagger loaded
   let sstrs1 = catMaybes (dstr ^. ds_sentStructures)
+      mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs1
-  forM_ (zip [1..] mgs) $ \(i,mg) -> do
-    let dotstr = dotMeaningGraph mg
+      wikilst = SRLWiki.mkWikiList dstr
+      
+  forM_ (zip mtokss (zip [1..] mgs)) $ \(mtks,(i,mg')) -> do
+    let title = mkTextFromToken mtks  
+        mg = tagMG mg' wikilst
+    let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
     putStrLn dotstr
     writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
     void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
-  
+
 runAnalysis' :: IO ()
 runAnalysis' = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
@@ -44,10 +55,10 @@ runAnalysis' = do
   fps <- getAnalysisFilePath
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") fps)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
-  flip mapM_ (take 50 loaded) $ \(fp,x) -> do
+  flip mapM_ (take 300 loaded) $ \(fp,x) -> do
     mkMGs apredata emTagger fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
-    -- print $ wikiEL emTagger (x ^. dainput_sents)
+    print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysis :: IO ()
 runAnalysis = do
@@ -56,5 +67,3 @@ runAnalysis = do
   loaded <- loadWikiELResult fps
   flip mapM_ loaded $ \(fp,x) -> do
     print (fp,x)
-
-
