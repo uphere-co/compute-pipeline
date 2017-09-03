@@ -22,7 +22,6 @@ import           Data.Text                    (Text)
 import qualified Data.Text               as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Network.Transport
-import           Network.Transport.TCP   (createTransport, defaultTCPParameters)
 import           System.Environment
 import           System.Process
 import           Control.Distributed.Process.Node
