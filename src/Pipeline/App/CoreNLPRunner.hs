@@ -17,7 +17,6 @@ import           Data.Default
 import           Data.Maybe
 import           Data.Text                                    (Text)
 import qualified Data.Text                             as T
-import qualified Data.Text.IO                          as TIO
 import           Language.Java                         as J
 import           System.Directory                             (doesFileExist)
 import           System.Environment                           (getEnv)
@@ -70,7 +69,7 @@ runCoreNLPAndSave articles savepath = do
                   )
     forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
       -- (txt,xs) <- preRunForTaggingNE pp emTagger txt'
-      fchk <- doesFileExist (savepath </> (T.unpack hsh))
+      fchk <- doesHashNameFileExistInPrefixSubDirs (savepath </> (T.unpack hsh))
       when (not fchk) $ do
         eresult <- try $ runParser pp txt
         case eresult of

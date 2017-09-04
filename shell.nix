@@ -4,7 +4,6 @@
 , graph-algorithms      ? <graph-algorithms>
 , HCoreNLP              ? <HCoreNLP>
 , HFrameNet             ? <HFrameNet>
-, HUKB                  ? <HUKB>
 , HWordNet              ? <HWordNet>
 , lexicon               ? <lexicon>
 , multi-word-tagger     ? <multi-word-tagger>
@@ -75,7 +74,7 @@ let
       "wiki-ner" = self.callPackage (import wiki-ner) {};
 
       };
-  newHaskellPackages = haskell.packages.ghc802.override {
+  newHaskellPackages = haskellPackages.override {
     overrides = self: super: config1 self super // config2 self super;
   }; 
 

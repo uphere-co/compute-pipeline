@@ -28,7 +28,7 @@ import           Data.Time.Format                 (defaultTimeLocale, formatTime
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
-import           System.Directory                 (createDirectoryIfMissing,withCurrentDirectory)
+import           System.Directory                 (createDirectoryIfMissing,doesFileExist,withCurrentDirectory)
 import           System.FilePath                  ((</>),takeDirectory,takeFileName)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
@@ -189,3 +189,11 @@ saveHashNameTextFileInPrefixSubDirs fp file = do
   withCurrentDirectory storepath $ do
     createDirectoryIfMissing True prefix
     TIO.writeFile (storepath </> prefix </> hsh) file
+
+doesHashNameFileExistInPrefixSubDirs fp = do
+  let hsh       = takeFileName fp
+      storepath = takeDirectory fp
+      prefix    = take 2 hsh
+
+  b <- doesFileExist (storepath </> prefix </> hsh)
+  return b

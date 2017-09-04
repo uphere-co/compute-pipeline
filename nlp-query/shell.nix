@@ -20,6 +20,7 @@
 , nlp-pipeline          ? <nlp-pipeline>
 , lexicon               ? <lexicon>
 , multi-word-tagger     ? <multi-word-tagger>
+, graph-algorithms      ? <graph-algorithms>
 }:
 
 let newpkgs = import pkgs.path {
@@ -72,6 +73,7 @@ let
       "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
       "lexicon" = self.callPackage (import lexicon) {};
       "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
+      "graph-algorithms" = self.callPackage (import graph-algorithms) {};
       };
   ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
   config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
