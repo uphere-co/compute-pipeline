@@ -4,11 +4,12 @@
 module Pipeline.App.AnalysisRunner where
 
 import           Control.Lens
-import           Control.Monad                          (forM_,void)
+import           Control.Monad                          (forM_,void,when)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
+import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
@@ -26,6 +27,7 @@ import           SRL.Analyze.Match                      (meaningGraph)
 import           SRL.Analyze.SentenceStructure          (docStructure)
 import           SRL.Analyze.Type
 import qualified SRL.Analyze.WikiEL         as SRLWiki
+import           SRL.Statistics                         (numberOfPredicate,numberOfMGPredicate)
 import           Text.Format.Dot                        (mkLabelText)
 import           WikiEL.EntityLinking                   (EntityMention)
 --
@@ -36,25 +38,25 @@ import           Pipeline.Source.NewsAPI.Article
 
 wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
 
-saveWikiEL fp wikiel = do
-  B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
+saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
 
 mkMGs apredata emTagger fp loaded = do
   let filename = takeFileName fp
   let dstr = docStructure apredata emTagger loaded
-  let sstrs1 = catMaybes (dstr ^. ds_sentStructures)
+  let sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
-      mgs = map meaningGraph sstrs1
+      mgs = map meaningGraph sstrs
       wikilst = SRLWiki.mkWikiList dstr
       
-  forM_ (zip mtokss (zip [1..] mgs)) $ \(mtks,(i,mg')) -> do
-    let title = mkTextFromToken mtks  
-        mg = tagMG mg' wikilst
-    let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
-    putStrLn dotstr
-    withCurrentDirectory "/home/modori/data/meaning_graph" $ do
-      writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
-      void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+  forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
+    when (numberOfPredicate sstr == numberOfMGPredicate mg') $ do
+      let title = mkTextFromToken mtks  
+          mg = tagMG mg' wikilst
+      let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
+      putStrLn dotstr
+      withCurrentDirectory "/home/modori/data/meaning_graph" $ do
+        writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
+        void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
 
 runAnalysisAll :: IO ()
 runAnalysisAll = do
