@@ -87,7 +87,6 @@ let
             directory-tree
             discrimination
             distributed-process distributed-process-lifted
-            #distributed-process-simplelocalnet
             either
             haskeline
             hedis
@@ -116,7 +115,6 @@ let
             p.time-tagger
             p.OntoNotes
             p.multi-word-tagger
-
           ]);
 
 in
