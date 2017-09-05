@@ -18,7 +18,6 @@ import           System.FilePath                   ((</>))
 --
 import           NewsAPI.DB
 import qualified NewsAPI.DB.Article         as Ar
-import qualified NewsAPI.DB.Analysis        as An
 import           NewsAPI.Type
 --
 import           Pipeline.Operation.DB
@@ -67,14 +66,6 @@ getDescription f = do
       Left  _ -> return ""
       Right a -> return (maybe "" id (_description a))
 
-getFileList :: FilePath -> IO ([FilePath])
-getFileList fp = do
-  list' <- readDirectoryWith return fp
-  let filelist = sort . toList $ dirTree list'
-  return filelist
-
-
-----
 
 mkNewsAPIAnalysisDB article =
   NewsAPIAnalysisDB { analysis_sha256 = (Ar._sha256 article)
@@ -82,20 +73,3 @@ mkNewsAPIAnalysisDB article =
                     , analysis_analysis = ("corenlp" :: T.Text)
                     , analysis_created = (Ar._created article)
                     }
-  
-getAllAnalysisFilePath :: IO [FilePath]
-getAllAnalysisFilePath = do
-  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  analyses <- getAnalysisAll conn
-  let list' = map (L8.unpack . L8.fromStrict . B16.encode . An._sha256) analyses
-      list = map (\x -> (take 2 x) </> x) list'
-  return list
-
-getAnalysisFilePathBySource :: String -> IO [FilePath]
-getAnalysisFilePathBySource src = do
-  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  as <- getAnalysisBySource src conn
-  return $ map (\x -> (take 2 x) </> x) $ getAnalysisHashInB16 as
-
-getAnalysisHashInB16 :: [An.AnalysisH] -> [FilePath]
-getAnalysisHashInB16 as = map (L8.unpack . L8.fromStrict . B16.encode . An._sha256) as

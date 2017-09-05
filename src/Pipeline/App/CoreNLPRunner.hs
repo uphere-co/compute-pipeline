@@ -44,6 +44,7 @@ import           Text.ProtocolBuffers.WireMessage             (messageGet)
 import           WikiEL.EntityLinking
 import           WikiEL.Misc
 --
+import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Load
 import           Pipeline.Operation.DB

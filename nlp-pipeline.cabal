@@ -55,6 +55,7 @@ library
                    Pipeline.Run
                    Pipeline.Run.SRL
                    Pipeline.Run.WikiEL
+                   Pipeline.Source.NewsAPI.Analysis
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article
                    Pipeline.Type
