@@ -10,6 +10,7 @@ import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Maybe
+import           Data.Text                              (Text)
 import qualified Data.Text                  as T
 import           System.Directory                       (withCurrentDirectory)
 import           System.FilePath                        ((</>),takeExtension,takeFileName)
@@ -26,6 +27,7 @@ import           SRL.Analyze.SentenceStructure          (docStructure)
 import           SRL.Analyze.Type
 import qualified SRL.Analyze.WikiEL         as SRLWiki
 import           Text.Format.Dot                        (mkLabelText)
+import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Operation.DB                  (getConnection)
@@ -54,14 +56,22 @@ mkMGs apredata emTagger fp loaded = do
       writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
       void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
 
-runAnalysis' :: IO ()
-runAnalysis' = do
+runAnalysisAll :: IO ()
+runAnalysisAll = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
 
   as <- getAnalysisFilePathBySource "bloomberg"
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
+  flip mapM_ (take 100 loaded) $ \(fp,x) -> do
+    mkMGs apredata emTagger fp x
+    -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
+    print $ wikiEL emTagger (x ^. dainput_sents)
+
+runAnalysisByChunks :: ([NERToken] -> [EntityMention Text])
+                    -> AnalyzePredata -> [(FilePath,DocAnalysisInput)] -> IO ()
+runAnalysisByChunks emTagger apredata loaded = do
   flip mapM_ loaded $ \(fp,x) -> do
     mkMGs apredata emTagger fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
