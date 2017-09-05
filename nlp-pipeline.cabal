@@ -51,6 +51,7 @@ library
                    Pipeline.App.CoreNLPRunner
                    Pipeline.Load
                    Pipeline.Operation.DB
+                   Pipeline.Operation.Graph
                    Pipeline.Run
                    Pipeline.Run.SRL
                    Pipeline.Run.WikiEL
