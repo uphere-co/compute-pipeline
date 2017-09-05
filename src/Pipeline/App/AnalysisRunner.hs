@@ -27,7 +27,7 @@ import           SRL.Analyze.Match                      (meaningGraph)
 import           SRL.Analyze.SentenceStructure          (docStructure)
 import           SRL.Analyze.Type
 import qualified SRL.Analyze.WikiEL         as SRLWiki
-import           SRL.Statistics                         (numberOfPredicate,numberOfMGPredicate)
+import           SRL.Statistics
 import           Text.Format.Dot                        (mkLabelText)
 import           WikiEL.EntityLinking                   (EntityMention)
 --
@@ -50,13 +50,18 @@ mkMGs apredata emTagger fp loaded = do
       
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     when (numberOfPredicate sstr == numberOfMGPredicate mg') $ do
-      let title = mkTextFromToken mtks  
-          mg = tagMG mg' wikilst
-      let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
-      putStrLn dotstr
-      withCurrentDirectory "/home/modori/data/meaning_graph" $ do
-        writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
-        void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+      let mgraph = getGraphFromMG mg'
+      case mgraph of
+        Nothing -> return ()
+        Just graph -> do
+          when (furthestPath graph >= 4 && numberOfIsland graph < 3) $ do
+            let title = mkTextFromToken mtks  
+                mg = tagMG mg' wikilst
+            let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
+            putStrLn dotstr
+            withCurrentDirectory "/home/modori/data/meaning_graph" $ do
+              writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
+              void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
 
 runAnalysisAll :: IO ()
 runAnalysisAll = do
