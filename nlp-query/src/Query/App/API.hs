@@ -2,10 +2,13 @@ module Query.App.API where
 
 
 import           Control.Concurrent                (threadDelay)
+import           Control.Lens                      ((^.))
 import           Control.Monad                     (forever)
+import qualified Data.Aeson         as A
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 --
 import           NewsAPI.DB                        (getArticleByTime)
+import qualified NewsAPI.DB.Article as Ar
 --
 
 
@@ -19,5 +22,6 @@ oneDayArticles conn = do
   return articles
 
 getOneDayArticles conn = forever $ do
-  oneDayArticles conn >>= print
+  articles <- oneDayArticles conn
+  print $ map (Ar._id) articles
   threadDelay 10000000

@@ -19,11 +19,13 @@ library
   hs-source-dirs: src
   build-depends:  base,
                   --
+                  aeson,
                   binary,
                   bytestring,
                   containers,
                   distributed-process,
                   jvm,
+                  lens,
                   network,
                   network-simple,
                   network-transport,
@@ -35,6 +37,7 @@ library
                   transformers,
                   --
                   newsapi,
+                  newsapi-db,
                   nlp-pipeline
   exposed-modules:  Query
                     Query.App.API
