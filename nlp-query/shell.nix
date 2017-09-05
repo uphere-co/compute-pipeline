@@ -1,26 +1,25 @@
 { pkgs                  ? import <nixpkgs> {}
 , uphere-nix-overlay    ? <uphere-nix-overlay>
 , fetchfin              ? <fetchfin>
+, graph-algorithms      ? <graph-algorithms>
 , HCoreNLP              ? <HCoreNLP>
-, HUKB                  ? <HUKB>
+, HFrameNet             ? <HFrameNet>
 , HWordNet              ? <HWordNet>
+, lexicon               ? <lexicon>
+, multi-word-tagger     ? <multi-word-tagger>
+, nlp-pipeline          ? <nlp-pipeline>
+, nlp-shared-types      ? <nlp-shared-types>
 , nlp-types             ? <nlp-types>
+, OntoNotes             ? <OntoNotes>
 , predicate-matrix      ? <predicate-matrix>
 , PropBank              ? <PropBank>
 , semantic-role-labeler ? <semantic-role-labeler>
-, wiki-ner              ? <wiki-ner>
-, textview              ? <textview>
-, uphere-opaleye        ? <uphere-opaleye>
-, nlp-shared-types      ? <nlp-shared-types>
-, time-tagger           ? <time-tagger>
-, OntoNotes             ? <OntoNotes>
-, HFrameNet             ? <HFrameNet>
-, VerbNet               ? <VerbNet>
 , syntactic-analysis    ? <syntactic-analysis>
-, nlp-pipeline          ? <nlp-pipeline>
-, lexicon               ? <lexicon>
-, multi-word-tagger     ? <multi-word-tagger>
-, graph-algorithms      ? <graph-algorithms>
+, textview              ? <textview>
+, time-tagger           ? <time-tagger>
+, uphere-opaleye        ? <uphere-opaleye>
+, VerbNet               ? <VerbNet>
+, wiki-ner              ? <wiki-ner>
 }:
 
 let newpkgs = import pkgs.path {
@@ -75,17 +74,11 @@ let
       "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
       "graph-algorithms" = self.callPackage (import graph-algorithms) {};
       };
-  ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
-  config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
-  config4 =
-    self: super: {
-      "HUKB-driver" = self.callPackage (import (HUKB + "/HUKB-driver")) {}; 
-    };  
-  myhaskellpkgs = haskell.packages.ghc802.override {
-    overrides = self: super: config1 self super // config2 self super // config3 self super // config4 self super;
+  newHaskellpkgs = haskellPackages.override {
+    overrides = self: super: config1 self super // config2 self super;
   }; 
 
-  hsenv = myhaskellpkgs.ghcWithPackages (p: with p; [
+  hsenv = newHaskellpkgs.ghcWithPackages (p: with p; [
             inline-java
             aeson
             attoparsec
@@ -93,7 +86,6 @@ let
             cabal-install
             data-default
             distributed-process distributed-process-lifted
-            distributed-process-simplelocalnet
             directory-tree
             discrimination
             either
@@ -126,14 +118,13 @@ let
             p.time-tagger
             p.OntoNotes
             p.network-util
-            HUKB-driver
           ]);
 
 in
 
 stdenv.mkDerivation {
   name = "nlp-query-dev";
-  buildInputs = [ hsenv jdk ukb ];
+  buildInputs = [ hsenv jdk graphviz ];
   shellHook = ''
     CLASSPATH="${corenlp_models}:${corenlp}/stanford-corenlp-3.7.0.jar:${corenlp}/protobuf.jar:${corenlp}/joda-time.jar:${corenlp}/jollyday.jar:${hsenv}/share/x86_64-linux-ghc-8.0.2/HCoreNLP-0.1.0.0/HCoreNLPProto.jar";
   '';

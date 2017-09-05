@@ -1,6 +1,6 @@
 { mkDerivation, aeson, attoparsec, base, base16-bytestring
 , bytestring, containers, distributed-process, directory, directory-tree, discrimination
-, either, filepath, haskeline, HCoreNLP, HCoreNLP-Proto, hedis, HUKB, HUKB-driver
+, either, filepath, haskeline, HCoreNLP, HCoreNLP-Proto, hedis
 , HWordNet, newsapi, nyt-db, nyt-scrapper, jvm, lens, mtl, multi-word-tagger, network-transport, network-transport-tcp, network-util
 , nlp-types, nlp-shared-types
 , optparse-applicative, OntoNotes, postgresql-simple, predicate-matrix
@@ -17,12 +17,12 @@ mkDerivation {
   libraryHaskellDepends = [
     aeson attoparsec base base16-bytestring bytestring containers distributed-process
     directory directory-tree discrimination either filepath haskeline
-    HCoreNLP HCoreNLP-Proto hedis HUKB HUKB-driver HWordNet newsapi nyt-db nyt-scrapper jvm lens mtl multi-word-tagger
+    HCoreNLP HCoreNLP-Proto hedis HWordNet newsapi nyt-db nyt-scrapper jvm lens mtl multi-word-tagger
     network-transport network-transport-tcp network-util nlp-types nlp-shared-types
     optparse-applicative OntoNotes postgresql-simple predicate-matrix PropBank semantic-role-labeler
     protocol-buffers text textview time time-tagger transformers yaml yayaml
     wiki-ner
   ];
-  executableHaskellDepends = [ base filepath HUKB HUKB-driver text ];
+  executableHaskellDepends = [ base filepath text ];
   license = stdenv.lib.licenses.unfree;
 }

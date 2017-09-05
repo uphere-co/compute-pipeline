@@ -47,7 +47,7 @@ runQueryServer = do
         (query :: Text) <- expect
         liftIO $ print pid
         liftIO $ print query
-        result <- liftIO $ fmap (T.intercalate "\n") (getAnalysis query config pp)
+        let result = ("result" :: Text)
         Cloud.send pid result
         
       liftIO $ do
