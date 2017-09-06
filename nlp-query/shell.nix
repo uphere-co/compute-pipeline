@@ -100,6 +100,7 @@ let
             servant servant-client servant-server
             stm
             transformers
+            wai-cors
             yaml
             yayaml
             p.newsapi

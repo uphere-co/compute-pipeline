@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds     #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase    #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -14,14 +13,15 @@ import qualified Data.Aeson         as A
 import qualified Data.Text          as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Database.PostgreSQL.Simple        (Connection)
-import           GHC.Generics
 import           Network.Wai
 import           Network.Wai.Handler.Warp
+import           Network.Wai.Middleware.Cors
 import           Servant
 import           System.IO
 --
 import           NewsAPI.DB                        (getArticleBySourceAndTime)
 import qualified NewsAPI.DB.Article as Ar
+import           NLP.Shared.Type                   (RecentArticle(..))
 --
 import           Pipeline.Util                     (bstrHashToB16)
 
@@ -55,7 +55,7 @@ run conn = do
   runSettings settings =<< (mkApp conn)
 
 mkApp :: Connection -> IO Application
-mkApp conn = return $ serve recentarticleAPI (server conn)
+mkApp conn = return $ simpleCors (serve recentarticleAPI (server conn))
 
 server :: Connection -> Server RecentArticleAPI
 server conn = getArticlesBySrc conn
@@ -63,14 +63,5 @@ server conn = getArticlesBySrc conn
 getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
 getArticlesBySrc conn txt = do
   list <- liftIO $ getOneDayArticles conn txt
-  let result = map (\(i,hsh,src) -> RecentArticle (toInteger i) hsh src) list
+  let result = map (\(i,hsh,src) -> RecentArticle i hsh src) list
   return result
-
-data RecentArticle = RecentArticle
-  { articleId :: Integer
-  , articleHash :: T.Text
-  , articleSource :: T.Text
-  } deriving (Eq, Show, Generic)
-
-instance A.ToJSON RecentArticle
-instance A.FromJSON RecentArticle

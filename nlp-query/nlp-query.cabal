@@ -31,6 +31,7 @@ library
                   network-transport,
                   network-transport-tcp,
                   network-util,
+                  nlp-shared-types,
                   postgresql-simple,
                   servant,
                   servant-client,
@@ -40,6 +41,7 @@ library
                   time,
                   transformers,
                   wai,
+                  wai-cors,
                   warp,
                   --
                   newsapi,
