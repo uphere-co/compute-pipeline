@@ -24,6 +24,8 @@ import           NewsAPI.DB                        (getArticleBySourceAndTime)
 import qualified NewsAPI.DB.Article as Ar
 --
 import           Pipeline.Util                     (bstrHashToB16)
+
+
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
@@ -38,14 +40,10 @@ getOneDayArticles conn = do
   let idList = map (\x -> (Ar._id x, T.pack $ bstrHashToB16 $ Ar._sha256 x, Ar._source x)) articles
   return idList
 
--- * api
-
 type RecentArticleAPI = "recentarticle" :> Get '[JSON] [RecentArticle]
 
 recentarticleAPI :: Proxy RecentArticleAPI
 recentarticleAPI = Proxy
-
--- * app
 
 run :: Connection -> IO ()
 run conn = do
@@ -67,8 +65,6 @@ getArticles conn = do
   list <- liftIO $ getOneDayArticles conn
   let result = map (\(i,hsh,src) -> RecentArticle (toInteger i) hsh src) list
   return result
-
--- * article
 
 data RecentArticle = RecentArticle
   { articleId :: Integer
