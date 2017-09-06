@@ -39,10 +39,10 @@ getOneDayArticles conn = do
 
 -- * api
 
-type ArticleAPI = "article" :> Get '[JSON] [ArticleID]
+type RecentArticleAPI = "recentarticle" :> Get '[JSON] [RecentArticle]
 
-articleAPI :: Proxy ArticleAPI
-articleAPI = Proxy
+recentarticleAPI :: Proxy RecentArticleAPI
+recentarticleAPI = Proxy
 
 -- * app
 
@@ -56,22 +56,22 @@ run conn = do
   runSettings settings =<< (mkApp conn)
 
 mkApp :: Connection -> IO Application
-mkApp conn = return $ serve articleAPI (server conn)
+mkApp conn = return $ serve recentarticleAPI (server conn)
 
-server :: Connection -> Server ArticleAPI
+server :: Connection -> Server RecentArticleAPI
 server conn = getArticles conn
 
-getArticles :: Connection -> Handler [ArticleID]
+getArticles :: Connection -> Handler [RecentArticle]
 getArticles conn = do
   list <- liftIO $ getOneDayArticles conn
-  let result = map (\x -> ArticleID (toInteger x)) list
+  let result = map (\x -> RecentArticle (toInteger x)) list
   return result
 
 -- * article
 
-data ArticleID = ArticleID
+data RecentArticle = RecentArticle
   { articleId :: Integer
   } deriving (Eq, Show, Generic)
 
-instance A.ToJSON ArticleID
-instance A.FromJSON ArticleID
+instance A.ToJSON RecentArticle
+instance A.FromJSON RecentArticle
