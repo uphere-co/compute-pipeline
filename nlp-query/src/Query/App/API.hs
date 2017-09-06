@@ -11,6 +11,7 @@ import           Control.Monad                     (forever)
 import           Control.Monad.IO.Class            (liftIO)
 import           Control.Monad.Trans.Except
 import qualified Data.Aeson         as A
+import qualified Data.Text          as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Database.PostgreSQL.Simple        (Connection)
 import           GHC.Generics
@@ -22,7 +23,7 @@ import           System.IO
 import           NewsAPI.DB                        (getArticleBySourceAndTime)
 import qualified NewsAPI.DB.Article as Ar
 --
-
+import           Pipeline.Util                     (bstrHashToB16)
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
@@ -34,7 +35,7 @@ oneDayArticles conn = do
 
 getOneDayArticles conn = do
   articles <- oneDayArticles conn
-  let idList = map (Ar._id) articles
+  let idList = map (\x -> (Ar._id x, T.pack $ bstrHashToB16 $ Ar._sha256 x, Ar._source x)) articles
   return idList
 
 -- * api
@@ -64,13 +65,15 @@ server conn = getArticles conn
 getArticles :: Connection -> Handler [RecentArticle]
 getArticles conn = do
   list <- liftIO $ getOneDayArticles conn
-  let result = map (\x -> RecentArticle (toInteger x)) list
+  let result = map (\(i,hsh,src) -> RecentArticle (toInteger i) hsh src) list
   return result
 
 -- * article
 
 data RecentArticle = RecentArticle
   { articleId :: Integer
+  , articleHash :: T.Text
+  , articleSource :: T.Text
   } deriving (Eq, Show, Generic)
 
 instance A.ToJSON RecentArticle
