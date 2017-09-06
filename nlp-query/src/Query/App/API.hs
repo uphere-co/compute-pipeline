@@ -29,18 +29,18 @@ import           Pipeline.Util                     (bstrHashToB16)
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
-oneDayArticles conn = do
+oneDayArticles conn txt = do
   ctime <- getCurrentTime
   let yesterday = addUTCTime (-nominalDay) ctime 
-  articles <- getArticleBySourceAndTime conn "bloomberg" yesterday
+  articles <- getArticleBySourceAndTime conn (T.unpack txt) yesterday
   return articles
 
-getOneDayArticles conn = do
-  articles <- oneDayArticles conn
+getOneDayArticles conn txt = do
+  articles <- oneDayArticles conn txt
   let idList = map (\x -> (Ar._id x, T.pack $ bstrHashToB16 $ Ar._sha256 x, Ar._source x)) articles
   return idList
 
-type RecentArticleAPI = "recentarticle" :> Get '[JSON] [RecentArticle]
+type RecentArticleAPI = "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
 
 recentarticleAPI :: Proxy RecentArticleAPI
 recentarticleAPI = Proxy
@@ -58,11 +58,11 @@ mkApp :: Connection -> IO Application
 mkApp conn = return $ serve recentarticleAPI (server conn)
 
 server :: Connection -> Server RecentArticleAPI
-server conn = getArticles conn
+server conn = getArticlesBySrc conn
 
-getArticles :: Connection -> Handler [RecentArticle]
-getArticles conn = do
-  list <- liftIO $ getOneDayArticles conn
+getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
+getArticlesBySrc conn txt = do
+  list <- liftIO $ getOneDayArticles conn txt
   let result = map (\(i,hsh,src) -> RecentArticle (toInteger i) hsh src) list
   return result
 
