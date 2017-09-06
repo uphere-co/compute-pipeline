@@ -97,6 +97,7 @@ let
             opaleye
             optparse-applicative
             postgresql-simple
+            servant servant-client servant-server
             stm
             transformers
             yaml
