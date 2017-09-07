@@ -42,17 +42,20 @@ nominalDay :: NominalDiffTime
 nominalDay = 86400
 
 runDaemon :: IO ()
-runDaemon = runSRL
+runDaemon = do
+  runSRL
 
+    
 -- | This does SRL and generates meaning graphs.
 runSRL :: IO ()
 runSRL = do
-  as <- getAnalysisFilePathBySource "bloomberg"
-  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
-  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
-
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
+
+
+  as <- getAllAnalysisFilePath
+  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
+  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   
   let (n :: Int) = ((length loaded) `div` 15)
   forM_ (chunksOf n loaded) $ \ls -> do
@@ -62,12 +65,10 @@ runSRL = do
 
 runCoreNLP :: IO ()
 runCoreNLP = do
-  forever $ forM_ (chunksOf 3 newsSourceList) $ \ns -> do
+  forM_ (chunksOf 3 newsSourceList) $ \ns -> do
     phs <- forM ns $ \n -> do
       spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n]
     forM_ phs $ \ph -> waitForProcess ph
-    threadDelay 600000000
-
 
 children :: MVar [MVar ()]
 children = unsafePerformIO (newMVar [])

@@ -13,7 +13,7 @@ import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
-import           System.Directory                       (withCurrentDirectory)
+import           System.Directory                       (doesFileExist,withCurrentDirectory)
 import           System.FilePath                        ((</>),takeExtension,takeFileName)
 import           System.Process                         (readProcess)
 --
@@ -43,26 +43,28 @@ saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wiki
 
 mkMGs apredata emTagger fp loaded = do
   let filename = takeFileName fp
-  let dstr = docStructure apredata emTagger loaded
-  let sstrs = catMaybes (dstr ^. ds_sentStructures)
+      dstr = docStructure apredata emTagger loaded
+      sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
       wikilst = SRLWiki.mkWikiList dstr
       
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
-    when (numberOfPredicate sstr == numberOfMGPredicate mg') $ do
-      let mgraph = getGraphFromMG mg'
-      case mgraph of
-        Nothing -> return ()
-        Just graph -> do
-          when (furthestPath graph >= 4 && numberOfIsland graph < 3) $ do
-            let title = mkTextFromToken mtks  
-                mg = tagMG mg' wikilst
-            let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
-            putStrLn dotstr
-            withCurrentDirectory "/home/modori/data/meaning_graph" $ do
-              writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
-              void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+    fchk <- doesFileExist ("/home/modori/data/meaning_graph/" ++ filename ++ "_" ++ (show i) ++ ".png")
+    when (not fchk) $ do
+      when (numberOfPredicate sstr == numberOfMGPredicate mg') $ do
+        let mgraph = getGraphFromMG mg'
+        case mgraph of
+          Nothing -> return ()
+          Just graph -> do
+            when (furthestPath graph >= 4 && numberOfIsland graph < 3) $ do
+              let title = mkTextFromToken mtks  
+                  mg = tagMG mg' wikilst
+              let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
+              putStrLn dotstr
+              withCurrentDirectory "/home/modori/data/meaning_graph" $ do
+                writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
+                void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
 
 runAnalysisAll :: IO ()
 runAnalysisAll = do
@@ -83,7 +85,7 @@ runAnalysisByChunks emTagger apredata loaded = do
   flip mapM_ loaded $ \(fp,x) -> do
     mkMGs apredata emTagger fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
-    print $ wikiEL emTagger (x ^. dainput_sents)
+    -- print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysis :: IO ()
 runAnalysis = do
