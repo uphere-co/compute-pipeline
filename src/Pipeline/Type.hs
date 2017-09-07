@@ -40,18 +40,18 @@ data TaggedResult = TaggedResult { resultSUTime :: T.ListTimex
 
 
 data DoneAnalysis = DoneAnalysis
-  { _done_corenlp :: Bool
-  , _done_srl     :: Bool
-  , _done_ner     :: Bool
+  { _done_corenlp :: Maybe Bool
+  , _done_srl     :: Maybe Bool
+  , _done_ner     :: Maybe Bool
   } deriving (Show)
 
 makeLenses ''DoneAnalysis
 
 mkNewsAPIAnalysisDB das article =
-  NewsAPIAnalysisDB { analysis_sha256 = (Ar._sha256 article)
-                    , analysis_source = (Ar._source article)
-                    , analysis_corenlp = if das ^. done_corenlp then Just "y" else Nothing
-                    , analysis_srl     = if das ^. done_srl then Just "y" else Nothing
-                    , analysis_ner     = if das ^. done_ner then Just "y" else Nothing
-                    , analysis_created = (Ar._created article)
+  NewsAPIAnalysisDB { analysis_sha256 = Ar._sha256 article
+                    , analysis_source = Ar._source article
+                    , analysis_corenlp = das ^. done_corenlp
+                    , analysis_srl     = das ^. done_srl
+                    , analysis_ner     = das ^. done_ner
+                    , analysis_created = Ar._created article
                     }

@@ -78,7 +78,7 @@ runCoreNLPAndSave articles savepath = do
           Left  (e :: SomeException) -> return ()
           Right result               -> do
             saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
-            uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis True False False) article)
+            uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
 
 -- | Load and Run
 -- This loads parsed result and runs NLP analysis. The result is printed on stdout.
