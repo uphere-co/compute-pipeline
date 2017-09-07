@@ -18,7 +18,7 @@ import           System.FilePath                        ((</>),takeExtension,tak
 import           System.Process                         (readProcess)
 --
 import           MWE.Util
-import           NewsAPI.DB                             (getAnalysisBySource)
+import           NewsAPI.DB
 import qualified NewsAPI.DB.Analysis        as Analysis
 import           NLP.Type.CoreNLP
 import           SRL.Analyze
@@ -36,12 +36,16 @@ import           Pipeline.Operation.DB                  (getConnection)
 import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
+import           Pipeline.Util
 
 wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
 
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
 
 mkMGs apredata emTagger fp loaded = do
+
+  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
+  
   let filename = takeFileName fp
       dstr = docStructure apredata emTagger loaded
       sstrs = catMaybes (dstr ^. ds_sentStructures)
@@ -65,7 +69,7 @@ mkMGs apredata emTagger fp loaded = do
               withCurrentDirectory "/home/modori/data/meaning_graph" $ do
                 writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
                 void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
---              updateAnalysisStatus conn (unB16 filename) (True True 
+              updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
 runAnalysisAll :: IO ()
 runAnalysisAll = do
