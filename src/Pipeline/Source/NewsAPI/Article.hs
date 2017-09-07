@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Pipeline.Source.NewsAPI.Article where
 
+import           Control.Lens
 import           Data.Aeson                        (eitherDecodeStrict)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B   
@@ -67,9 +69,19 @@ getDescription f = do
       Right a -> return (maybe "" id (_description a))
 
 
-mkNewsAPIAnalysisDB article =
+data DoneAnalysis = DoneAnalysis
+  { _done_corenlp :: Bool
+  , _done_srl     :: Bool
+  , _done_ner     :: Bool
+  } deriving (Show)
+
+makeLenses ''DoneAnalysis
+
+mkNewsAPIAnalysisDB das article =
   NewsAPIAnalysisDB { analysis_sha256 = (Ar._sha256 article)
                     , analysis_source = (Ar._source article)
-                    , analysis_analysis = ("corenlp" :: T.Text)
+                    , analysis_corenlp = if das ^. done_corenlp then Just "y" else Nothing
+                    , analysis_srl     = if das ^. done_srl then Just "y" else Nothing
+                    , analysis_ner     = if das ^. done_ner then Just "y" else Nothing
                     , analysis_created = (Ar._created article)
                     }
