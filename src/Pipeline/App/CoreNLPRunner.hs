@@ -49,6 +49,7 @@ import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Load
 import           Pipeline.Operation.DB
 import           Pipeline.Run
+import           Pipeline.Type
 import           Pipeline.Util
 
 
@@ -101,7 +102,7 @@ loadAndRunNLPAnalysis = do
 runCoreNLPforNewsAPISource :: String -> IO ()
 runCoreNLPforNewsAPISource src = do
   articles <- getTimeTitleDescFromSrcWithHash src
-  runCoreNLPAndSave articles "/home/modori/data/newsapianalyzed"
+  runCoreNLPAndSave (take 10 articles) "/home/modori/data/newsapianalyzed"
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.
 preRunForTaggingNE :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")

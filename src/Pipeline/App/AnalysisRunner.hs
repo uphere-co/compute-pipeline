@@ -65,6 +65,7 @@ mkMGs apredata emTagger fp loaded = do
               withCurrentDirectory "/home/modori/data/meaning_graph" $ do
                 writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
                 void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+--              updateAnalysisStatus conn (unB16 filename) (True True 
 
 runAnalysisAll :: IO ()
 runAnalysisAll = do
