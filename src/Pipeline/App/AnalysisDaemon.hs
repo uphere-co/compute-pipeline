@@ -35,6 +35,7 @@ import           NewsAPI.Type
 import           Pipeline.App.AnalysisRunner
 import           Pipeline.Load
 import           Pipeline.Run
+import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
 
 nominalDay :: NominalDiffTime

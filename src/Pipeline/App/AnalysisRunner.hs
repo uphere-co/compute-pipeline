@@ -34,6 +34,7 @@ import           WikiEL.EntityLinking                   (EntityMention)
 import           Pipeline.Load
 import           Pipeline.Operation.DB                  (getConnection)
 import           Pipeline.Run
+import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
 
 wikiEL emTagger sents = getWikiResolvedMentions emTagger sents

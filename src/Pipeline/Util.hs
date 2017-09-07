@@ -15,8 +15,9 @@ import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEither)
 import           Data.Attoparsec.Text             (parseOnly)
+import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
-import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Discrimination              (outer)
 import           Data.Discrimination.Grouping     (hashing)
 import           Data.Maybe                       (fromJust, isJust)
@@ -55,8 +56,8 @@ processAnnotation :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                   -> IO (Either String TaggedResult)
 processAnnotation pp forest doc = runEitherT $ do
   ann <- liftIO $ annotate pp doc
-  lbstr_sutime <- liftIO $ BL.fromStrict <$> serializeTimex ann
-  lbstr_doc    <- liftIO $ BL.fromStrict <$> serializeDoc ann
+  lbstr_sutime <- liftIO $ BL8.fromStrict <$> serializeTimex ann
+  lbstr_doc    <- liftIO $ BL8.fromStrict <$> serializeDoc ann
   TaggedResult <$> (fst <$> hoistEither (messageGet lbstr_sutime))
                <*> hoistEither (parseOnly (many (pTreeAdv forest)) (doc^.doctext))
                <*> (fst <$> hoistEither (messageGet lbstr_doc))
@@ -144,9 +145,9 @@ mkUkbTextInput' r = let ptow p = if (p == POS_N) then "#n" else if (p == POS_R) 
 
 getTemporal :: J ('Class "edu.stanford.nlp.pipeline.Annotation") -> IO ()
 getTemporal ann = do
-  lbstr_sutime <- BL.fromStrict <$> serializeTimex ann
+  lbstr_sutime <- BL8.fromStrict <$> serializeTimex ann
   let er = messageGet lbstr_sutime
-  case (er :: Either String (T.ListTimex,BL.ByteString)) of
+  case (er :: Either String (T.ListTimex,BL8.ByteString)) of
     Left _  -> print ("" :: Text)
     Right r -> print (T._timexes $ fst r)
 
@@ -197,3 +198,5 @@ doesHashNameFileExistInPrefixSubDirs fp = do
 
   b <- doesFileExist (storepath </> prefix </> hsh)
   return b
+
+bstrHashToB16 bstr = (BL8.unpack . BL8.fromStrict . B16.encode) bstr
