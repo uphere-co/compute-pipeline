@@ -43,6 +43,7 @@ nominalDay = 86400
 
 runDaemon :: IO ()
 runDaemon = do
+  runCoreNLP "bloomberg"
   runSRL
 
     
@@ -51,7 +52,6 @@ runSRL :: IO ()
 runSRL = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-
 
   as <- getAllAnalysisFilePath
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
@@ -63,12 +63,18 @@ runSRL = do
 
   waitForChildren
 
-runCoreNLP :: IO ()
-runCoreNLP = do
+runCoreNLPAll :: IO ()
+runCoreNLPAll = do
   forM_ (chunksOf 3 newsSourceList) $ \ns -> do
     phs <- forM ns $ \n -> do
       spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n]
     forM_ phs $ \ph -> waitForProcess ph
+
+runCoreNLP :: String -> IO ()
+runCoreNLP src = do
+  ph <- spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [src]
+  waitForProcess ph
+  return ()
 
 children :: MVar [MVar ()]
 children = unsafePerformIO (newMVar [])
