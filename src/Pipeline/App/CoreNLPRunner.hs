@@ -102,6 +102,7 @@ loadAndRunNLPAnalysis = do
 runCoreNLPforNewsAPISource :: String -> IO ()
 runCoreNLPforNewsAPISource src = do
   articles <- getTimeTitleDescFromSrcWithHash src
+  print $ length articles
   runCoreNLPAndSave articles "/home/modori/data/newsapianalyzed"
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.

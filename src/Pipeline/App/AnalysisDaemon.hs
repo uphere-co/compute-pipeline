@@ -21,6 +21,7 @@ import           Data.Maybe                   (catMaybes)
 import           Data.Text                    (Text)
 import qualified Data.Text               as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
+import qualified Database.PostgreSQL.Simple as PGS
 import           Network.Transport
 import           SRL.Analyze.Type                  (AnalyzePredata(..))
 import           System.Environment
@@ -34,6 +35,7 @@ import           NewsAPI.Type
 --
 import           Pipeline.App.AnalysisRunner
 import           Pipeline.Load
+import           Pipeline.Operation.DB
 import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
@@ -43,26 +45,27 @@ nominalDay = 86400
 
 runDaemon :: IO ()
 runDaemon = do
+  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
   runCoreNLP "bloomberg"
-  runSRL
+  runSRL conn
 
     
 -- | This does SRL and generates meaning graphs.
-runSRL :: IO ()
-runSRL = do
+runSRL :: PGS.Connection -> IO ()
+runSRL conn = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
 
-  as <- getAllAnalysisFilePath
+  as <- getAnalysisFilePathBySource "bloomberg"
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   
   let (n :: Int) = ((length loaded) `div` 15)
   forM_ (chunksOf n loaded) $ \ls -> do
-    forkChild (runAnalysisByChunks emTagger apredata ls)
+    forkChild (runAnalysisByChunks conn emTagger apredata ls)
 
   waitForChildren
-
+  
 runCoreNLPAll :: IO ()
 runCoreNLPAll = do
   forM_ (chunksOf 3 newsSourceList) $ \ns -> do
