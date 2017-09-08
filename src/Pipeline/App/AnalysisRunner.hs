@@ -55,9 +55,17 @@ mkMGs conn apredata emTagger fp loaded = do
       mgs = map meaningGraph sstrs
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = True
+
+  putStrLn "======================================================================================="
+  putStrLn "======================================================================================="
+  
+  
+  putStrLn filename
+
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     -- fchk <- doesFileExist ("/home/modori/data/meaning_graph/" ++ filename ++ "_" ++ (show i) ++ ".png")
     -- when (not fchk) $ do
+    putStrLn $ T.unpack $ mkTextFromToken mtks
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of
@@ -66,18 +74,21 @@ mkMGs conn apredata emTagger fp loaded = do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let title = mkTextFromToken mtks  
                 mg = tagMG mg' wikilst
+            
             let vertices = mg ^. mg_vertices
                 edges = mg ^. mg_edges
 
             forM_ vertices $ \v -> do
               case v of
-                MGPredicate {..} -> putStrLn $ printf "%-4d    %-12s    %-30s    %-15s" (v ^. mv_id) (show (v ^. mv_range)) (T.unpack (v ^. mv_frame)) (T.unpack $ v ^. mv_verb . _1)
-                MGEntity    {..} -> putStrLn $ printf "%-4d    $-12s    %-30s         " (v ^. mv_id) (show (v ^. mv_range)) (T.unpack (v ^. mv_text))
+                MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ v ^. mv_verb . _1)
+                MGEntity    {..} -> putStrLn $ "MGEntity    :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_text))
 
             forM_ edges $ \e -> do
-              putStrLn $ printf "%-30s    $-4d    $-4d" (T.unpack (e ^. me_relation)) (e ^. me_start) (e ^. me_end)
+              putStrLn $ "MGEdge       :  " ++ (T.unpack (e ^. me_relation)) ++ "    " ++  (show $ e ^. me_start) ++ "    "  ++ (show $ e ^. me_end)
 
+            putStrLn "---------------------------------------------------------------------------------------"
 
+            {-
             
             let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
             -- putStrLn dotstr
@@ -85,7 +96,12 @@ mkMGs conn apredata emTagger fp loaded = do
               writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
               void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
-            
+            -}
+
+
+  putStrLn "======================================================================================="
+  putStrLn "======================================================================================="
+
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
