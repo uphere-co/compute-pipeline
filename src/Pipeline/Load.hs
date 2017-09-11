@@ -30,6 +30,12 @@ loadWikiELResult fps = do
     bstr <- B.readFile fp
     return $ (fp,A.decode (BL.fromStrict bstr))
 
+loadSRLResult :: [FilePath] -> IO [(FilePath,Maybe [MeaningGraph])]
+loadSRLResult fps = do
+  forM fps $ \fp -> do
+    bstr <- B.readFile fp
+    return $ (fp,A.decode (BL.fromStrict bstr))
+
 getFileListRecursively fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . toList $ dirTree list'
