@@ -49,6 +49,8 @@ mkMGs conn apredata emTagger fp loaded = do
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = True
 
+  saveMG "/home/modori/temp/mgs" filename mgs
+
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     -- fchk <- doesFileExist ("/home/modori/data/meaning_graph/" ++ filename ++ "_" ++ (show i) ++ ".png")
     -- when (not fchk) $ do
@@ -59,7 +61,7 @@ mkMGs conn apredata emTagger fp loaded = do
         Just graph -> do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let mg = tagMG mg' wikilst
-            genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
+            -- genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
             
 

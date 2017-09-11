@@ -10,7 +10,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Char                              (isSpace)
 import qualified Data.Text as T
 import           System.Directory                       (withCurrentDirectory)
-import           System.FilePath                        ((</>))
+import           System.FilePath                        ((</>),addExtension)
 import           System.Process                         (readProcess)
 --
 import           MWE.Util                               (mkTextFromToken)
@@ -20,7 +20,7 @@ import           Text.Format.Dot                        (mkLabelText)
 --
 import           Pipeline.Run.WikiEL
 import           Pipeline.Source.NewsAPI.Article        (getTitle)
-
+import           Pipeline.Util                          (saveHashNameBSFileInPrefixSubDirs)
 showTextMG mg filename (i,sstr,mtks,mg') = do
   atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ("/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg" </> filename)
   let vertices = mg ^. mg_vertices
@@ -47,7 +47,9 @@ genMGFigs savedir i filename mtks mg = do
     writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
     void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
 
-
+saveMG savedir filename mgs = do
+  saveHashNameBSFileInPrefixSubDirs (savedir </> (addExtension filename "mgs")) (BL8.toStrict $ A.encode mgs)
 
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
 wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
+
