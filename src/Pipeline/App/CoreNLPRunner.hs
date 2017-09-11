@@ -48,7 +48,7 @@ import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Load
 import           Pipeline.Operation.DB
-import           Pipeline.Run
+import           Pipeline.Run.WikiEL
 import           Pipeline.Type
 import           Pipeline.Util
 

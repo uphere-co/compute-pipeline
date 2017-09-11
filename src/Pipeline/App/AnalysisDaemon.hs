@@ -23,6 +23,7 @@ import qualified Data.Text               as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import qualified Database.PostgreSQL.Simple as PGS
 import           Network.Transport
+import           SRL.Analyze
 import           SRL.Analyze.Type                  (AnalyzePredata(..))
 import           System.Environment
 import           System.FilePath                   ((</>))
@@ -36,7 +37,6 @@ import           NewsAPI.Type
 import           Pipeline.App.AnalysisRunner
 import           Pipeline.Load
 import           Pipeline.Operation.DB
-import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
 
