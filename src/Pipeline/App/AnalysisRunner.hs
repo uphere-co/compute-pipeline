@@ -76,6 +76,7 @@ mkMGs conn apredata emTagger fp loaded = do
             let vertices = mg ^. mg_vertices
                 edges = mg ^. mg_edges
 
+            {-
             putStrLn "======================================================================================="
 
             putStrLn ("filename : " ++ filename)
@@ -92,14 +93,14 @@ mkMGs conn apredata emTagger fp loaded = do
 
             putStrLn "=======================================================================================\n"
             
-            {-          
+            -}          
             let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
             putStrLn dotstr
             withCurrentDirectory "/home/modori/data/meaning_graph" $ do
               writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
               void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
-            -}
+            
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
