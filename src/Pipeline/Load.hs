@@ -1,4 +1,3 @@
-
 module Pipeline.Load where
 
 
@@ -11,7 +10,7 @@ import           Data.List                      (sort)
 import           Data.Text                      (Text)
 import           System.Directory.Tree
 --
-import 	       	 NLP.Type.CoreNLP
+import           NLP.Type.CoreNLP
 import           NLP.Type.PennTreebankII
 import           SRL.Analyze.Type
 import           SRL.Analyze.Util
@@ -40,4 +39,3 @@ getFileListRecursively fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . toList $ dirTree list'
   return filelist
-
