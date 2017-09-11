@@ -24,13 +24,11 @@ import           NewsAPI.DB
 import qualified NewsAPI.DB.Analysis        as Analysis
 import           NLP.Type.CoreNLP
 import           SRL.Analyze
-import           SRL.Analyze.Format                     (dotMeaningGraph)
 import           SRL.Analyze.Match                      (meaningGraph)
 import           SRL.Analyze.SentenceStructure          (docStructure)
 import           SRL.Analyze.Type
 import qualified SRL.Analyze.WikiEL         as SRLWiki
 import           SRL.Statistics
-import           Text.Format.Dot                        (mkLabelText)
 import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
@@ -60,10 +58,8 @@ mkMGs conn apredata emTagger fp loaded = do
         Nothing -> return ()
         Just graph -> do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
-            let title = mkTextFromToken mtks  
-                mg = tagMG mg' wikilst
-                dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
-            genMGFigs "/home/modori/data/meaning_graph" i filename dotstr
+            let mg = tagMG mg' wikilst
+            genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
             
 

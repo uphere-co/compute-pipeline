@@ -4,6 +4,9 @@ module Pipeline.Run where
 
 import           Control.Lens
 import           Control.Monad                          (forM_,void)
+import qualified Data.Aeson                 as A
+import qualified Data.ByteString.Char8      as B
+import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Char                              (isSpace)
 import qualified Data.Text as T
 import           System.Directory                       (withCurrentDirectory)
@@ -11,9 +14,11 @@ import           System.FilePath                        ((</>))
 import           System.Process                         (readProcess)
 --
 import           MWE.Util                               (mkTextFromToken)
+import           SRL.Analyze.Format                     (dotMeaningGraph)
 import           SRL.Analyze.Type
-
+import           Text.Format.Dot                        (mkLabelText)
 --
+import           Pipeline.Run.WikiEL
 import           Pipeline.Source.NewsAPI.Article        (getTitle)
 
 showTextMG mg filename (i,sstr,mtks,mg') = do
@@ -34,10 +39,15 @@ showTextMG mg filename (i,sstr,mtks,mg') = do
 
 
 
-genMGFigs savedir i filename dotstr = do
+genMGFigs savedir i filename mtks mg = do
+  let title = mkTextFromToken mtks
+      dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
+  
   withCurrentDirectory savedir $ do
     writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
     void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+
+
 
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
 wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
