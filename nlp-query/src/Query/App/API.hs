@@ -21,7 +21,7 @@ import           System.IO
 --
 import           NewsAPI.DB                        (getArticleBySourceAndTime)
 import qualified NewsAPI.DB.Article as Ar
-import           NLP.Shared.Type                   (RecentArticle(..))
+import           NLP.Shared.Type                   (RecentAnalysis(..),RecentArticle(..))
 --
 import           Pipeline.Util                     (bstrHashToB16)
 
@@ -40,9 +40,10 @@ getOneDayArticles conn txt = do
   let idList = map (\x -> (Ar._id x, T.pack $ bstrHashToB16 $ Ar._sha256 x, Ar._source x)) articles
   return idList
 
-type RecentArticleAPI = "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
+type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
+         :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
 
-recentarticleAPI :: Proxy RecentArticleAPI
+recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
 
 run :: Connection -> IO ()
@@ -57,11 +58,16 @@ run conn = do
 mkApp :: Connection -> IO Application
 mkApp conn = return $ simpleCors (serve recentarticleAPI (server conn))
 
-server :: Connection -> Server RecentArticleAPI
-server conn = getArticlesBySrc conn
+server :: Connection -> Server API
+server conn = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn)
 
 getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
 getArticlesBySrc conn txt = do
   list <- liftIO $ getOneDayArticles conn txt
   let result = map (\(i,hsh,src) -> RecentArticle i hsh src) list
+  return result
+
+getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
+getAnalysesBySrc conn txt = do
+  let result = [RecentAnalysis 0]
   return result
