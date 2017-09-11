@@ -3,10 +3,12 @@
 module Pipeline.Run where
 
 import           Control.Lens
-import           Control.Monad                          (forM_)
+import           Control.Monad                          (forM_,void)
 import           Data.Char                              (isSpace)
 import qualified Data.Text as T
+import           System.Directory                       (withCurrentDirectory)
 import           System.FilePath                        ((</>))
+import           System.Process                         (readProcess)
 --
 import           MWE.Util                               (mkTextFromToken)
 import           SRL.Analyze.Type
@@ -14,7 +16,7 @@ import           SRL.Analyze.Type
 --
 import           Pipeline.Source.NewsAPI.Article        (getTitle)
 
-generateTextMG mg filename (i,sstr,mtks,mg') = do
+showTextMG mg filename (i,sstr,mtks,mg') = do
   atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ("/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg" </> filename)
   let vertices = mg ^. mg_vertices
       edges = mg ^. mg_edges  
@@ -31,5 +33,11 @@ generateTextMG mg filename (i,sstr,mtks,mg') = do
   putStrLn "=======================================================================================\n"
 
 
-          
 
+genMGFigs savedir i filename dotstr = do
+  withCurrentDirectory savedir $ do
+    writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
+    void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+
+saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
+wikiEL emTagger sents = getWikiResolvedMentions emTagger sents

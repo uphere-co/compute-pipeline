@@ -14,7 +14,7 @@ import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
 import           Database.PostgreSQL.Simple             (Connection)
-import           System.Directory                       (doesFileExist,withCurrentDirectory)
+import           System.Directory                       (doesFileExist)
 import           System.FilePath                        ((</>),takeExtension,takeFileName)
 import           System.Process                         (readProcess)
 import           Text.Printf                            (printf)
@@ -41,10 +41,6 @@ import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Util
 
-wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
-
-saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
-
 mkMGs conn apredata emTagger fp loaded = do
 
   let filename = takeFileName fp
@@ -66,14 +62,8 @@ mkMGs conn apredata emTagger fp loaded = do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let title = mkTextFromToken mtks  
                 mg = tagMG mg' wikilst
-
-            generateTextMG mg filename (i,sstr,mtks,mg')
-
-            let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
-            putStrLn dotstr
-            withCurrentDirectory "/home/modori/data/meaning_graph" $ do
-              writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
-              void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+                dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
+            genMGFigs "/home/modori/data/meaning_graph" i filename dotstr
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
             
 
