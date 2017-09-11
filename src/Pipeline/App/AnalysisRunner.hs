@@ -11,6 +11,7 @@ import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
+import           Data.Char                              (isSpace)
 import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
@@ -56,16 +57,13 @@ mkMGs conn apredata emTagger fp loaded = do
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = True
 
-  putStrLn "======================================================================================="
-  putStrLn "======================================================================================="
-  
-  
-  putStrLn filename
 
+  atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ("/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg" </> filename)
+  
+  
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     -- fchk <- doesFileExist ("/home/modori/data/meaning_graph/" ++ filename ++ "_" ++ (show i) ++ ".png")
     -- when (not fchk) $ do
-    putStrLn $ T.unpack $ mkTextFromToken mtks
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of
@@ -78,6 +76,12 @@ mkMGs conn apredata emTagger fp loaded = do
             let vertices = mg ^. mg_vertices
                 edges = mg ^. mg_edges
 
+            putStrLn "======================================================================================="
+
+            putStrLn ("filename : " ++ filename)
+            putStrLn ("title    : " ++ atctitle)
+            putStrLn ("descrip  : " ++ (T.unpack $ T.dropWhile isSpace $ mkTextFromToken mtks))
+            
             forM_ vertices $ \v -> do
               case v of
                 MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ v ^. mv_verb . _1)
@@ -86,22 +90,16 @@ mkMGs conn apredata emTagger fp loaded = do
             forM_ edges $ \e -> do
               putStrLn $ "MGEdge       :  " ++ (T.unpack (e ^. me_relation)) ++ "    " ++  (show $ e ^. me_start) ++ "    "  ++ (show $ e ^. me_end)
 
-            putStrLn "---------------------------------------------------------------------------------------"
-
-            {-
+            putStrLn "=======================================================================================\n"
             
+            {-          
             let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
-            -- putStrLn dotstr
+            putStrLn dotstr
             withCurrentDirectory "/home/modori/data/meaning_graph" $ do
               writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
               void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
             -}
-
-
-  putStrLn "======================================================================================="
-  putStrLn "======================================================================================="
-
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do

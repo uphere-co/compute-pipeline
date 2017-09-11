@@ -65,3 +65,11 @@ getDescription f = do
     case ea of
       Left  _ -> return ""
       Right a -> return (maybe "" id (_description a))
+
+getTitle :: FilePath -> IO Text
+getTitle fp = do
+  bstr <- B.readFile fp
+  let ea = eitherDecodeStrict bstr :: Either String SourceArticles
+  case ea of
+    Left  _ -> return ""
+    Right a -> return (maybe "" id (_title a))

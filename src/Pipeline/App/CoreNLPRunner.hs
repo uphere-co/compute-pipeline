@@ -80,6 +80,7 @@ runCoreNLPAndSave articles savepath = do
             saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
             uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
 
+{-
 -- | Load and Run
 -- This loads parsed result and runs NLP analysis. The result is printed on stdout.
 loadAndRunNLPAnalysis :: IO ()
@@ -96,6 +97,7 @@ loadAndRunNLPAnalysis = do
         lmass = sents ^.. traverse . sentenceLemma . to (map Lemma)
     mapM_ (print . (formatSentStructure True)) $ catMaybes $ map (sentStructure apredata) (zip3 ([0..] :: [Int]) lmass mptrs) -- (i,lmas,mptr))
     -- (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
+-}
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
