@@ -49,6 +49,7 @@ import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Load
 import           Pipeline.Operation.DB
 import           Pipeline.Run
+import           Pipeline.Type
 import           Pipeline.Util
 
 
@@ -77,8 +78,9 @@ runCoreNLPAndSave articles savepath = do
           Left  (e :: SomeException) -> return ()
           Right result               -> do
             saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
-            uploadAnalysis conn (mkNewsAPIAnalysisDB article)
+            uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
 
+{-
 -- | Load and Run
 -- This loads parsed result and runs NLP analysis. The result is printed on stdout.
 loadAndRunNLPAnalysis :: IO ()
@@ -95,12 +97,14 @@ loadAndRunNLPAnalysis = do
         lmass = sents ^.. traverse . sentenceLemma . to (map Lemma)
     mapM_ (print . (formatSentStructure True)) $ catMaybes $ map (sentStructure apredata) (zip3 ([0..] :: [Int]) lmass mptrs) -- (i,lmas,mptr))
     -- (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
+-}
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
 runCoreNLPforNewsAPISource :: String -> IO ()
 runCoreNLPforNewsAPISource src = do
   articles <- getTimeTitleDescFromSrcWithHash src
+  print $ length articles
   runCoreNLPAndSave articles "/home/modori/data/newsapianalyzed"
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.

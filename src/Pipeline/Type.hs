@@ -1,11 +1,17 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Pipeline.Type where
 
+import           Control.Lens
 import           Options.Applicative
 import           Data.Monoid                                ((<>))
 import           Data.Text                        (Text)
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
+import           NewsAPI.DB
+import qualified NewsAPI.DB.Article         as Ar
+import           NewsAPI.Type                     (NewsAPIAnalysisDB(..))
 --
 
 type SentIdx = Int
@@ -31,3 +37,21 @@ data TaggedResult = TaggedResult { resultSUTime :: T.ListTimex
                                  , resultNER :: [(Int,Int,String)]
                                  , resultDoc :: D.Document
                                  }
+
+
+data DoneAnalysis = DoneAnalysis
+  { _done_corenlp :: Maybe Bool
+  , _done_srl     :: Maybe Bool
+  , _done_ner     :: Maybe Bool
+  } deriving (Show)
+
+makeLenses ''DoneAnalysis
+
+mkNewsAPIAnalysisDB das article =
+  NewsAPIAnalysisDB { analysis_sha256 = Ar._sha256 article
+                    , analysis_source = Ar._source article
+                    , analysis_corenlp = das ^. done_corenlp
+                    , analysis_srl     = das ^. done_srl
+                    , analysis_ner     = das ^. done_ner
+                    , analysis_created = Ar._created article
+                    }

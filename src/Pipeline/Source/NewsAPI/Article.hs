@@ -66,10 +66,10 @@ getDescription f = do
       Left  _ -> return ""
       Right a -> return (maybe "" id (_description a))
 
-
-mkNewsAPIAnalysisDB article =
-  NewsAPIAnalysisDB { analysis_sha256 = (Ar._sha256 article)
-                    , analysis_source = (Ar._source article)
-                    , analysis_analysis = ("corenlp" :: T.Text)
-                    , analysis_created = (Ar._created article)
-                    }
+getTitle :: FilePath -> IO Text
+getTitle fp = do
+  bstr <- B.readFile fp
+  let ea = eitherDecodeStrict bstr :: Either String SourceArticles
+  case ea of
+    Left  _ -> return ""
+    Right a -> return (maybe "" id (_title a))

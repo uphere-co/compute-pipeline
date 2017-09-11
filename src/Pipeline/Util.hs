@@ -15,6 +15,7 @@ import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEither)
 import           Data.Attoparsec.Text             (parseOnly)
+import           Data.ByteString                  (ByteString)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
@@ -200,3 +201,6 @@ doesHashNameFileExistInPrefixSubDirs fp = do
   return b
 
 bstrHashToB16 bstr = (BL8.unpack . BL8.fromStrict . B16.encode) bstr
+
+unB16 :: String -> ByteString
+unB16 str = (fst . B16.decode . BL8.toStrict . BL8.pack) str
