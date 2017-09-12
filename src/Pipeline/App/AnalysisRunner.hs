@@ -34,6 +34,7 @@ import           WikiEL.EntityLinking                   (EntityMention)
 import           Pipeline.Load
 import           Pipeline.Operation.DB                  (getConnection)
 import           Pipeline.Run
+import           Pipeline.Run.SRL
 import           Pipeline.Run.WikiEL
 import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
@@ -47,9 +48,9 @@ mkMGs conn apredata emTagger fp loaded = do
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
       wikilst = SRLWiki.mkWikiList dstr
-      isNonFilter = True
+      isNonFilter = False
 
-  saveMG "/home/modori/temp/mgs" filename mgs
+  -- saveMG "/home/modori/temp/mgs" filename mgs
 
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     -- fchk <- doesFileExist ("/home/modori/data/meaning_graph/" ++ filename ++ "_" ++ (show i) ++ ".png")
@@ -61,7 +62,8 @@ mkMGs conn apredata emTagger fp loaded = do
         Just graph -> do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let mg = tagMG mg' wikilst
-            -- genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
+            mkARB mg
+            genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
             
 
