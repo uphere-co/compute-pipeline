@@ -6,9 +6,8 @@
 module Pipeline.App.AnalysisRunner where
 
 import           Control.Lens
-import           Control.Monad                          (forM_,void,when)
+import           Control.Monad                          (forM_,when)
 import qualified Data.Aeson                 as A
-import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Char                              (isSpace)
@@ -17,37 +16,43 @@ import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
 import           Database.PostgreSQL.Simple             (Connection)
-import           System.Directory                       (doesFileExist,withCurrentDirectory)
 import           System.FilePath                        ((</>),takeExtension,takeFileName)
-import           System.Process                         (readProcess)
-import           Text.Printf                            (printf)
 --
 import           MWE.Util
-import           NewsAPI.DB
-import qualified NewsAPI.DB.Analysis        as Analysis
 import           NLP.Type.CoreNLP
+import           NLP.Type.NamedEntity                   (NamedEntityClass)
 import           SRL.Analyze
-import           SRL.Analyze.Format                     (dotMeaningGraph)
 import           SRL.Analyze.Match                      (meaningGraph)
 import           SRL.Analyze.SentenceStructure          (docStructure)
 import           SRL.Analyze.Type
 import qualified SRL.Analyze.WikiEL         as SRLWiki
 import           SRL.Statistics
-import           Text.Format.Dot                        (mkLabelText)
 import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
-import           Pipeline.Operation.DB                  (getConnection)
 import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
-import           Pipeline.Util
 
+
+
+-- do we need this redundant function?
+wikiEL :: ([NERToken] -> [EntityMention w]) -> [Sentence] -> [EntityMention w]
 wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
 
+
+saveWikiEL :: (A.ToJSON a) => String -> a -> IO ()
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
 
-mkMGs conn apredata emTagger fp loaded = do
+
+-- conn is not used
+mkMGs :: Connection
+      -> AnalyzePredata
+      -> ([(Text,NamedEntityClass)] -> [EntityMention Text])
+      -> FilePath
+      -> DocAnalysisInput
+      -> IO ()
+mkMGs _conn apredata emTagger fp loaded = do
 
   let filename = takeFileName fp
       dstr = docStructure apredata emTagger loaded
@@ -59,9 +64,9 @@ mkMGs conn apredata emTagger fp loaded = do
 
 
   atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ("/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg" </> filename)
-  
-  
-  forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
+
+
+  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(_i,sstr,mtks,mg') -> do
     -- fchk <- doesFileExist ("/home/modori/data/meaning_graph/" ++ filename ++ "_" ++ (show i) ++ ".png")
     -- when (not fchk) $ do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
@@ -70,9 +75,9 @@ mkMGs conn apredata emTagger fp loaded = do
         Nothing -> return ()
         Just graph -> do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
-            let title = mkTextFromToken mtks  
+            let -- title = mkTextFromToken mtks
                 mg = tagMG mg' wikilst
-            
+
             let vertices = mg ^. mg_vertices
                 edges = mg ^. mg_edges
 
@@ -81,7 +86,7 @@ mkMGs conn apredata emTagger fp loaded = do
             putStrLn ("filename : " ++ filename)
             putStrLn ("title    : " ++ atctitle)
             putStrLn ("descrip  : " ++ (T.unpack $ T.dropWhile isSpace $ mkTextFromToken mtks))
-            
+
             forM_ vertices $ \v -> do
               case v of
                 MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ v ^. mv_verb . _1)
@@ -91,8 +96,8 @@ mkMGs conn apredata emTagger fp loaded = do
               putStrLn $ "MGEdge       :  " ++ (T.unpack (e ^. me_relation)) ++ "    " ++  (show $ e ^. me_start) ++ "    "  ++ (show $ e ^. me_end)
 
             putStrLn "=======================================================================================\n"
-            
-            {-          
+
+            {-
             let dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
             putStrLn dotstr
             withCurrentDirectory "/home/modori/data/meaning_graph" $ do
