@@ -6,21 +6,17 @@ import           Data.Aeson                        (eitherDecodeStrict)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B   
 import qualified Data.ByteString.Lazy.Char8 as L8  
-import           Data.Foldable                     (toList)
-import           Data.List                         (sort)
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T   
 import           Data.Time.Clock                   (UTCTime)
 import qualified Database.PostgreSQL.Simple as PGS 
 import           System.Directory                  (doesFileExist)
-import           System.Directory.Tree             (dirTree,readDirectoryWith)
-import           System.FilePath                   ((</>))
 --
 import           NewsAPI.DB
 import qualified NewsAPI.DB.Article         as Ar
 import           NewsAPI.Type
 --
-import           Pipeline.Operation.DB
+
 
 
 type NewsAPIArticleContent = (Text, Text, Text, Text)
