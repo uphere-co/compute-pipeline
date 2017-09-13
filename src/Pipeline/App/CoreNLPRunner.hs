@@ -53,12 +53,10 @@ import           Pipeline.Type
 import           Pipeline.Util
 
 
-runCoreNLPAndSave :: [Maybe (Ar.ArticleH,NewsAPIArticleContent)] -> FilePath -> IO ()
-runCoreNLPAndSave articles savepath = do
+storeParsedArticles :: [Maybe (Ar.ArticleH,NewsAPIArticleContent)] -> FilePath -> IO ()
+storeParsedArticles articles savepath = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
-
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -70,7 +68,7 @@ runCoreNLPAndSave articles savepath = do
                        . (ner .~ True)
                   )
     forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
-      -- (txt,xs) <- preRunForTaggingNE pp emTagger txt'
+      -- (txt,xs) <- preRunForTaggingNE pp emTagger txt' -- Necessary for pre-running of CoreNLP
       fchk <- doesHashNameFileExistInPrefixSubDirs (savepath </> (T.unpack hsh))
       when (not fchk) $ do
         eresult <- try $ runParser pp txt
@@ -80,32 +78,12 @@ runCoreNLPAndSave articles savepath = do
             saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
             uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
 
-{-
--- | Load and Run
--- This loads parsed result and runs NLP analysis. The result is printed on stdout.
-loadAndRunNLPAnalysis :: IO ()
-loadAndRunNLPAnalysis = do
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
-  let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-  fps <- getFileListRecursively "/home/modori/data/newsapianalyzed"
-  loaded' <- loadCoreNLPResult fps
-  putStrLn "Loading Completed."
-  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
-  forM_ loaded $ \(fp,x) -> do
-    let sents = x ^. dainput_sents
-        mptrs = x ^. dainput_mptrs
-        lmass = sents ^.. traverse . sentenceLemma . to (map Lemma)
-    mapM_ (print . (formatSentStructure True)) $ catMaybes $ map (sentStructure apredata) (zip3 ([0..] :: [Int]) lmass mptrs) -- (i,lmas,mptr))
-    -- (sentStructure sensemap sensestat framedb ontomap emTagger rolemap subcats x)
--}
-
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
 runCoreNLPforNewsAPISource :: String -> IO ()
 runCoreNLPforNewsAPISource src = do
   articles <- getTimeTitleDescFromSrcWithHash src
-  print $ length articles
-  runCoreNLPAndSave articles "/home/modori/data/newsapianalyzed"
+  storeParsedArticles articles "/home/modori/data/newsapianalyzed"
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.
 preRunForTaggingNE :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -116,5 +94,3 @@ preRunForTaggingNE pp emTagger txt = do
   let wikiel = getWikiResolvedMentions emTagger sents
       constraint = mkConstraintFromWikiEL wikiel
   getReplacedTextWithNewWikiEL sents constraint
-
-mkConstraintFromWikiEL wikiel = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ wikiel
