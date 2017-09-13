@@ -1,7 +1,9 @@
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.Run where
 
+import           Control.Concurrent.Async               (async,wait)
 import           Control.Lens
 import           Control.Monad                          (forM_,void)
 import qualified Data.Aeson                 as A
@@ -49,7 +51,8 @@ genMGFigs savedir i filename mtks mg = do
       dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
   
   withCurrentDirectory savedir $ do
-    writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
+    s <- async (writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr)
+    r <- wait s
     void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
 
 saveMG savedir filename mgs = do

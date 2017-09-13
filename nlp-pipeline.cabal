@@ -19,7 +19,7 @@ library
   hs-source-dirs: src
   build-depends:  base,
                   --
-                  aeson, attoparsec,
+                  aeson, async, attoparsec,
                   base16-bytestring, binary, bytestring,
                   containers,
                   data-default, directory, directory-tree, discrimination, distributed-process,

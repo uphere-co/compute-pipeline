@@ -1,8 +1,11 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.App.AnalysisRunner where
 
+import           Control.Concurrent.Async               (async,wait)
+import           Control.Exception                      (SomeException,try)
 import           Control.Lens
 import           Control.Monad                          (forM_,void,when)
 import qualified Data.Aeson                 as A
@@ -50,7 +53,7 @@ mkMGs conn apredata emTagger fp loaded = do
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
 
-  -- saveMG "/home/modori/temp/mgs" filename mgs
+  saveMG "/home/modori/temp/mgs" filename mgs
 
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
@@ -61,7 +64,7 @@ mkMGs conn apredata emTagger fp loaded = do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let mg = tagMG mg' wikilst
             mkARB mg
-            genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
+            -- genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
 runAnalysisAll :: Connection -> IO ()

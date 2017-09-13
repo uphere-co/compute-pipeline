@@ -62,7 +62,7 @@ runSRL conn = do
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   print $ length loaded
-  let (n :: Int) = ((length loaded) `div` 1)
+  let (n :: Int) = ((length loaded) `div` 15)
   forM_ (chunksOf n loaded) $ \ls -> do
     forkChild (runAnalysisByChunks conn emTagger apredata ls)
 
