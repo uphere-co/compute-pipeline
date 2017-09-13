@@ -11,11 +11,10 @@ import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
-import qualified Data.Text                  as T
 import           Database.PostgreSQL.Simple             (Connection)
 import           System.FilePath                        ((</>),takeExtension,takeFileName)
 --
-import           MWE.Util
+import           NewsAPI.DB
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
 import           SRL.Analyze
@@ -29,27 +28,19 @@ import           WikiEL.EntityLinking                   (EntityMention)
 import           Pipeline.Load
 import           Pipeline.Run
 import           Pipeline.Run.SRL
-import           Pipeline.Run.WikiEL
 import           Pipeline.Source.NewsAPI.Analysis
-import           Pipeline.Source.NewsAPI.Article
-
--- do we need this redundant function?
-wikiEL :: ([NERToken] -> [EntityMention w]) -> [Sentence] -> [EntityMention w]
-wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
-
+import           Pipeline.Util
 
 saveWikiEL :: (A.ToJSON a) => String -> a -> IO ()
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
 
-
--- conn is not used
 mkMGs :: Connection
       -> AnalyzePredata
       -> ([(Text,NamedEntityClass)] -> [EntityMention Text])
       -> FilePath
       -> DocAnalysisInput
       -> IO ()
-mkMGs _conn apredata emTagger fp loaded = do
+mkMGs conn apredata emTagger fp loaded = do
   let filename = takeFileName fp
       dstr = docStructure apredata emTagger loaded
       sstrs = catMaybes (dstr ^. ds_sentStructures)
@@ -60,7 +51,7 @@ mkMGs _conn apredata emTagger fp loaded = do
 
   -- saveMG "/home/modori/temp/mgs" filename mgs
 
-  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(_i,sstr,mtks,mg') -> do
+  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(_i,sstr,_,mg') -> do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of

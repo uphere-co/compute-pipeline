@@ -9,6 +9,7 @@ import           Data.List.Split                   (chunksOf)
 import           Data.Maybe                        (catMaybes)
 import           Data.Time.Clock                   (NominalDiffTime)
 import qualified Database.PostgreSQL.Simple as PGS
+import           SRL.Analyze                       (loadConfig)
 import           SRL.Analyze.Type                  (AnalyzePredata(..))
 import           System.FilePath                   ((</>))
 import           System.IO.Unsafe                  (unsafePerformIO)
