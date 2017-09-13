@@ -15,6 +15,7 @@ import qualified Data.Tree as Tr
 import           SRL.Analyze.Type
 import           SRL.Statistics
 
+
 isMGPredicate :: MGVertex -> Bool
 isMGPredicate (MGEntity {..}) = False
 isMGPredicate (MGPredicate {..}) = True

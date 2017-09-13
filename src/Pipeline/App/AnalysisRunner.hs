@@ -43,10 +43,10 @@ import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Util
 
-mkMGs conn apredata emTagger fp loaded = do
 
+mkMGs conn apredata emTagger fp article = do
   let filename = takeFileName fp
-      dstr = docStructure apredata emTagger loaded
+      dstr = docStructure apredata emTagger article
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
@@ -67,31 +67,23 @@ mkMGs conn apredata emTagger fp loaded = do
             -- genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
+
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-
-  as <- getAnalysisFilePathBySource "bloomberg"
+  as <- getAllAnalysisFilePath
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   flip mapM_ (take 100 loaded) $ \(fp,x) -> do
     mkMGs conn apredata emTagger fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
-    print $ wikiEL emTagger (x ^. dainput_sents)
+    -- print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysisByChunks :: Connection -> ([NERToken] -> [EntityMention Text])
                     -> AnalyzePredata -> [(FilePath,DocAnalysisInput)] -> IO ()
 runAnalysisByChunks conn emTagger apredata loaded = do
-  flip mapM_ loaded $ \(fp,x) -> do
-    mkMGs conn apredata emTagger fp x
+  flip mapM_ loaded $ \(fp,artl) -> do
+    mkMGs conn apredata emTagger fp artl
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
-
-runAnalysis :: IO ()
-runAnalysis = do
-  fps' <- getFileListRecursively "/home/modori/data/newsapianalyzed"
-  let fps = filter (\x -> takeExtension x == ".wiki") fps'
-  loaded <- loadWikiELResult fps
-  flip mapM_ loaded $ \(fp,x) -> do
-    print (fp,x)
