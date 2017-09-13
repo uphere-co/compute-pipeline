@@ -63,7 +63,9 @@ findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
 
       --attached grph vtx ^? ix 0
 
-findAgentTheme :: MeaningGraph -> Graph -> Vertex -> Maybe (Vertex, Vertex, Vertex)
+type ARB = (Vertex, Vertex, Vertex)
+
+findAgentTheme :: MeaningGraph -> Graph -> Vertex -> Maybe ARB
 findAgentTheme mg grph vtx = case (cnvtVtxToMGV mg vtx) of
   Nothing -> Nothing
   Just mv -> case (isMGPredicate mv) of
