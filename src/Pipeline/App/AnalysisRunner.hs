@@ -48,13 +48,11 @@ mkMGs conn apredata emTagger fp loaded = do
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
       wikilst = SRLWiki.mkWikiList dstr
-      isNonFilter = True
+      isNonFilter = False
 
   -- saveMG "/home/modori/temp/mgs" filename mgs
 
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
-    -- fchk <- doesFileExist ("/home/modori/data/meaning_graph/" ++ filename ++ "_" ++ (show i) ++ ".png")
-    -- when (not fchk) $ do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of
@@ -65,7 +63,6 @@ mkMGs conn apredata emTagger fp loaded = do
             mkARB mg
             genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
-            
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do

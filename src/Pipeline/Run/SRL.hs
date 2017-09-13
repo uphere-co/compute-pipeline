@@ -4,7 +4,6 @@
 
 module Pipeline.Run.SRL where
 
-
 import           Control.Lens     ((^.),(^..),(^?),_1,_2,_3,ix)
 import           Data.Graph
 import           Data.List        (find)
@@ -61,8 +60,6 @@ findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
                    agent = fmap (\x -> (x ^. _2, x ^. _3)) agent'
                in agent
 
-      --attached grph vtx ^? ix 0
-
 type ARB = (Vertex, Vertex, Vertex)
 
 findAgentTheme :: MeaningGraph -> Graph -> Vertex -> Maybe ARB
@@ -75,9 +72,6 @@ findAgentTheme mg grph vtx = case (cnvtVtxToMGV mg vtx) of
                    agent = fmap (^. _3) $ find (\(t,i,j) -> t == "Agent") rels
                    theme = fmap (^. _3) $ find (\(t,i,j) -> t == "Theme") rels
                in ((,,) <$> agent <*> Just vtx <*> theme)
-
-
-      -- (,) <$> Just vtx <*> (attached grph vtx ^? ix 0)
 
 attached :: Graph -> Vertex -> [Vertex]
 attached grph vtx =
@@ -97,9 +91,6 @@ mkARB mg = do
           agents = catMaybes $ map (\vtx -> findAgentTheme mg graph vtx) mgpredvtxs
           vertices = mg ^. mg_vertices
           agentsName = map (\(v1,v2,v3) -> (,,) <$> findLabel vertices v1 <*> findLabel vertices v2 <*> findLabel vertices v3) agents
-          reachList = map (\v -> reachable graph v) mgpredvtxs
-          testagent = catMaybes $ map (\vtx -> findAgent mg graph vtx) mgpredvtxs
       case agentsName of
         [] -> return ()
         an -> print an
---      print $ map (\xs -> map (\x -> map (\g -> findLabel g x) (mg ^. mg_vertices)) xs) reachList
