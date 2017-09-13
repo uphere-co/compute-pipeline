@@ -53,8 +53,12 @@ mkMGs conn apredata emTagger fp article = do
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
 
-  saveMG "/home/modori/temp/mgs" filename mgs
+  fchk <- doesHashNameFileExistInPrefixSubDirs ("/home/modori/temp/mgs" </> filename)
+  when (not fchk) $ do
+    saveMG "/home/modori/temp/mgs" filename mgs
+    updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
+  {-
   forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
@@ -66,7 +70,7 @@ mkMGs conn apredata emTagger fp article = do
             mkARB mg
             -- genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
-
+  -}
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do

@@ -48,17 +48,17 @@ runDaemon = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
   
   -- runCoreNLPAll
-  runSRL conn
+  runSRL conn "bloomberg"
 
   closeConnection conn
     
 -- | This does SRL and generates meaning graphs.
-runSRL :: PGS.Connection -> IO ()
-runSRL conn = do
+runSRL :: PGS.Connection -> String -> IO ()
+runSRL conn src = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
 
-  as <- getAnalysisFilePathBySource "bloomberg"
+  as <- getAnalysisFilePathBySource src
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   print $ length loaded
