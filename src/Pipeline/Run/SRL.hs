@@ -38,9 +38,17 @@ findAgent :: MeaningGraph -> Graph -> Vertex -> Maybe Vertex
 findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
   Nothing -> Nothing
   Just mv -> case (isMGPredicate mv) of
-    False -> Nothing
-    True  -> attached grph vtx ^? ix 0
+    False   -> Nothing
+    True    -> attached grph vtx ^? ix 0
 
+findAgentTheme :: MeaningGraph -> Graph -> Vertex -> Maybe (Vertex, Vertex)
+findAgentTheme mg grph vtx = case (cnvtVtxToMGV mg vtx) of
+  Nothing -> Nothing
+  Just mv -> case (isMGPredicate mv) of
+    False   -> Nothing
+    True    -> (,) <$> Just vtx <*> (attached grph vtx ^? ix 0)
+
+      
 attached :: Graph -> Vertex -> [Vertex]
 attached grph vtx =
   let lnodes = concat $ fmap Tr.levels $ dfs grph [vtx]
@@ -55,5 +63,8 @@ mkARB mg = do
     Nothing    -> print ""
     Just graph -> do
       let mgpred = filter isMGPredicate (mg ^. mg_vertices)
-          reachList = map (\v -> reachable graph v) (mgpred ^.. traverse . mv_id)
-      print $ map (\xs -> map (\x -> map (\g -> findLabel g x) (mg ^. mg_vertices)) xs) reachList
+          mgpredvtxs = (mgpred ^.. traverse . mv_id)
+          agents = map (\vtx -> findAgentTheme mg graph vtx) mgpredvtxs
+          reachList = map (\v -> reachable graph v) mgpredvtxs
+      print agents
+--      print $ map (\xs -> map (\x -> map (\g -> findLabel g x) (mg ^. mg_vertices)) xs) reachList
