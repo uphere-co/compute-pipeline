@@ -3,7 +3,7 @@
 module Pipeline.Run.SRL where
 
 
-import           Control.Lens
+import           Control.Lens     ((^.),(^..),(^?),ix)
 import           Data.Graph
 import           Data.List        (find)
 import           Data.Text        (Text)
@@ -20,6 +20,12 @@ isMGPredicate (MGPredicate {..}) = True
 isMGEntity :: MGVertex -> Bool
 isMGEntity = (not . isMGPredicate)
 
+cnvtVtxToMGV :: MeaningGraph -> Vertex -> Maybe MGVertex 
+cnvtVtxToMGV mg vtx =
+  let vertices = (mg ^. mg_vertices)
+      mv = find (\x -> (x ^. mv_id) == vtx) vertices
+  in mv
+  
 findLabel :: MGVertex -> Int -> Maybe Text
 findLabel mv i =
   if ((mv ^. mv_id) == i)
@@ -28,10 +34,12 @@ findLabel mv i =
     v@(MGPredicate {..}) -> Just (v ^. mv_frame)
   else Nothing
 
-findAgent :: MGVertex -> Maybe MGVertex
-findAgent mv = case (isMGPredicate mv) of
-  False -> Nothing
-  True  -> Nothing
+findAgent :: MeaningGraph -> Graph -> Vertex -> Maybe Vertex
+findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
+  Nothing -> Nothing
+  Just mv -> case (isMGPredicate mv) of
+    False -> Nothing
+    True  -> attached grph vtx ^? ix 0
 
 attached :: Graph -> Vertex -> [Vertex]
 attached grph vtx =
