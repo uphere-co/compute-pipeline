@@ -68,7 +68,7 @@ addText txt (n,(b,e)) = (n,(b,e),slice (b-1) e txt)
 
 addTag :: [TagPos a] -> SentItem -> (SentItem,[TagPos a])
 addTag lst i@(_,(b,e),_) = (i,filter check lst)
-  where check (b',e',_) = b' >= b && e' <= e 
+  where check (b',e',_) = b' >= b && e' <= e
 
 addNER :: [SentItem]
        -> [TagPos String]
@@ -95,7 +95,7 @@ simpleMap p = case p of
   NNS  -> Just POS_N
   NNP  -> Just POS_N
   NNPS -> Just POS_N
-  VB   -> Just POS_V  
+  VB   -> Just POS_V
   VBZ  -> Just POS_V
   VBP  -> Just POS_V
   VBD  -> Just POS_V
@@ -153,7 +153,7 @@ getTemporal ann = do
     Right r -> print (T._timexes $ fst r)
 
 extractPOS :: Text -> WordNet.POS
-extractPOS txt = case (T.last txt) of 
+extractPOS txt = case (T.last txt) of
   'n' -> POS_N
   'v' -> POS_V
   'a' -> POS_A
@@ -174,24 +174,31 @@ getSents' txt pp = do
       return (Just sents)
 
 
+saveHashNameBSFileInPrefixSubDirs :: FilePath -> ByteString -> IO ()
 saveHashNameBSFileInPrefixSubDirs fp file = do
   let hsh       = takeFileName fp
       storepath = takeDirectory fp
       prefix    = take 2 hsh
-      
+
   withCurrentDirectory storepath $ do
     createDirectoryIfMissing True prefix
     B.writeFile (storepath </> prefix </> hsh) file
 
+
+-- this function is tiresome duplication.
+saveHashNameTextFileInPrefixSubDirs :: FilePath -> Text -> IO ()
 saveHashNameTextFileInPrefixSubDirs fp file = do
+  -- this must be refactored.
   let hsh       = takeFileName fp
       storepath = takeDirectory fp
       prefix    = take 2 hsh
-      
+  -- up to here
   withCurrentDirectory storepath $ do
     createDirectoryIfMissing True prefix
     TIO.writeFile (storepath </> prefix </> hsh) file
 
+
+doesHashNameFileExistInPrefixSubDirs :: FilePath -> IO Bool
 doesHashNameFileExistInPrefixSubDirs fp = do
   let hsh       = takeFileName fp
       storepath = takeDirectory fp
@@ -200,7 +207,10 @@ doesHashNameFileExistInPrefixSubDirs fp = do
   b <- doesFileExist (storepath </> prefix </> hsh)
   return b
 
+
+bstrHashToB16 :: ByteString -> String
 bstrHashToB16 bstr = (BL8.unpack . BL8.fromStrict . B16.encode) bstr
 
+
 unB16 :: String -> ByteString
-unB16 str = (fst . B16.decode . BL8.toStrict . BL8.pack) str
+unB16 = fst . B16.decode . BL8.toStrict . BL8.pack
