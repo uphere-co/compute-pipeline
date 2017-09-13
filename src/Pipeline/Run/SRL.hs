@@ -8,6 +8,7 @@ import           Data.Graph
 import           Data.List        (find)
 import           Data.Text        (Text)
 import qualified Data.Text as T
+import qualified Data.Tree as Tr
 --
 import           SRL.Analyze.Type
 import           SRL.Statistics
@@ -33,7 +34,12 @@ findAgent mv = case (isMGPredicate mv) of
   True  -> Nothing
 
 attached :: Graph -> Vertex -> [Vertex]
-attached grph vtx = dfs grph [vtx] 
+attached grph vtx =
+  let lnodes = concat $ fmap Tr.levels $ dfs grph [vtx]
+      mlnode = drop 1 lnodes
+  in case mlnode of
+    []    -> []
+    lnode -> head lnode
 
 mkARB mg = do
   let mgraph = getGraphFromMG mg
