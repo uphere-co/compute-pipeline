@@ -1,10 +1,11 @@
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.Run.SRL where
 
 
-import           Control.Lens     ((^.),(^..),(^?),ix)
+import           Control.Lens     ((^.),(^..),(^?),_1,_2,_3,ix)
 import           Data.Graph
 import           Data.List        (find)
 import           Data.Maybe       (catMaybes,isNothing)
@@ -27,7 +28,20 @@ cnvtVtxToMGV mg vtx =
   let vertices = (mg ^. mg_vertices)
       mv = find (\x -> (x ^. mv_id) == vtx) vertices
   in mv
-  
+
+cnvtEdgToMGE :: MeaningGraph -> Edge -> Maybe MGEdge
+cnvtEdgToMGE mg edg =
+  let edges = (mg ^. mg_edges)
+      me = find (\x -> (x ^. me_start) == (fst edg) && (x ^. me_end) == (snd edg)) edges
+  in me
+
+findRel :: [MGEdge] -> Int -> Int -> Maybe Text
+findRel mes i j =
+  let mr = find (\me -> (me ^. me_start) == i && (me ^. me_end) == j) mes
+  in case mr of
+    Nothing -> Nothing
+    Just e  -> Just (e ^. me_relation)
+
 findLabel :: [MGVertex] -> Int -> Maybe Text
 findLabel mvs i =
   let mr = find (\mv -> (mv ^. mv_id) == i) mvs
@@ -36,19 +50,32 @@ findLabel mvs i =
     Just (v@(MGEntity {..}))    -> Just (v ^. mv_text)
     Just (v@(MGPredicate {..})) -> Just (v ^. mv_frame)
 
-findAgent :: MeaningGraph -> Graph -> Vertex -> Maybe Vertex
+findAgent :: MeaningGraph -> Graph -> Vertex -> Maybe Edge
 findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
   Nothing -> Nothing
   Just mv -> case (isMGPredicate mv) of
     False   -> Nothing
-    True    -> attached grph vtx ^? ix 0
+    True    -> let children = attached grph vtx
+                   rels = catMaybes $ map (\n -> (,,) <$> findRel (mg ^. mg_edges) vtx n <*> Just vtx <*> Just n) children
+                   agent' = find (\(t,i,j) -> t == "Agent") rels
+                   agent = fmap (\x -> (x ^. _2, x ^. _3)) agent'
+               in agent
 
-findAgentTheme :: MeaningGraph -> Graph -> Vertex -> Maybe (Vertex, Vertex)
+      --attached grph vtx ^? ix 0
+
+findAgentTheme :: MeaningGraph -> Graph -> Vertex -> Maybe (Vertex, Vertex, Vertex)
 findAgentTheme mg grph vtx = case (cnvtVtxToMGV mg vtx) of
   Nothing -> Nothing
   Just mv -> case (isMGPredicate mv) of
     False   -> Nothing
-    True    -> (,) <$> Just vtx <*> (attached grph vtx ^? ix 0)
+    True    -> let children = attached grph vtx
+                   rels = catMaybes $ map (\n -> (,,) <$> findRel (mg ^. mg_edges) vtx n <*> Just vtx <*> Just n) children
+                   agent = fmap (^. _3) $ find (\(t,i,j) -> t == "Agent") rels
+                   theme = fmap (^. _3) $ find (\(t,i,j) -> t == "Theme") rels
+               in ((,,) <$> agent <*> Just vtx <*> theme)
+
+
+      -- (,) <$> Just vtx <*> (attached grph vtx ^? ix 0)
 
 attached :: Graph -> Vertex -> [Vertex]
 attached grph vtx =
@@ -67,7 +94,10 @@ mkARB mg = do
           mgpredvtxs = (mgpred ^.. traverse . mv_id)
           agents = catMaybes $ map (\vtx -> findAgentTheme mg graph vtx) mgpredvtxs
           vertices = mg ^. mg_vertices
-          agentsName = map (\(v1,v2) -> (,) <$> findLabel vertices v1 <*> findLabel vertices v2) agents
+          agentsName = map (\(v1,v2,v3) -> (,,) <$> findLabel vertices v1 <*> findLabel vertices v2 <*> findLabel vertices v3) agents
           reachList = map (\v -> reachable graph v) mgpredvtxs
-      print agentsName
+          testagent = catMaybes $ map (\vtx -> findAgent mg graph vtx) mgpredvtxs
+      case agentsName of
+        [] -> return ()
+        an -> print an
 --      print $ map (\xs -> map (\x -> map (\g -> findLabel g x) (mg ^. mg_vertices)) xs) reachList

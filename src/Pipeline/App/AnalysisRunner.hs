@@ -48,7 +48,7 @@ mkMGs conn apredata emTagger fp loaded = do
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
       wikilst = SRLWiki.mkWikiList dstr
-      isNonFilter = False
+      isNonFilter = True
 
   -- saveMG "/home/modori/temp/mgs" filename mgs
 
@@ -62,8 +62,6 @@ mkMGs conn apredata emTagger fp loaded = do
         Just graph -> do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let mg = tagMG mg' wikilst
-            print $ mkTextFromToken mtks
-            print mg
             mkARB mg
             genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
