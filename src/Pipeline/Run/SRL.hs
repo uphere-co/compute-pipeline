@@ -19,14 +19,22 @@ isMGPredicate (MGPredicate {..}) = True
 isMGEntity :: MGVertex -> Bool
 isMGEntity = (not . isMGPredicate)
 
-findLabel :: [MGVertex] -> Int -> Maybe Text
-findLabel mgvs i =
-  let mr = find (\t -> (t ^. mv_id) == i) mgvs
-  in case mr of
-    Nothing -> Nothing
-    Just v@(MGEntity {..})    -> Just (v ^. mv_text)
-    Just v@(MGPredicate {..}) -> Just (v ^. mv_frame)
-    
+findLabel :: MGVertex -> Int -> Maybe Text
+findLabel mv i =
+  if ((mv ^. mv_id) == i)
+  then case mv of
+    v@(MGEntity {..})    -> Just (v ^. mv_text)
+    v@(MGPredicate {..}) -> Just (v ^. mv_frame)
+  else Nothing
+
+findAgent :: MGVertex -> Maybe MGVertex
+findAgent mv = case (isMGPredicate mv) of
+  False -> Nothing
+  True  -> Nothing
+
+attached :: Graph -> Vertex -> [Vertex]
+attached grph vtx = dfs grph [vtx] 
+
 mkARB mg = do
   let mgraph = getGraphFromMG mg
   case mgraph of
@@ -34,4 +42,4 @@ mkARB mg = do
     Just graph -> do
       let mgpred = filter isMGPredicate (mg ^. mg_vertices)
           reachList = map (\v -> reachable graph v) (mgpred ^.. traverse . mv_id)
-      print $ map (\xs -> map (\x -> findLabel (mg ^. mg_vertices) x) xs) reachList
+      print $ map (\xs -> map (\x -> map (\g -> findLabel g x) (mg ^. mg_vertices)) xs) reachList
