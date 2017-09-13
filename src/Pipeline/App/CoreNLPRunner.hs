@@ -18,35 +18,22 @@ import           Data.Maybe
 import           Data.Text                                    (Text)
 import qualified Data.Text                             as T
 import           Language.Java                         as J
-import           System.Directory                             (doesFileExist)
+
 import           System.Environment                           (getEnv)
 import           System.FilePath                              ((</>))
 --
-import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
-import qualified CoreNLP.Proto.CoreNLPProtos.Sentence  as S
-import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import           CoreNLP.Simple
-import           CoreNLP.Simple.Convert
 import           CoreNLP.Simple.Type
-import           CoreNLP.Simple.Util
 import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysis)
 import qualified NewsAPI.DB.Article                    as Ar
 import           NLP.Type.CoreNLP
-import           NLP.Type.PennTreebankII
-import           SRL.Analyze
+
 import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
-import           SRL.Analyze.Format
-import           SRL.Analyze.SentenceStructure
-import           SRL.Analyze.Type
-import           SRL.Analyze.Util
-import           Text.ProtocolBuffers.WireMessage             (messageGet)
 import           WikiEL.EntityLinking
 import           WikiEL.Misc
 --
-import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.NewsAPI.Article
-import           Pipeline.Load
 import           Pipeline.Operation.DB
 import           Pipeline.Run.WikiEL
 import           Pipeline.Type
@@ -73,7 +60,7 @@ storeParsedArticles articles savepath = do
       when (not fchk) $ do
         eresult <- try $ runParser pp txt
         case eresult of
-          Left  (e :: SomeException) -> return ()
+          Left  (_e :: SomeException) -> return ()
           Right result               -> do
             saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
             uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)

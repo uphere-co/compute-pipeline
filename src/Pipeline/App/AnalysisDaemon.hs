@@ -4,41 +4,24 @@
 module Pipeline.App.AnalysisDaemon where
 
 import           Control.Concurrent
-import           Control.Concurrent.STM
-import           Control.Distributed.Process
-import qualified Control.Distributed.Process as Cloud
-import           Control.Distributed.Process.Node
-import           Control.Exception
-import           Control.Monad           (forever,forM,forM_,void)
-import           Control.Monad.Trans.Class (lift)
-import qualified Data.Binary             as Bi
-import           Data.ByteString         (ByteString)
-import qualified Data.ByteString         as B
-import qualified Data.ByteString.Lazy    as BL
-import qualified Data.ByteString.Char8   as B8
-import           Data.List.Split              (chunksOf)
-import           Data.Maybe                   (catMaybes)
-import           Data.Text                    (Text)
-import qualified Data.Text               as T
-import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
+import           Control.Monad                     (forM,forM_)
+import           Data.List.Split                   (chunksOf)
+import           Data.Maybe                        (catMaybes)
+import           Data.Time.Clock                   (NominalDiffTime)
 import qualified Database.PostgreSQL.Simple as PGS
-import           Network.Transport
-import           SRL.Analyze
+import           SRL.Analyze                       (loadConfig)
 import           SRL.Analyze.Type                  (AnalyzePredata(..))
-import           System.Environment
 import           System.FilePath                   ((</>))
 import           System.IO.Unsafe                  (unsafePerformIO)
 import           System.Process
-import           Control.Distributed.Process.Node
 --
-import           Network.Util
 import           NewsAPI.Type
 --
 import           Pipeline.App.AnalysisRunner
 import           Pipeline.Load
 import           Pipeline.Operation.DB
 import           Pipeline.Source.NewsAPI.Analysis
-import           Pipeline.Source.NewsAPI.Article
+
 
 nominalDay :: NominalDiffTime
 nominalDay = 86400

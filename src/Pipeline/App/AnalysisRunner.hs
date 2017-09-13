@@ -7,25 +7,19 @@ module Pipeline.App.AnalysisRunner where
 import           Control.Concurrent.Async               (async,wait)
 import           Control.Exception                      (SomeException,try)
 import           Control.Lens
-import           Control.Monad                          (forM_,void,when)
+import           Control.Monad                          (forM_,when)
 import qualified Data.Aeson                 as A
-import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
-import qualified Data.Text                  as T
 import           Database.PostgreSQL.Simple             (Connection)
-import           System.Directory                       (doesFileExist)
 import           System.FilePath                        ((</>),takeExtension,takeFileName)
-import           System.Process                         (readProcess)
-import           Text.Printf                            (printf)
 --
-import           MWE.Util
 import           NewsAPI.DB
-import qualified NewsAPI.DB.Analysis        as Analysis
 import           NLP.Type.CoreNLP
+import           NLP.Type.NamedEntity                   (NamedEntityClass)
 import           SRL.Analyze
 import           SRL.Analyze.Match                      (meaningGraph)
 import           SRL.Analyze.SentenceStructure          (docStructure)
@@ -35,15 +29,18 @@ import           SRL.Statistics
 import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
-import           Pipeline.Operation.DB                  (getConnection)
 import           Pipeline.Run
 import           Pipeline.Run.SRL
-import           Pipeline.Run.WikiEL
 import           Pipeline.Source.NewsAPI.Analysis
-import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Util
 
 
+mkMGs :: Connection
+      -> AnalyzePredata
+      -> ([(Text,NamedEntityClass)] -> [EntityMention Text])
+      -> FilePath
+      -> DocAnalysisInput
+      -> IO ()
 mkMGs conn apredata emTagger fp article = do
   let filename = takeFileName fp
       dstr = docStructure apredata emTagger article
@@ -59,7 +56,7 @@ mkMGs conn apredata emTagger fp article = do
     updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
   {-
-  forM_ (zip4 [1..] sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
+  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(_i,sstr,_,mg') -> do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of

@@ -5,13 +5,15 @@ module Pipeline.Type where
 
 import           Control.Lens
 import           Options.Applicative
-import           Data.Monoid                                ((<>))
-import           Data.Text                        (Text)
+import           Data.ByteString.Char8                       (ByteString)
+import           Data.Monoid                                 ((<>))
+import           Data.Text                                   (Text)
+import           Data.Time.Clock                             (UTCTime)
+--
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
-import           NewsAPI.DB
-import qualified NewsAPI.DB.Article         as Ar
-import           NewsAPI.Type                     (NewsAPIAnalysisDB(..))
+import qualified NewsAPI.DB.Article                    as Ar
+import           NewsAPI.Type                                (NewsAPIAnalysisDB(..))
 --
 
 type SentIdx = Int
@@ -47,6 +49,7 @@ data DoneAnalysis = DoneAnalysis
 
 makeLenses ''DoneAnalysis
 
+mkNewsAPIAnalysisDB :: DoneAnalysis -> Ar.ArticleP a ByteString Text UTCTime -> NewsAPIAnalysisDB
 mkNewsAPIAnalysisDB das article =
   NewsAPIAnalysisDB { analysis_sha256 = Ar._sha256 article
                     , analysis_source = Ar._source article

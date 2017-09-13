@@ -7,7 +7,7 @@
 , HWordNet              ? <HWordNet>
 , lexicon               ? <lexicon>
 , multi-word-tagger     ? <multi-word-tagger>
-, nlp-pipeline          ? <nlp-pipeline>
+#, nlp-pipeline          ? <nlp-pipeline>
 , nlp-shared-types      ? <nlp-shared-types>
 , nlp-types             ? <nlp-types>
 , OntoNotes             ? <OntoNotes>
@@ -55,7 +55,7 @@ let
       "HWordNet" = self.callPackage (import HWordNet) {};
       "lexicon" = self.callPackage (import lexicon) {};
       "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
-      "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
+      "network-util" = self.callPackage (import ./nlp-query/network-util) {};
       "newsapi" = self.callPackage (import (fetchfin + "/newsapi")) {};
       "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
       "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};      
@@ -95,6 +95,9 @@ let
             opaleye
             optparse-applicative
             postgresql-simple
+            servant
+            servant-client
+            servant-server
             transformers
             yaml
             yayaml
