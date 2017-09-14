@@ -23,19 +23,11 @@ import           WikiEL.EntityLinking
 --
 import           Pipeline.App.AnalysisRunner
 import           Pipeline.Load
+import           Pipeline.Operation.Concurrent
 import           Pipeline.Operation.DB
 import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Util
 
-nominalDay :: NominalDiffTime
-nominalDay = 86400
-
-batchCoreNLP :: IO ()
-batchCoreNLP = do
-  forM_ (chunksOf (length prestigiousNewsSource) prestigiousNewsSource) $ \ns -> do
-    phs <- forM ns $ \n -> do
-      spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n]
-    forM_ phs $ \ph -> waitForProcess ph
 
 runDaemon :: IO ()
 runDaemon = do
@@ -43,7 +35,6 @@ runDaemon = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   forever $ do
-    runCoreNLPAll
     forM_ prestigiousNewsSource $ \src -> do
       runSRL conn apredata emTagger src
     putStrLn "Waiting next run..."
@@ -64,38 +55,9 @@ runSRL conn apredata emTagger src = do
 
   waitForChildren
   refreshChildren
-  
-runCoreNLPAll :: IO ()
-runCoreNLPAll = do
-  forM_ (chunksOf (length prestigiousNewsSource) prestigiousNewsSource) $ \ns -> do
-    phs <- forM ns $ \n -> do
-      spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n]
-    forM_ phs $ \ph -> waitForProcess ph
 
 runCoreNLP :: String -> IO ()
 runCoreNLP src = do
   ph <- spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [src]
   waitForProcess ph
   return ()
-
-refreshChildren = putMVar children []
-
-children :: MVar [MVar ()]
-children = unsafePerformIO (newMVar [])
-
-waitForChildren :: IO ()
-waitForChildren = do
-  cs <- takeMVar children
-  case cs of
-    []   -> return ()
-    m:ms -> do
-       putMVar children ms
-       takeMVar m
-       waitForChildren
-
-forkChild :: IO () -> IO ThreadId
-forkChild io = do
-  mvar <- newEmptyMVar
-  childs <- takeMVar children
-  putMVar children (mvar:childs)
-  forkFinally io (\_ -> putMVar mvar ())

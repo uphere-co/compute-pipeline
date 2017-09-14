@@ -8,7 +8,7 @@ import           Options.Applicative
 import           Data.ByteString.Char8                       (ByteString)
 import           Data.Monoid                                 ((<>))
 import           Data.Text                                   (Text)
-import           Data.Time.Clock                             (UTCTime)
+import           Data.Time.Clock                             (NominalDiffTime,UTCTime)
 --
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
@@ -67,3 +67,6 @@ mkNewsAPIArticleErrorDB article =
                         , article_error_created = Ar._created article
                         }
 
+
+nominalDay :: NominalDiffTime
+nominalDay = 86400
