@@ -30,22 +30,29 @@ import           Pipeline.Util
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
+batchCoreNLP :: IO ()
+batchCoreNLP = do
+  forM_ (chunksOf (length prestigiousNewsSource) prestigiousNewsSource) $ \ns -> do
+    phs <- forM ns $ \n -> do
+      spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n]
+    forM_ phs $ \ph -> waitForProcess ph
+
 runDaemon :: IO ()
 runDaemon = do
---  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
+  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   forever $ do
     runCoreNLPAll
     forM_ prestigiousNewsSource $ \src -> do
-      runSRL apredata emTagger src
+      runSRL conn apredata emTagger src
     putStrLn "Waiting next run..."
     threadDelay 10000000
---  closeConnection conn
+  closeConnection conn
     
 -- | This does SRL and generates meaning graphs.
-runSRL :: AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> String -> IO ()
-runSRL apredata emTagger src = do
+runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> String -> IO ()
+runSRL conn apredata emTagger src = do
   as' <- getAnalysisFilePathBySource src
   as <- filterM (\a -> fmap not $ doesFileExist (addExtension ("/home/modori/temp/mgs" </> a) "mgs")) as'
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
@@ -53,7 +60,7 @@ runSRL apredata emTagger src = do
   print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` 15) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
-    forkChild (runAnalysisByChunks emTagger apredata ls)
+    forkChild (runAnalysisByChunks conn emTagger apredata ls)
 
   waitForChildren
   refreshChildren

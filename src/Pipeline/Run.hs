@@ -62,4 +62,3 @@ saveMG savedir filename mgs = do
 
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
 wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
-
