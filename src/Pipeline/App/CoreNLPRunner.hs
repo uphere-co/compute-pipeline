@@ -29,6 +29,7 @@ import           NewsAPI.DB                                   (uploadAnalysis)
 import qualified NewsAPI.DB.Article                    as Ar
 import           NLP.Type.CoreNLP
 
+import           SRL.Analyze                                  (loadConfig)
 import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
 import           WikiEL.EntityLinking
 import           WikiEL.Misc

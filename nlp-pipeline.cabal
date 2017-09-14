@@ -41,7 +41,7 @@ library
                   network-util, newsapi, newsapi-db, nlp-shared-types, nlp-types, nyt-scrapper, nyt-db,
                   OntoNotes,
                   predicate-matrix, PropBank,
-                  semantic-role-labeler,
+                  semantic-role-labeler, syntactic-analysis,
                   time-tagger,
                   unordered-containers,
                   wiki-ner,

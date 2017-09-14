@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -16,6 +17,7 @@ import           System.FilePath                        ((</>),addExtension)
 import           System.Process                         (readProcess)
 --
 import           MWE.Util                               (mkTextFromToken)
+import           NLP.Syntax.Type.Verb
 import           SRL.Analyze.Format                     (dotMeaningGraph)
 import           SRL.Analyze.Type
 import           Text.Format.Dot                        (mkLabelText)
@@ -38,7 +40,7 @@ showTextMG mg filename (i,sstr,mtks,mg') = do
 
   forM_ vertices $ \v -> do
     case v of
-      MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ v ^. mv_verb . _1)
+      MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ T.intercalate " " $ v ^. mv_verb . vp_words ^.. traverse . to (^. _1)) 
       MGEntity    {..} -> putStrLn $ "MGEntity    :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_text))
 
   forM_ edges $ \e -> do
