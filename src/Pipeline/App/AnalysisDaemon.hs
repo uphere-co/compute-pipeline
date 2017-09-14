@@ -30,8 +30,10 @@ runDaemon :: IO ()
 runDaemon = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
   
-  -- runCoreNLPAll
-  runSRL conn "bloomberg"
+  runCoreNLPAll
+  
+  forM_ prestigiousNewsSource $ \src -> do
+    runSRL conn src
 
   closeConnection conn
     
@@ -50,10 +52,11 @@ runSRL conn src = do
     forkChild (runAnalysisByChunks conn emTagger apredata ls)
 
   waitForChildren
+  refreshChildren
   
 runCoreNLPAll :: IO ()
 runCoreNLPAll = do
-  forM_ (chunksOf 3 newsSourceList) $ \ns -> do
+  forM_ (chunksOf 3 prestigiousNewsSource) $ \ns -> do
     phs <- forM ns $ \n -> do
       spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n]
     forM_ phs $ \ph -> waitForProcess ph
@@ -63,6 +66,8 @@ runCoreNLP src = do
   ph <- spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [src]
   waitForProcess ph
   return ()
+
+refreshChildren = putMVar children []
 
 children :: MVar [MVar ()]
 children = unsafePerformIO (newMVar [])
