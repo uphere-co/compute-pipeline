@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TupleSections       #-}
 
-module Pipeline.App.CoreNLPRunner where
+module Pipeline.Run.CoreNLP where
 
 import           Control.Exception                            (SomeException,try)
 import           Control.Lens
@@ -17,7 +17,6 @@ import           Data.Default
 import           Data.Maybe
 import           Data.Text                                    (Text)
 import qualified Data.Text                             as T
-import qualified Database.PostgreSQL.Simple            as PGS
 import           Language.Java                         as J
 
 import           System.Environment                           (getEnv)
@@ -65,7 +64,7 @@ storeParsedArticles articles savepath errorpath = do
           Right result                -> do
             saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
             uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
-  PGS.close conn
+  closeConnection conn
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.

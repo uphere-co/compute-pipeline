@@ -49,12 +49,12 @@ library
   exposed-modules: Pipeline.App.AnalysisDaemon
                    Pipeline.App.AnalysisRunner
                    Pipeline.App.CoreNLPBatch
-                   Pipeline.App.CoreNLPRunner
                    Pipeline.Load
                    Pipeline.Operation.Concurrent
                    Pipeline.Operation.DB
                    Pipeline.Operation.Graph
                    Pipeline.Run
+                   Pipeline.Run.CoreNLP
                    Pipeline.Run.SRL
                    Pipeline.Run.WikiEL
                    Pipeline.Source.NewsAPI.Analysis
