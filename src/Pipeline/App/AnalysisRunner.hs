@@ -4,18 +4,13 @@
 
 module Pipeline.App.AnalysisRunner where
 
-import           Control.Concurrent.Async               (async,wait)
-import           Control.Exception                      (SomeException,try)
 import           Control.Lens
 import           Control.Monad                          (forM_,when)
-import qualified Data.Aeson                 as A
-import qualified Data.ByteString.Char8      as B
-import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
 import           Database.PostgreSQL.Simple             (Connection)
-import           System.FilePath                        ((</>),takeExtension,takeFileName)
+import           System.FilePath                        ((</>),takeFileName)
 --
 import           NewsAPI.DB
 import           NLP.Type.CoreNLP
@@ -29,7 +24,6 @@ import           SRL.Statistics
 import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
-import           Pipeline.Operation.DB
 import           Pipeline.Run
 import           Pipeline.Run.SRL
 import           Pipeline.Source.NewsAPI.Analysis
@@ -54,7 +48,7 @@ mkMGs conn apredata emTagger fp article = do
   saveMG "/home/modori/temp/mgs" filename mgs
   updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
-  {-
+  
   forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(_i,sstr,_,mg') -> do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
@@ -66,7 +60,7 @@ mkMGs conn apredata emTagger fp article = do
             mkARB mg
             -- genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
             updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
-  -}
+  
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do

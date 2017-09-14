@@ -30,7 +30,7 @@ import           Data.Time.Format                 (defaultTimeLocale, formatTime
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
-import           System.Directory                 (createDirectoryIfMissing,doesFileExist,withCurrentDirectory)
+import           System.Directory                 (createDirectoryIfMissing,doesFileExist)
 import           System.FilePath                  ((</>),takeDirectory,takeFileName)
 import           Text.ProtocolBuffers.WireMessage (messageGet)
 --
@@ -173,7 +173,7 @@ getSents' txt pp = do
       let sents = d ^.. D.sentence . traverse
       return (Just sents)
 
-
+splitPrefixSubDirs :: FilePath -> (FilePath, FilePath, String)
 splitPrefixSubDirs fp =
   let hsh       = takeFileName fp
       storepath = takeDirectory fp
@@ -200,7 +200,6 @@ doesHashNameFileExistInPrefixSubDirs fp = do
 
 bstrHashToB16 :: ByteString -> String
 bstrHashToB16 bstr = (BL8.unpack . BL8.fromStrict . B16.encode) bstr
-
 
 unB16 :: String -> ByteString
 unB16 = fst . B16.decode . BL8.toStrict . BL8.pack

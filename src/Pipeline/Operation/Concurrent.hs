@@ -3,6 +3,7 @@ module Pipeline.Operation.Concurrent where
 import           Control.Concurrent
 import           System.IO.Unsafe                  (unsafePerformIO)
 
+refreshChildren :: IO ()
 refreshChildren = putMVar children []
 
 children :: MVar [MVar ()]

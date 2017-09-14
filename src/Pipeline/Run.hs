@@ -4,7 +4,6 @@
 
 module Pipeline.Run where
 
-import           Control.Concurrent.Async               (async,wait)
 import           Control.Lens
 import           Control.Monad                          (forM_,void)
 import qualified Data.Aeson                 as A
@@ -12,22 +11,22 @@ import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Char                              (isSpace)
 import qualified Data.Text as T
-import           System.Directory                       (withCurrentDirectory)
 import           System.FilePath                        ((</>),addExtension)
 import           System.Process                         (readProcess)
 --
 import           MWE.Util                               (mkTextFromToken)
 import           NLP.Syntax.Type.Verb
+import           NLP.Type.CoreNLP                       (Token)
 import           SRL.Analyze.Format                     (dotMeaningGraph)
 import           SRL.Analyze.Type
 import           Text.Format.Dot                        (mkLabelText)
 --
-import           Pipeline.Run.WikiEL
 import           Pipeline.Source.NewsAPI.Article        (getTitle)
 import           Pipeline.Util                          (saveHashNameBSFileInPrefixSubDirs)
 
 
-showTextMG mg filename (i,sstr,mtks,mg') = do
+showTextMG :: MeaningGraph -> FilePath -> (t2, t1, [Maybe Token], t) -> IO ()
+showTextMG mg filename (_i,_sstr,mtks,_mg') = do
   atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ("/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg" </> filename)
 
   let vertices = mg ^. mg_vertices
@@ -48,17 +47,18 @@ showTextMG mg filename (i,sstr,mtks,mg') = do
 
   putStrLn "=======================================================================================\n"
 
+genMGFigs :: (Show a) => FilePath -> a -> FilePath -> [Maybe Token] -> MeaningGraph -> IO ()
 genMGFigs savedir i filename mtks mg = do
   let title = mkTextFromToken mtks
       dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
-  
-  withCurrentDirectory savedir $ do
-    s <- async (writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr)
-    r <- wait s
-    void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+      filepath = (savedir </> filename)
+      
+  writeFile (filepath ++ "_" ++ (show i) ++ ".dot") dotstr
+  void $ readProcess "dot" ["-Tpng",filepath ++ "_" ++ (show i) ++ ".dot","-o" ++ filepath ++ "_" ++ (show i) ++ ".png"] ""
 
+saveMG :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
 saveMG savedir filename mgs = do
   saveHashNameBSFileInPrefixSubDirs (savedir </> (addExtension filename "mgs")) (BL8.toStrict $ A.encode mgs)
 
+saveWikiEL :: A.ToJSON a => FilePath -> a -> IO ()
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
-wikiEL emTagger sents = getWikiResolvedMentions emTagger sents

@@ -4,18 +4,15 @@
 module Pipeline.App.AnalysisDaemon where
 
 import           Control.Concurrent
-import           Control.Monad                     (filterM,forever,forM,forM_)
+import           Control.Monad                     (filterM,forever,forM_)
 import           Data.List.Split                   (chunksOf)
 import           Data.Maybe                        (catMaybes)
 import qualified Data.Text                  as T
-import           Data.Time.Clock                   (NominalDiffTime)
 import qualified Database.PostgreSQL.Simple as PGS
 import           SRL.Analyze                       (loadConfig)
 import           SRL.Analyze.Type                  (AnalyzePredata(..))
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>),addExtension)
-import           System.IO.Unsafe                  (unsafePerformIO)
-import           System.Process
 --
 import           NewsAPI.Type
 import           NLP.Type.CoreNLP
@@ -26,7 +23,6 @@ import           Pipeline.Load
 import           Pipeline.Operation.Concurrent
 import           Pipeline.Operation.DB
 import           Pipeline.Source.NewsAPI.Analysis
-import           Pipeline.Util
 
 
 runDaemon :: IO ()
@@ -55,9 +51,3 @@ runSRL conn apredata emTagger src = do
 
   waitForChildren
   refreshChildren
-
-runCoreNLP :: String -> IO ()
-runCoreNLP src = do
-  ph <- spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [src]
-  waitForProcess ph
-  return ()

@@ -4,12 +4,11 @@
 
 module Pipeline.Run.SRL where
 
-import           Control.Lens     ((^.),(^..),(^?),_1,_2,_3,ix)
+import           Control.Lens     ((^.),(^..),_2,_3)
 import           Data.Graph
 import           Data.List        (find)
-import           Data.Maybe       (catMaybes,isNothing)
+import           Data.Maybe       (catMaybes)
 import           Data.Text        (Text)
-import qualified Data.Text as T
 import qualified Data.Tree as Tr
 --
 import           SRL.Analyze.Type
@@ -25,14 +24,14 @@ isMGEntity = (not . isMGPredicate)
 
 cnvtVtxToMGV :: MeaningGraph -> Vertex -> Maybe MGVertex 
 cnvtVtxToMGV mg vtx =
-  let vertices = (mg ^. mg_vertices)
-      mv = find (\x -> (x ^. mv_id) == vtx) vertices
+  let vrtcs = (mg ^. mg_vertices)
+      mv = find (\x -> (x ^. mv_id) == vtx) vrtcs
   in mv
 
 cnvtEdgToMGE :: MeaningGraph -> Edge -> Maybe MGEdge
 cnvtEdgToMGE mg edg =
-  let edges = (mg ^. mg_edges)
-      me = find (\x -> (x ^. me_start) == (fst edg) && (x ^. me_end) == (snd edg)) edges
+  let edgs = (mg ^. mg_edges)
+      me = find (\x -> (x ^. me_start) == (fst edg) && (x ^. me_end) == (snd edg)) edgs
   in me
 
 findRel :: [MGEdge] -> Int -> Int -> Maybe Text
@@ -57,7 +56,7 @@ findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
     False   -> Nothing
     True    -> let children = attached grph vtx
                    rels = catMaybes $ map (\n -> (,,) <$> findRel (mg ^. mg_edges) vtx n <*> Just vtx <*> Just n) children
-                   agent' = find (\(t,i,j) -> t == "Agent") rels
+                   agent' = find (\(t,_i,_j) -> t == "Agent") rels
                    agent = fmap (\x -> (x ^. _2, x ^. _3)) agent'
                in agent
 
@@ -70,8 +69,8 @@ findAgentThemes mg grph vtx = case (cnvtVtxToMGV mg vtx) of
     False   -> Nothing
     True    -> let children = attached grph vtx
                    rels = catMaybes $ map (\n -> (,,) <$> findRel (mg ^. mg_edges) vtx n <*> Just vtx <*> Just n) children
-                   agent = fmap (^. _3) $ find (\(t,i,j) -> t == "Agent") rels
-                   theme1 = fmap (^. _3) $ find (\(t,i,j) -> t == "Theme") rels
+                   agent = fmap (^. _3) $ find (\(t,_i,_j) -> t == "Agent") rels
+                   theme1 = fmap (^. _3) $ find (\(t,_i,_j) -> t == "Theme") rels
                in ((,,) <$> agent <*> Just vtx <*> (sequence [theme1]))
 
 attached :: Graph -> Vertex -> [Vertex]
@@ -82,16 +81,17 @@ attached grph vtx =
     []    -> []
     lnode -> head lnode
 
+mkARB :: MeaningGraph -> IO ()
 mkARB mg = do
   let mgraph = getGraphFromMG mg
   case mgraph of
-    Nothing    -> print ""
+    Nothing    -> print ("" :: String)
     Just graph -> do
       let mgpred = filter isMGPredicate (mg ^. mg_vertices)
           mgpredvtxs = (mgpred ^.. traverse . mv_id)
           agents = catMaybes $ map (\vtx -> findAgentThemes mg graph vtx) mgpredvtxs
-          vertices = mg ^. mg_vertices
-          agentsName = map (\(v1,v2,vs) -> (,,) <$> findLabel vertices v1 <*> findLabel vertices v2 <*> (sequence $ map (\v3 -> findLabel vertices v3) vs)) agents
+          vrtcs = mg ^. mg_vertices
+          agentsName = map (\(v1,v2,vs) -> (,,) <$> findLabel vrtcs v1 <*> findLabel vrtcs v2 <*> (sequence $ map (\v3 -> findLabel vrtcs v3) vs)) agents
       case agentsName of
         [] -> return ()
         an -> print an

@@ -75,7 +75,7 @@ executable corenlp-runner
   build-depends:       base,
                        --
                        nlp-pipeline
-  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2 -Werror
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
 
 executable analysis-runner

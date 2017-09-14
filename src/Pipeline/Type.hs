@@ -13,7 +13,6 @@ import           Data.Time.Clock                             (NominalDiffTime,UT
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified NewsAPI.DB.Article                    as Ar
-import qualified NewsAPI.DB.ArticleError               as AE
 import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
 --
 
@@ -60,7 +59,7 @@ mkNewsAPIAnalysisDB das article =
                     , analysis_created = Ar._created article
                     }
 
-
+mkNewsAPIArticleErrorDB :: Ar.ArticleP a ByteString Text UTCTime -> NewsAPIArticleErrorDB
 mkNewsAPIArticleErrorDB article =
   NewsAPIArticleErrorDB { article_error_hash = Ar._sha256 article
                         , article_error_source = Ar._source article

@@ -28,13 +28,9 @@ import           CoreNLP.Simple.Type
 import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysis,uploadArticleError)
 import qualified NewsAPI.DB.Article                    as Ar
-import           NewsAPI.Type
 import           NLP.Type.CoreNLP
-
-import           SRL.Analyze                                  (loadConfig)
 import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
 import           WikiEL.EntityLinking
-import           WikiEL.Misc
 --
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Operation.DB
@@ -63,7 +59,7 @@ storeParsedArticles articles savepath errorpath = do
       when (not fchk && not echk) $ do
         eresult <- try $ runParser pp txt
         case eresult of
-          Left  (e :: SomeException) -> do
+          Left  (_e :: SomeException) -> do
             saveHashNameTextFileInPrefixSubDirs (errorpath </> (T.unpack hsh)) txt
             uploadArticleError conn (mkNewsAPIArticleErrorDB article)
           Right result                -> do
