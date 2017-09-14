@@ -19,9 +19,10 @@ import           Network.Wai.Middleware.Cors
 import           Servant
 import           System.IO
 --
-import           NewsAPI.DB                        (getArticleBySourceAndTime)
-import qualified NewsAPI.DB.Article as Ar
-import           NLP.Shared.Type                   (RecentArticle(..))
+import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
+import qualified NewsAPI.DB.Analysis as An
+import qualified NewsAPI.DB.Article  as Ar
+import           NLP.Shared.Type                   (RecentAnalysis(..),RecentArticle(..))
 --
 import           Pipeline.Util                     (bstrHashToB16)
 
@@ -37,12 +38,24 @@ oneDayArticles conn txt = do
 
 getOneDayArticles conn txt = do
   articles <- oneDayArticles conn txt
-  let idList = map (\x -> (Ar._id x, T.pack $ bstrHashToB16 $ Ar._sha256 x, Ar._source x)) articles
-  return idList
+  let aList = map (\x -> (Ar._id x, T.pack $ bstrHashToB16 $ Ar._sha256 x, Ar._source x)) articles
+  return aList
 
-type RecentArticleAPI = "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
+nDayAnalyses conn txt n = do
+  ctime <- getCurrentTime
+  let nBeforeDays = addUTCTime (-(nominalDay * n)) ctime
+  analyses <- getAnalysisBySourceAndTime conn (T.unpack txt) nBeforeDays
+  return analyses
 
-recentarticleAPI :: Proxy RecentArticleAPI
+getNDayAnalyses conn txt n = do
+  analyses <- nDayAnalyses conn txt n
+  let anList = map (\x -> (T.pack $ bstrHashToB16 $ An._sha256 x, An._source x, An._corenlp x, An._srl x, An._ner x)) analyses 
+  return anList
+  
+type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
+         :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
+
+recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
 
 run :: Connection -> IO ()
@@ -57,11 +70,17 @@ run conn = do
 mkApp :: Connection -> IO Application
 mkApp conn = return $ simpleCors (serve recentarticleAPI (server conn))
 
-server :: Connection -> Server RecentArticleAPI
-server conn = getArticlesBySrc conn
+server :: Connection -> Server API
+server conn = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn)
 
 getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
 getArticlesBySrc conn txt = do
   list <- liftIO $ getOneDayArticles conn txt
   let result = map (\(i,hsh,src) -> RecentArticle i hsh src) list
+  return result
+
+getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
+getAnalysesBySrc conn txt = do
+  list <- liftIO $ getNDayAnalyses conn txt 10
+  let result = map (\(hsh,src,mb1,mb2,mb3) -> RecentAnalysis hsh src mb1 mb2 mb3) list
   return result

@@ -1,4 +1,3 @@
-
 module Pipeline.Load where
 
 
@@ -29,10 +28,8 @@ loadWikiELResult fps = do
     bstr <- B.readFile fp
     return $ (fp,A.decode (BL.fromStrict bstr))
 
-
 getFileListRecursively :: FilePath -> IO [FilePath]
 getFileListRecursively fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . toList $ dirTree list'
   return filelist
-

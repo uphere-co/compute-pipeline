@@ -35,7 +35,7 @@ import           WikiEL.Misc
 --
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Operation.DB
-import           Pipeline.Run
+import           Pipeline.Run.WikiEL
 import           Pipeline.Type
 import           Pipeline.Util
 
