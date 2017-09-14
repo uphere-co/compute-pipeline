@@ -61,18 +61,18 @@ findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
                    agent = fmap (\x -> (x ^. _2, x ^. _3)) agent'
                in agent
 
-type ARB = (Vertex, Vertex, Vertex)
+type ARB = (Vertex, Vertex, [Vertex])
 
-findAgentTheme :: MeaningGraph -> Graph -> Vertex -> Maybe ARB
-findAgentTheme mg grph vtx = case (cnvtVtxToMGV mg vtx) of
+findAgentThemes :: MeaningGraph -> Graph -> Vertex -> Maybe ARB
+findAgentThemes mg grph vtx = case (cnvtVtxToMGV mg vtx) of
   Nothing -> Nothing
   Just mv -> case (isMGPredicate mv) of
     False   -> Nothing
     True    -> let children = attached grph vtx
                    rels = catMaybes $ map (\n -> (,,) <$> findRel (mg ^. mg_edges) vtx n <*> Just vtx <*> Just n) children
                    agent = fmap (^. _3) $ find (\(t,i,j) -> t == "Agent") rels
-                   theme = fmap (^. _3) $ find (\(t,i,j) -> t == "Theme") rels
-               in ((,,) <$> agent <*> Just vtx <*> theme)
+                   theme1 = fmap (^. _3) $ find (\(t,i,j) -> t == "Theme") rels
+               in ((,,) <$> agent <*> Just vtx <*> (sequence [theme1]))
 
 attached :: Graph -> Vertex -> [Vertex]
 attached grph vtx =
@@ -89,9 +89,9 @@ mkARB mg = do
     Just graph -> do
       let mgpred = filter isMGPredicate (mg ^. mg_vertices)
           mgpredvtxs = (mgpred ^.. traverse . mv_id)
-          agents = catMaybes $ map (\vtx -> findAgentTheme mg graph vtx) mgpredvtxs
+          agents = catMaybes $ map (\vtx -> findAgentThemes mg graph vtx) mgpredvtxs
           vertices = mg ^. mg_vertices
-          agentsName = map (\(v1,v2,v3) -> (,,) <$> findLabel vertices v1 <*> findLabel vertices v2 <*> findLabel vertices v3) agents
+          agentsName = map (\(v1,v2,vs) -> (,,) <$> findLabel vertices v1 <*> findLabel vertices v2 <*> (sequence $ map (\v3 -> findLabel vertices v3) vs)) agents
       case agentsName of
         [] -> return ()
         an -> print an
