@@ -14,7 +14,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
-import           Database.PostgreSQL.Simple             (Connection)
+import           Database.PostgreSQL.Simple             (Connection,close)
 import           System.FilePath                        ((</>),takeExtension,takeFileName)
 --
 import           NewsAPI.DB
@@ -29,6 +29,7 @@ import           SRL.Statistics
 import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
+import           Pipeline.Operation.DB
 import           Pipeline.Run
 import           Pipeline.Run.SRL
 import           Pipeline.Source.NewsAPI.Analysis
@@ -79,10 +80,12 @@ runAnalysisAll conn = do
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
 
-runAnalysisByChunks :: Connection -> ([NERToken] -> [EntityMention Text])
+runAnalysisByChunks :: ([NERToken] -> [EntityMention Text])
                     -> AnalyzePredata -> [(FilePath,DocAnalysisInput)] -> IO ()
-runAnalysisByChunks conn emTagger apredata loaded = do
+runAnalysisByChunks emTagger apredata loaded = do
+  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
   flip mapM_ loaded $ \(fp,artl) -> do
     mkMGs conn apredata emTagger fp artl
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
+  close conn

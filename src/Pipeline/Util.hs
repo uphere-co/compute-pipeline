@@ -174,39 +174,29 @@ getSents' txt pp = do
       return (Just sents)
 
 
+splitPrefixSubDirs fp =
+  let hsh       = takeFileName fp
+      storepath = takeDirectory fp
+      prefix    = take 2 hsh
+  in (hsh,storepath,prefix)
+
 saveHashNameBSFileInPrefixSubDirs :: FilePath -> ByteString -> IO ()
 saveHashNameBSFileInPrefixSubDirs fp file = do
-  let hsh       = takeFileName fp
-      storepath = takeDirectory fp
-      prefix    = take 2 hsh
+  let (hsh,storepath,prefix) = splitPrefixSubDirs fp
+  createDirectoryIfMissing True (storepath </> prefix)
+  B.writeFile (storepath </> prefix </> hsh) file
 
-  withCurrentDirectory storepath $ do
-    createDirectoryIfMissing True prefix
-    B.writeFile (storepath </> prefix </> hsh) file
-
-
--- this function is tiresome duplication.
 saveHashNameTextFileInPrefixSubDirs :: FilePath -> Text -> IO ()
 saveHashNameTextFileInPrefixSubDirs fp file = do
-  -- this must be refactored.
-  let hsh       = takeFileName fp
-      storepath = takeDirectory fp
-      prefix    = take 2 hsh
-  -- up to here
-  withCurrentDirectory storepath $ do
-    createDirectoryIfMissing True prefix
-    TIO.writeFile (storepath </> prefix </> hsh) file
-
+  let (hsh,storepath,prefix) = splitPrefixSubDirs fp
+  createDirectoryIfMissing True (storepath </> prefix)
+  TIO.writeFile (storepath </> prefix </> hsh) file
 
 doesHashNameFileExistInPrefixSubDirs :: FilePath -> IO Bool
 doesHashNameFileExistInPrefixSubDirs fp = do
-  let hsh       = takeFileName fp
-      storepath = takeDirectory fp
-      prefix    = take 2 hsh
-
+  let (hsh,storepath,prefix) = splitPrefixSubDirs fp
   b <- doesFileExist (storepath </> prefix </> hsh)
   return b
-
 
 bstrHashToB16 :: ByteString -> String
 bstrHashToB16 bstr = (BL8.unpack . BL8.fromStrict . B16.encode) bstr
