@@ -17,6 +17,7 @@ import           Data.Default
 import           Data.Maybe
 import           Data.Text                                    (Text)
 import qualified Data.Text                             as T
+import qualified Database.PostgreSQL.Simple            as PGS
 import           Language.Java                         as J
 
 import           System.Environment                           (getEnv)
@@ -44,7 +45,7 @@ import           Pipeline.Util
 storeParsedArticles :: [Maybe (Ar.ArticleH,NewsAPIArticleContent)] -> FilePath -> IO ()
 storeParsedArticles articles savepath = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -60,11 +61,13 @@ storeParsedArticles articles savepath = do
       fchk <- doesHashNameFileExistInPrefixSubDirs (savepath </> (T.unpack hsh))
       when (not fchk) $ do
         eresult <- try $ runParser pp txt
+        putStrLn $ T.unpack txt
         case eresult of
-          Left  (_e :: SomeException) -> return ()
+          Left  (_e :: SomeException) -> print _e
           Right result               -> do
             saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
             uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
+  PGS.close conn
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.

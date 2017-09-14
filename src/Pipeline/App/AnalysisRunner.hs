@@ -50,10 +50,8 @@ mkMGs conn apredata emTagger fp article = do
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
 
-  fchk <- doesHashNameFileExistInPrefixSubDirs ("/home/modori/temp/mgs" </> filename)
-  when (not fchk) $ do
-    saveMG "/home/modori/temp/mgs" filename mgs
-    updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
+  saveMG "/home/modori/temp/mgs" filename mgs
+  updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
   {-
   forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(_i,sstr,_,mg') -> do
