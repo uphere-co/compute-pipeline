@@ -1,10 +1,28 @@
 module Main where
 
-import System.Environment           (getArgs)
+import           Control.Lens
+import qualified Data.ByteString.Char8 as B
+import           Data.Default
+import           Language.Java         as J
+import           System.Environment         (getArgs,getEnv)
 --
-import Pipeline.App.CoreNLPRunner
+import           CoreNLP.Simple
+import           CoreNLP.Simple.Type
+--
+import           Pipeline.Run.CoreNLP
 
 main :: IO ()
 main = do
   [src] <- getArgs
-  runCoreNLPforNewsAPISource src
+  clspath <- getEnv "CLASSPATH"
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    pp <- prepare (def & (tokenizer .~ True)
+                       . (words2sentences .~ True)
+                       . (postagger .~ True)
+                       . (lemma .~ True)
+                       . (sutime .~ True)
+                       . (constituency .~ True)
+                       . (ner .~ True)
+                  )
+
+    runCoreNLPforNewsAPISource pp src
