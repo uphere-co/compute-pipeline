@@ -73,7 +73,8 @@ findAgentThemes mg grph vtx = case (cnvtVtxToMGV mg vtx) of
                    theme1 = fmap (^. _3) $ find (\(t,_i,_j) -> t == "Theme") rels
                in ((,,) <$> agent <*> Just vtx <*> (sequence [theme1]))
 
-isSubject t = t == "Agent" || t == "Speaker"
+subjectList = ["Agent","Speaker","Owner","Cognizer","Actor","Author"]
+isSubject t = any (\a -> t == a) subjectList
 
 findSubjectObjects :: MeaningGraph -> Graph -> Vertex -> Maybe ARB
 findSubjectObjects mg grph vtx = case (cnvtVtxToMGV mg vtx) of
