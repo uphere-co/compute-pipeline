@@ -7,7 +7,7 @@ module Pipeline.Run.SRL where
 import           Control.Lens     ((^.),(^..),_2,_3)
 import           Data.Graph
 import           Data.List        (find)
-import           Data.Maybe       (catMaybes)
+import           Data.Maybe       (catMaybes,fromJust,isNothing)
 import           Data.Text        (Text)
 import qualified Data.Tree as Tr
 --
@@ -73,6 +73,20 @@ findAgentThemes mg grph vtx = case (cnvtVtxToMGV mg vtx) of
                    theme1 = fmap (^. _3) $ find (\(t,_i,_j) -> t == "Theme") rels
                in ((,,) <$> agent <*> Just vtx <*> (sequence [theme1]))
 
+isSubject t = t == "Agent" || t == "Speaker"
+
+findSubjectObjects :: MeaningGraph -> Graph -> Vertex -> Maybe ARB
+findSubjectObjects mg grph vtx = case (cnvtVtxToMGV mg vtx) of
+  Nothing -> Nothing
+  Just mv -> case (isMGPredicate mv) of
+    False   -> Nothing
+    True    -> let children = attached grph vtx
+                   rels = catMaybes $ map (\n -> (,,) <$> findRel (mg ^. mg_edges) vtx n <*> Just vtx <*> Just n) children
+                   subject = fmap (^. _3) $ find (\(t,_i,_j) -> isSubject t) rels
+                   objects = map (\x -> Just (x ^. _3)) $ filter (\(t,i,j) -> if (isNothing $ cnvtVtxToMGV mg j) then False else (if (isMGEntity $ fromJust $ cnvtVtxToMGV mg j) then True else False)) rels
+               in ((,,) <$> subject <*> Just vtx <*> (sequence objects))
+
+                  
 attached :: Graph -> Vertex -> [Vertex]
 attached grph vtx =
   let lnodes = concat $ fmap Tr.levels $ dfs grph [vtx]
@@ -89,7 +103,7 @@ mkARB mg = do
     Just graph -> do
       let mgpred = filter isMGPredicate (mg ^. mg_vertices)
           mgpredvtxs = (mgpred ^.. traverse . mv_id)
-          agents = catMaybes $ map (\vtx -> findAgentThemes mg graph vtx) mgpredvtxs
+          agents = catMaybes $ map (\vtx -> findSubjectObjects mg graph vtx) mgpredvtxs -- (\vtx -> findAgentThemes mg graph vtx) mgpredvtxs
           vrtcs = mg ^. mg_vertices
           agentsName = map (\(v1,v2,vs) -> (,,) <$> findLabel vrtcs v1 <*> findLabel vrtcs v2 <*> (sequence $ map (\v3 -> findLabel vrtcs v3) vs)) agents
       case agentsName of
