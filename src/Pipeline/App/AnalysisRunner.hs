@@ -49,7 +49,6 @@ mkMGs conn apredata emTagger fp article = do
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
 
-  genOrigSents mtokss
   genARB mgs
   saveMG "/home/modori/temp/mgs" filename mgs
   updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
