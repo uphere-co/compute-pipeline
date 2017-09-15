@@ -12,6 +12,7 @@ import           Data.Text                              (Text)
 import           Database.PostgreSQL.Simple             (Connection)
 import           System.FilePath                        ((</>),takeFileName)
 --
+import           Data.Range                             (Range)
 import           NewsAPI.DB
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
@@ -48,8 +49,9 @@ mkMGs conn apredata emTagger fp article = do
   saveMG "/home/modori/temp/mgs" filename mgs
   updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
-  
-  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(_i,sstr,_,mg') -> do
+genMGFigs :: FilePath -> [SentStructure] -> [[Maybe Token]] -> [MeaningGraph] -> [(Range, Text)] -> Bool -> IO ()
+genMGFigs filename sstrs mtokss mgs wikilst isNonFilter = do
+  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of
@@ -58,9 +60,8 @@ mkMGs conn apredata emTagger fp article = do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let mg = tagMG mg' wikilst
             mkARB mg
-            -- genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
-            updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
-  
+            mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg
+
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do

@@ -55,7 +55,7 @@ runDaemon = do
       threadDelay 10000000
 
   closeConnection conn
-    
+
 -- | This does SRL and generates meaning graphs.
 runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> String -> IO ()
 runSRL conn apredata emTagger src = do
@@ -70,3 +70,14 @@ runSRL conn apredata emTagger src = do
 
   waitForChildren
   refreshChildren
+
+
+{-
+mkBloombergMGFig :: IO ()
+mkBloombergMGFig = do
+  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
+  runSRL conn apredata emTagger "bloomberg"
+  closeConnection conn
+-}

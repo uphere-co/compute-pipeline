@@ -47,8 +47,8 @@ showTextMG mg filename (_i,_sstr,mtks,_mg') = do
 
   putStrLn "=======================================================================================\n"
 
-genMGFigs :: (Show a) => FilePath -> a -> FilePath -> [Maybe Token] -> MeaningGraph -> IO ()
-genMGFigs savedir i filename mtks mg = do
+mkMGDotFigs :: (Show a) => FilePath -> a -> FilePath -> [Maybe Token] -> MeaningGraph -> IO ()
+mkMGDotFigs savedir i filename mtks mg = do
   let title = mkTextFromToken mtks
       dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
       filepath = (savedir </> filename)
