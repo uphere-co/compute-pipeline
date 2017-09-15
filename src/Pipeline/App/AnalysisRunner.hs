@@ -6,13 +6,16 @@ module Pipeline.App.AnalysisRunner where
 
 import           Control.Lens
 import           Control.Monad                          (forM_,when)
+import           Data.Char                              (isSpace)
 import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
+import qualified Data.Text                  as T
 import           Database.PostgreSQL.Simple             (Connection)
 import           System.FilePath                        ((</>),takeFileName)
 --
 import           Data.Range                             (Range)
+import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
@@ -46,6 +49,8 @@ mkMGs conn apredata emTagger fp article = do
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
 
+  genOrigSents mtokss
+  genARB mgs
   saveMG "/home/modori/temp/mgs" filename mgs
   updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
@@ -62,6 +67,11 @@ genMGFigs filename sstrs mtokss mgs wikilst isNonFilter = do
             mkARB mg
             mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg
 
+genARB :: [MeaningGraph] -> IO ()
+genARB mgs = forM_ mgs $ \mg -> mkARB mg
+  
+genOrigSents :: [[Maybe Token]] -> IO ()
+genOrigSents mtokss = forM_ mtokss $ \mtks -> putStrLn $ (T.unpack $ T.dropWhile isSpace $ mkTextFromToken mtks)
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
