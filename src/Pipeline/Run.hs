@@ -60,5 +60,9 @@ saveMG :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
 saveMG savedir filename mgs = do
   saveHashNameBSFileInPrefixSubDirs (savedir </> (addExtension filename "mgs")) (BL8.toStrict $ A.encode mgs)
 
+saveARB :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
+saveARB savedir filename arb = do
+  saveHashNameBSFileInPrefixSubDirs (savedir </> (addExtension filename "arb")) (BL8.toStrict $ A.encode arb)
+
 saveWikiEL :: A.ToJSON a => FilePath -> a -> IO ()
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)

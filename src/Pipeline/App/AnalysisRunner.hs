@@ -46,11 +46,13 @@ mkMGs conn apredata emTagger fp article = do
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
+      arb = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
 
   genARB mgs
   saveMG "/home/modori/temp/mgs" filename mgs
+  saveARB "/home/modori/temp/arb" filename arb
   updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
 genMGFigs :: FilePath -> [SentStructure] -> [[Maybe Token]] -> [MeaningGraph] -> [(Range, Text)] -> Bool -> IO ()
