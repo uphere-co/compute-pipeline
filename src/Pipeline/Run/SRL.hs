@@ -83,7 +83,7 @@ findSubjectObjects mg grph vtx = case (cnvtVtxToMGV mg vtx) of
     True    -> let children = attached grph vtx
                    rels = catMaybes $ map (\n -> (,,) <$> findRel (mg ^. mg_edges) vtx n <*> Just vtx <*> Just n) children
                    subject = fmap (^. _3) $ find (\(t,_i,_j) -> isSubject t) rels
-                   objects = map (\x -> Just (x ^. _3)) $ filter (\(t,i,j) -> if (isNothing $ cnvtVtxToMGV mg j) then False else (if (isMGEntity $ fromJust $ cnvtVtxToMGV mg j) then True else False)) rels
+                   objects = map (\x -> Just (x ^. _3)) $ filter (\(t,i,j) -> if (isNothing $ cnvtVtxToMGV mg j) then False else (if (isMGEntity $ fromJust $ cnvtVtxToMGV mg j) then (if (isSubject t) then False else True) else False)) rels
                in ((,,) <$> subject <*> Just vtx <*> (sequence objects))
 
                   
