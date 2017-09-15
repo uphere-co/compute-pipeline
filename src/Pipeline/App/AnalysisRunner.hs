@@ -1,19 +1,21 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.App.AnalysisRunner where
 
 import           Control.Lens
 import           Control.Monad                          (forM_,when)
-import qualified Data.Aeson                 as A
-import qualified Data.ByteString.Char8      as B
-import qualified Data.ByteString.Lazy.Char8 as BL8
+import           Data.Char                              (isSpace)
 import           Data.List                              (zip4)
 import           Data.Maybe
 import           Data.Text                              (Text)
+import qualified Data.Text                  as T
 import           Database.PostgreSQL.Simple             (Connection)
-import           System.FilePath                        ((</>),takeExtension,takeFileName)
+import           System.FilePath                        ((</>),takeFileName)
 --
+import           Data.Range                             (Range)
+import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
@@ -31,8 +33,6 @@ import           Pipeline.Run.SRL
 import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Util
 
-saveWikiEL :: (A.ToJSON a) => String -> a -> IO ()
-saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
 
 mkMGs :: Connection
       -> AnalyzePredata
@@ -40,18 +40,23 @@ mkMGs :: Connection
       -> FilePath
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata emTagger fp loaded = do
+mkMGs conn apredata emTagger fp article = do
   let filename = takeFileName fp
-      dstr = docStructure apredata emTagger loaded
+      dstr = docStructure apredata emTagger article
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
 
-  -- saveMG "/home/modori/temp/mgs" filename mgs
+  genOrigSents mtokss
+  genARB mgs
+  saveMG "/home/modori/temp/mgs" filename mgs
+  updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
-  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(_i,sstr,_,mg') -> do
+genMGFigs :: FilePath -> [SentStructure] -> [[Maybe Token]] -> [MeaningGraph] -> [(Range, Text)] -> Bool -> IO ()
+genMGFigs filename sstrs mtokss mgs wikilst isNonFilter = do
+  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
     when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of
@@ -60,34 +65,30 @@ mkMGs conn apredata emTagger fp loaded = do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let mg = tagMG mg' wikilst
             mkARB mg
-            -- genMGFigs "/home/modori/data/meaning_graph" i filename mtks mg
-            updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
+            mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg
+
+genARB :: [MeaningGraph] -> IO ()
+genARB mgs = forM_ mgs $ \mg -> mkARB mg
+  
+genOrigSents :: [[Maybe Token]] -> IO ()
+genOrigSents mtokss = forM_ mtokss $ \mtks -> putStrLn $ (T.unpack $ T.dropWhile isSpace $ mkTextFromToken mtks)
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-
-  as <- getAnalysisFilePathBySource "bloomberg"
+  as <- getAllAnalysisFilePath
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   flip mapM_ (take 100 loaded) $ \(fp,x) -> do
     mkMGs conn apredata emTagger fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
-    print $ wikiEL emTagger (x ^. dainput_sents)
+    -- print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysisByChunks :: Connection -> ([NERToken] -> [EntityMention Text])
                     -> AnalyzePredata -> [(FilePath,DocAnalysisInput)] -> IO ()
 runAnalysisByChunks conn emTagger apredata loaded = do
-  flip mapM_ loaded $ \(fp,x) -> do
-    mkMGs conn apredata emTagger fp x
+  flip mapM_ loaded $ \(fp,artl) -> do
+    mkMGs conn apredata emTagger fp artl
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
-
-runAnalysis :: IO ()
-runAnalysis = do
-  fps' <- getFileListRecursively "/home/modori/data/newsapianalyzed"
-  let fps = filter (\x -> takeExtension x == ".wiki") fps'
-  loaded <- loadWikiELResult fps
-  flip mapM_ loaded $ \(fp,x) -> do
-    print (fp,x)

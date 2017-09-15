@@ -7,10 +7,12 @@ import           Control.Lens
 import           Data.Maybe
 --
 import           CoreNLP.Simple.Convert
+import           Data.Text                             (Text)
 import qualified Data.Vector                    as V
 import           NLP.Type.CoreNLP
 import           WikiEL.EntityLinking
 import qualified WikiEL.EntityMentionPruning    as EMP
+import           WikiEL.Misc
 import           WikiEL.WikiNamedEntityTagger
 
 
@@ -37,3 +39,6 @@ getWikiAllMentions emTagger sents =
   let neTokens = prepareNETokens sents
       linked_mentions_all = emTagger neTokens
   in linked_mentions_all
+
+mkConstraintFromWikiEL :: [EntityMention Text] -> [(Int,Int)]
+mkConstraintFromWikiEL wikiel = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ wikiel

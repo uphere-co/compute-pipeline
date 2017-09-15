@@ -19,7 +19,7 @@ library
   hs-source-dirs: src
   build-depends:  base,
                   --
-                  aeson, attoparsec,
+                  aeson, async, attoparsec,
                   base16-bytestring, binary, bytestring,
                   containers,
                   data-default, directory, directory-tree, discrimination, distributed-process,
@@ -41,18 +41,20 @@ library
                   network-util, newsapi, newsapi-db, nlp-shared-types, nlp-types, nyt-scrapper, nyt-db,
                   OntoNotes,
                   predicate-matrix, PropBank,
-                  semantic-role-labeler,
+                  semantic-role-labeler, syntactic-analysis,
                   time-tagger,
                   unordered-containers,
                   wiki-ner,
                   yaml, yayaml
   exposed-modules: Pipeline.App.AnalysisDaemon
                    Pipeline.App.AnalysisRunner
-                   Pipeline.App.CoreNLPRunner
+                   Pipeline.App.CoreNLPBatch
                    Pipeline.Load
+                   Pipeline.Operation.Concurrent
                    Pipeline.Operation.DB
                    Pipeline.Operation.Graph
                    Pipeline.Run
+                   Pipeline.Run.CoreNLP
                    Pipeline.Run.SRL
                    Pipeline.Run.WikiEL
                    Pipeline.Source.NewsAPI.Analysis
@@ -72,8 +74,15 @@ executable corenlp-runner
   -- other-modules:
   build-depends:       base,
                        --
+                       bytestring,
+                       data-default,
+                       jvm,
+                       lens,
+                       --
+                       HCoreNLP,
+                       --
                        nlp-pipeline
-  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2 -Werror
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
 
 executable analysis-runner

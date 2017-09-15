@@ -1,4 +1,6 @@
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.Run where
 
@@ -9,21 +11,22 @@ import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Char                              (isSpace)
 import qualified Data.Text as T
-import           System.Directory                       (withCurrentDirectory)
 import           System.FilePath                        ((</>),addExtension)
 import           System.Process                         (readProcess)
 --
 import           MWE.Util                               (mkTextFromToken)
+import           NLP.Syntax.Type.Verb
+import           NLP.Type.CoreNLP                       (Token)
 import           SRL.Analyze.Format                     (dotMeaningGraph)
 import           SRL.Analyze.Type
 import           Text.Format.Dot                        (mkLabelText)
 --
-import           Pipeline.Run.WikiEL
 import           Pipeline.Source.NewsAPI.Article        (getTitle)
 import           Pipeline.Util                          (saveHashNameBSFileInPrefixSubDirs)
 
 
-showTextMG mg filename (i,sstr,mtks,mg') = do
+showTextMG :: MeaningGraph -> FilePath -> (t2, t1, [Maybe Token], t) -> IO ()
+showTextMG mg filename (_i,_sstr,mtks,_mg') = do
   atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ("/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg" </> filename)
 
   let vertices = mg ^. mg_vertices
@@ -36,7 +39,7 @@ showTextMG mg filename (i,sstr,mtks,mg') = do
 
   forM_ vertices $ \v -> do
     case v of
-      MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ v ^. mv_verb . _1)
+      MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ T.intercalate " " $ v ^. mv_verb . vp_words ^.. traverse . to (^. _1)) 
       MGEntity    {..} -> putStrLn $ "MGEntity    :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_text))
 
   forM_ edges $ \e -> do
@@ -44,17 +47,18 @@ showTextMG mg filename (i,sstr,mtks,mg') = do
 
   putStrLn "=======================================================================================\n"
 
-genMGFigs savedir i filename mtks mg = do
+mkMGDotFigs :: (Show a) => FilePath -> a -> FilePath -> [Maybe Token] -> MeaningGraph -> IO ()
+mkMGDotFigs savedir i filename mtks mg = do
   let title = mkTextFromToken mtks
       dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
-  
-  withCurrentDirectory savedir $ do
-    writeFile (filename ++ "_" ++ (show i) ++ ".dot") dotstr
-    void (readProcess "dot" ["-Tpng",filename ++ "_" ++ (show i) ++ ".dot","-o"++ filename ++ "_" ++ (show i) ++ ".png"] "")
+      filepath = (savedir </> filename)
+      
+  writeFile (filepath ++ "_" ++ (show i) ++ ".dot") dotstr
+  void $ readProcess "dot" ["-Tpng",filepath ++ "_" ++ (show i) ++ ".dot","-o" ++ filepath ++ "_" ++ (show i) ++ ".png"] ""
 
+saveMG :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
 saveMG savedir filename mgs = do
   saveHashNameBSFileInPrefixSubDirs (savedir </> (addExtension filename "mgs")) (BL8.toStrict $ A.encode mgs)
 
+saveWikiEL :: A.ToJSON a => FilePath -> a -> IO ()
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)
-wikiEL emTagger sents = getWikiResolvedMentions emTagger sents
-
