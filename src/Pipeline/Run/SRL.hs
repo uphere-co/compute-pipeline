@@ -96,17 +96,18 @@ attached grph vtx =
     []    -> []
     lnode -> head lnode
 
-mkARB :: MeaningGraph -> IO ()
-mkARB mg = do
+type ARBText = (Text, Text, [Text])
+
+mkARB :: MeaningGraph -> [Maybe ARBText]
+mkARB mg =
   let mgraph = getGraphFromMG mg
-  case mgraph of
-    Nothing    -> print ("" :: String)
-    Just graph -> do
+  in case mgraph of
+    Nothing    -> []
+    Just graph ->
       let mgpred = filter isMGPredicate (mg ^. mg_vertices)
           mgpredvtxs = (mgpred ^.. traverse . mv_id)
           agents = catMaybes $ map (\vtx -> findSubjectObjects mg graph vtx) mgpredvtxs -- (\vtx -> findAgentThemes mg graph vtx) mgpredvtxs
           vrtcs = mg ^. mg_vertices
           agentsName = map (\(v1,v2,vs) -> (,,) <$> findLabel vrtcs v1 <*> findLabel vrtcs v2 <*> (sequence $ map (\v3 -> findLabel vrtcs v3) vs)) agents
-      case agentsName of
-        [] -> return ()
-        an -> print an
+      in agentsName
+

@@ -63,11 +63,11 @@ genMGFigs filename sstrs mtokss mgs wikilst isNonFilter = do
         Just graph -> do
           when ((furthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let mg = tagMG mg' wikilst
-            mkARB mg
+            print $ mkARB mg
             mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg
 
 genARB :: [MeaningGraph] -> IO ()
-genARB mgs = forM_ mgs $ \mg -> mkARB mg
+genARB mgs = forM_ mgs $ \mg -> print $ mkARB mg
   
 genOrigSents :: [[Maybe Token]] -> IO ()
 genOrigSents mtokss = forM_ mtokss $ \mtks -> putStrLn $ (T.unpack $ T.dropWhile isSpace $ mkTextFromToken mtks)
