@@ -60,8 +60,8 @@ runDaemon = do
 runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> String -> IO ()
 runSRL conn apredata emTagger src = do
   as' <- getAnalysisFilePathBySource src
-  as <- filterM (\a -> fmap not $ doesFileExist (addExtension ("/home/modori/temp/mgs" </> a) "mgs")) as'
-  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
+  -- as <- filterM (\a -> fmap not $ doesFileExist (addExtension ("/home/modori/temp/mgs" </> a) "mgs")) as'
+  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as')
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` 15) in if n' >= 1 then n' else 1
@@ -72,7 +72,7 @@ runSRL conn apredata emTagger src = do
   refreshChildren
 
 
-{-
+
 mkBloombergMGFig :: IO ()
 mkBloombergMGFig = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
@@ -80,4 +80,3 @@ mkBloombergMGFig = do
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   runSRL conn apredata emTagger "bloomberg"
   closeConnection conn
--}
