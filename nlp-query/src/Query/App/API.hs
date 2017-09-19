@@ -7,12 +7,13 @@ module Query.App.API where
 import           Control.Concurrent
 import           Control.Concurrent.STM
 import           Control.Lens                      ((^.))
-import           Control.Monad                     (forever,forM)
+import           Control.Monad                     (forever,forM,void,when)
 import           Control.Monad.IO.Class            (liftIO)
 import           Control.Monad.Trans.Except
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as BL
+import           Data.Maybe                        (catMaybes)
 import qualified Data.Text                  as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Database.PostgreSQL.Simple        (Connection)
@@ -33,20 +34,29 @@ import           Pipeline.Type
 import           Pipeline.Util                     (bstrHashToB16)
 
 
-updateARB savepath = do
-  -- arbs
-  let cfps = map fst arbs
-  fps <- getFileListRecursively savepath
-  let newarbs = filter (\x -> not $ x `elem` cfps) fps
-  return ()
-  -- insert newarbs in concurrent way
+updateARB savepath arbs = do
+  forever $ do
+    arbs' <- atomically (takeTMVar arbs)
+    let cfps = map fst arbs'
+    fps <- getFileListRecursively savepath
+    let newarbs' = filter (\x -> not $ x `elem` cfps) fps
 
-loadExistingARB :: FilePath -> IO [(FilePath,Maybe (UTCTime,ARBText))]
+    newarbs'' <- forM newarbs' $ \fp -> do
+      bstr <- B8.readFile fp
+      return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
+    let newarbs = catMaybes newarbs''
+    print newarbs
+    if (not $ null newarbs)
+      then atomically (putTMVar arbs (arbs' ++ newarbs))
+      else atomically (putTMVar arbs arbs')
+    threadDelay 3000000
+
+loadExistingARB :: FilePath -> IO [Maybe (FilePath,(UTCTime,[[ARBText]]))]
 loadExistingARB savepath = do
   fps <- getFileListRecursively savepath
   forM fps $ \fp -> do
     bstr <- B8.readFile fp
-    return $ (fp,A.decode (BL.fromStrict bstr))
+    return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
 
 oneDayArticles conn txt = do
   ctime <- getCurrentTime
@@ -86,9 +96,9 @@ run conn = do
 
   arbs <- newEmptyTMVarIO
   exstarbs <- loadExistingARB "/home/modori/temp/arb"
-  --
-  -- forkIO update constantly arb
-  --
+  print exstarbs
+  atomically (putTMVar arbs (catMaybes exstarbs))
+  void $ forkIO $ updateARB "/home/modori/temp/arb" arbs
   runSettings settings =<< (mkApp conn)
 
 mkApp :: Connection -> IO Application
