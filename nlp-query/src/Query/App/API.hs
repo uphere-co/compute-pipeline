@@ -4,13 +4,16 @@
 
 module Query.App.API where
 
-import           Control.Concurrent                (threadDelay)
+import           Control.Concurrent
+import           Control.Concurrent.STM
 import           Control.Lens                      ((^.))
-import           Control.Monad                     (forever)
+import           Control.Monad                     (forever,forM)
 import           Control.Monad.IO.Class            (liftIO)
 import           Control.Monad.Trans.Except
-import qualified Data.Aeson         as A
-import qualified Data.Text          as T
+import qualified Data.Aeson                 as A
+import qualified Data.ByteString.Char8      as B8
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.Text                  as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Database.PostgreSQL.Simple        (Connection)
 import           Network.Wai
@@ -20,27 +23,29 @@ import           Servant
 import           System.IO
 --
 import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
-import qualified NewsAPI.DB.Analysis as An
-import qualified NewsAPI.DB.Article  as Ar
+import qualified NewsAPI.DB.Analysis        as An
+import qualified NewsAPI.DB.Article         as Ar
 import           NLP.Shared.Type                   (RecentAnalysis(..),RecentArticle(..))
 --
+import           Pipeline.Load
+import           Pipeline.Run.SRL                  (ARBText)
+import           Pipeline.Type
 import           Pipeline.Util                     (bstrHashToB16)
 
 
-nominalDay :: NominalDiffTime
-nominalDay = 86400
-
-updateARB = do
+updateARB savepath = do
   -- arbs
   let cfps = map fst arbs
-  fps <- getFileRecursively savepath
+  fps <- getFileListRecursively savepath
   let newarbs = filter (\x -> not $ x `elem` cfps) fps
+  return ()
   -- insert newarbs in concurrent way
-  
+
+loadExistingARB :: FilePath -> IO [(FilePath,Maybe (UTCTime,ARBText))]
 loadExistingARB savepath = do
   fps <- getFileListRecursively savepath
   forM fps $ \fp -> do
-    bstr <- B.readFile fp
+    bstr <- B8.readFile fp
     return $ (fp,A.decode (BL.fromStrict bstr))
 
 oneDayArticles conn txt = do
@@ -78,7 +83,9 @@ run conn = do
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-  arbs <- loadExistingARB "/home/modori/temp/arb"
+
+  arbs <- newEmptyTMVarIO
+  exstarbs <- loadExistingARB "/home/modori/temp/arb"
   --
   -- forkIO update constantly arb
   --

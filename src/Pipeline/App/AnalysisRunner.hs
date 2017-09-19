@@ -15,6 +15,7 @@ import           Database.PostgreSQL.Simple             (Connection)
 import           System.FilePath                        ((</>),takeFileName)
 --
 import           Data.Range                             (Range)
+import           Data.Time.Clock                        (getCurrentTime)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
 import           NLP.Type.CoreNLP
