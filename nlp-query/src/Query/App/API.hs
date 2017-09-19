@@ -82,6 +82,7 @@ getNDayAnalyses conn txt n = do
   
 type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
+         :<|> "recentarb" :> Get '[JSON] [[[ARBText]]]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
@@ -99,13 +100,13 @@ run conn = do
   print exstarbs
   atomically (putTMVar arbs (catMaybes exstarbs))
   void $ forkIO $ updateARB "/home/modori/temp/arb" arbs
-  runSettings settings =<< (mkApp conn)
+  runSettings settings =<< (mkApp conn arbs)
 
-mkApp :: Connection -> IO Application
-mkApp conn = return $ simpleCors (serve recentarticleAPI (server conn))
+mkApp :: Connection -> TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> IO Application
+mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
 
-server :: Connection -> Server API
-server conn = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn)
+server :: Connection -> TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Server API
+server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
 getArticlesBySrc conn txt = do
@@ -117,4 +118,10 @@ getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
 getAnalysesBySrc conn txt = do
   list <- liftIO $ getNDayAnalyses conn txt 10
   let result = map (\(hsh,src,mb1,mb2,mb3) -> RecentAnalysis hsh src mb1 mb2 mb3) list
+  return result
+
+getARB :: TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Handler [[[ARBText]]]
+getARB arbs = do
+  arbs' <- liftIO $ atomically (readTMVar arbs)
+  let result = map (\(_,(_,xs)) -> xs) arbs'
   return result
