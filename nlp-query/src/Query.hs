@@ -29,6 +29,7 @@ import           Network.Util
 import           Pipeline.Run
 import           Pipeline.Source.NewsAPI.Article
 
+{-
 runQueryServer :: IO ()
 runQueryServer = do
   [host, hostB, port, portB] <- getArgs
@@ -54,3 +55,4 @@ runQueryServer = do
         atomically (putTMVar pidref pid)
         broadcast pidref portB hostB
 
+-}

@@ -56,9 +56,14 @@ mkMGDotFigs savedir i filename mtks mg = do
   writeFile (filepath ++ "_" ++ (show i) ++ ".dot") dotstr
   void $ readProcess "dot" ["-Tpng",filepath ++ "_" ++ (show i) ++ ".dot","-o" ++ filepath ++ "_" ++ (show i) ++ ".png"] ""
 
+saveJSON :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
+saveJSON savedir filename json = saveHashNameBSFileInPrefixSubDirs (savedir </> filename) (BL8.toStrict $ A.encode json)
+
 saveMG :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
-saveMG savedir filename mgs = do
-  saveHashNameBSFileInPrefixSubDirs (savedir </> (addExtension filename "mgs")) (BL8.toStrict $ A.encode mgs)
+saveMG savedir filename mgs = saveJSON savedir (addExtension filename "mgs") mgs
+
+saveARB :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
+saveARB savedir filename arb = saveJSON savedir (addExtension filename "arb") arb
 
 saveWikiEL :: A.ToJSON a => FilePath -> a -> IO ()
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)

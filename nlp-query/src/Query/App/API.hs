@@ -4,13 +4,18 @@
 
 module Query.App.API where
 
-import           Control.Concurrent                (threadDelay)
+import           Control.Concurrent
+import           Control.Concurrent.STM
 import           Control.Lens                      ((^.))
-import           Control.Monad                     (forever)
+import           Control.Monad                     (forever,forM,void,when)
 import           Control.Monad.IO.Class            (liftIO)
 import           Control.Monad.Trans.Except
-import qualified Data.Aeson         as A
-import qualified Data.Text          as T
+import qualified Data.Aeson                 as A
+import qualified Data.ByteString.Char8      as B8
+import qualified Data.ByteString.Lazy.Char8 as BL
+import           Data.List                         (sortOn)
+import           Data.Maybe                        (catMaybes)
+import qualified Data.Text                  as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Database.PostgreSQL.Simple        (Connection)
 import           Network.Wai
@@ -20,15 +25,39 @@ import           Servant
 import           System.IO
 --
 import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
-import qualified NewsAPI.DB.Analysis as An
-import qualified NewsAPI.DB.Article  as Ar
+import qualified NewsAPI.DB.Analysis        as An
+import qualified NewsAPI.DB.Article         as Ar
 import           NLP.Shared.Type                   (RecentAnalysis(..),RecentArticle(..))
 --
+import           Pipeline.Load
+import           Pipeline.Run.SRL                  (ARBText)
+import           Pipeline.Type
 import           Pipeline.Util                     (bstrHashToB16)
 
 
-nominalDay :: NominalDiffTime
-nominalDay = 86400
+updateARB savepath arbs = do
+  forever $ do
+    arbs' <- atomically (takeTMVar arbs)
+    let cfps = map fst arbs'
+    fps <- getFileListRecursively savepath
+    let newarbs' = filter (\x -> not $ x `elem` cfps) fps
+
+    newarbs'' <- forM newarbs' $ \fp -> do
+      bstr <- B8.readFile fp
+      return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
+    let newarbs = catMaybes newarbs''
+    print newarbs
+    if (not $ null newarbs)
+      then atomically (putTMVar arbs (arbs' ++ newarbs))
+      else atomically (putTMVar arbs arbs')
+    threadDelay 3000000
+
+loadExistingARB :: FilePath -> IO [Maybe (FilePath,(UTCTime,[[ARBText]]))]
+loadExistingARB savepath = do
+  fps <- getFileListRecursively savepath
+  forM fps $ \fp -> do
+    bstr <- B8.readFile fp
+    return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
 
 oneDayArticles conn txt = do
   ctime <- getCurrentTime
@@ -54,6 +83,7 @@ getNDayAnalyses conn txt n = do
   
 type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
+         :<|> "recentarb" :> Get '[JSON] [[[ARBText]]]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
@@ -65,13 +95,19 @@ run conn = do
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-  runSettings settings =<< (mkApp conn)
 
-mkApp :: Connection -> IO Application
-mkApp conn = return $ simpleCors (serve recentarticleAPI (server conn))
+  arbs <- newEmptyTMVarIO
+  exstarbs <- loadExistingARB "/home/modori/temp/arb"
+  print exstarbs
+  atomically (putTMVar arbs (catMaybes exstarbs))
+  void $ forkIO $ updateARB "/home/modori/temp/arb" arbs
+  runSettings settings =<< (mkApp conn arbs)
 
-server :: Connection -> Server API
-server conn = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn)
+mkApp :: Connection -> TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> IO Application
+mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
+
+server :: Connection -> TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Server API
+server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
 getArticlesBySrc conn txt = do
@@ -83,4 +119,10 @@ getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
 getAnalysesBySrc conn txt = do
   list <- liftIO $ getNDayAnalyses conn txt 10
   let result = map (\(hsh,src,mb1,mb2,mb3) -> RecentAnalysis hsh src mb1 mb2 mb3) list
+  return result
+
+getARB :: TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Handler [[[ARBText]]]
+getARB arbs = do
+  arbs' <- liftIO $ atomically (readTMVar arbs)
+  let result = take 20 $ reverse $ map (\(_,(_,xs)) -> xs) $ sortOn (\(_,(ct,_)) -> ct) arbs'
   return result

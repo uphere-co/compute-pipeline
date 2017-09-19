@@ -56,6 +56,9 @@ runDaemon = do
 
   closeConnection conn
 
+
+coreN = 15 :: Int
+
 -- | This does SRL and generates meaning graphs.
 runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> String -> IO ()
 runSRL conn apredata emTagger src = do
@@ -64,15 +67,13 @@ runSRL conn apredata emTagger src = do
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   print $ (src,length loaded)
-  let (n :: Int) = let n' = ((length loaded) `div` 15) in if n' >= 1 then n' else 1
+  let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
     forkChild (runAnalysisByChunks conn emTagger apredata ls)
 
   waitForChildren
   refreshChildren
 
-
-{-
 mkBloombergMGFig :: IO ()
 mkBloombergMGFig = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
@@ -80,4 +81,3 @@ mkBloombergMGFig = do
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   runSRL conn apredata emTagger "bloomberg"
   closeConnection conn
--}
