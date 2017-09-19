@@ -13,6 +13,7 @@ import           Control.Monad.Trans.Except
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as BL
+import           Data.List                         (sortOn)
 import           Data.Maybe                        (catMaybes)
 import qualified Data.Text                  as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
@@ -123,5 +124,5 @@ getAnalysesBySrc conn txt = do
 getARB :: TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Handler [[[ARBText]]]
 getARB arbs = do
   arbs' <- liftIO $ atomically (readTMVar arbs)
-  let result = map (\(_,(_,xs)) -> xs) arbs'
+  let result = take 20 $ reverse $ map (\(_,(_,xs)) -> xs) $ sortOn (\(_,(ct,_)) -> ct) arbs'
   return result
