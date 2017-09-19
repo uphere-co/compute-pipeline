@@ -48,18 +48,19 @@ mkMGs conn apredata emTagger fp article = do
       mgs = map meaningGraph sstrs
       arb = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
-      isNonFilter = True
+      isNonFilter = False
 --  print mgs
 --  genARB mgs
---  saveMG "/home/modori/temp/mgs" filename mgs
---  saveARB "/home/modori/temp/arb" filename arb
+  ctime <- getCurrentTime
+  saveMG "/home/modori/temp/mgs" filename mgs
+  saveARB "/home/modori/temp/arb" filename (ctime,arb)
   genMGFigs filename sstrs mtokss mgs wikilst isNonFilter
---  updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
+  updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
 genMGFigs :: FilePath -> [SentStructure] -> [[Maybe Token]] -> [MeaningGraph] -> [(Range, Text)] -> Bool -> IO ()
 genMGFigs filename sstrs mtokss mgs wikilst isNonFilter = do
   forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
---     when (numberOfPredicate sstr == numberOfMGVerbPredicate mg' || isNonFilter) $ do
+    when (numberOfPredicate sstr == numberOfMGVerbPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of
         Nothing -> return ()

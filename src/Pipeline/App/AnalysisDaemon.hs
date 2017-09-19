@@ -63,8 +63,8 @@ coreN = 15 :: Int
 runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> String -> IO ()
 runSRL conn apredata emTagger src = do
   as' <- getAnalysisFilePathBySource src
-  -- as <- filterM (\a -> fmap not $ doesFileExist (addExtension ("/home/modori/temp/mgs" </> a) "mgs")) as'
-  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as')
+  as <- filterM (\a -> fmap not $ doesFileExist (addExtension ("/home/modori/temp/mgs" </> a) "mgs")) as'
+  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
@@ -73,8 +73,6 @@ runSRL conn apredata emTagger src = do
 
   waitForChildren
   refreshChildren
-
-
 
 mkBloombergMGFig :: IO ()
 mkBloombergMGFig = do

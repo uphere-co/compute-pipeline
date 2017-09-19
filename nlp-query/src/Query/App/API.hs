@@ -30,6 +30,19 @@ import           Pipeline.Util                     (bstrHashToB16)
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
+updateARB = do
+  -- arbs
+  let cfps = map fst arbs
+  fps <- getFileRecursively savepath
+  let newarbs = filter (\x -> not $ x `elem` cfps) fps
+  -- insert newarbs in concurrent way
+  
+loadExistingARB savepath = do
+  fps <- getFileListRecursively savepath
+  forM fps $ \fp -> do
+    bstr <- B.readFile fp
+    return $ (fp,A.decode (BL.fromStrict bstr))
+
 oneDayArticles conn txt = do
   ctime <- getCurrentTime
   let yesterday = addUTCTime (-nominalDay) ctime 
@@ -65,6 +78,10 @@ run conn = do
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
+  arbs <- loadExistingARB "/home/modori/temp/arb"
+  --
+  -- forkIO update constantly arb
+  --
   runSettings settings =<< (mkApp conn)
 
 mkApp :: Connection -> IO Application

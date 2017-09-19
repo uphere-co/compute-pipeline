@@ -85,6 +85,23 @@ executable corenlp-runner
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
 
+executable corenlp-batch
+  hs-source-dirs:      app
+  main-is:             corenlp-batch.hs
+  -- other-modules:
+  build-depends:       base,
+                       --
+                       bytestring,
+                       data-default,
+                       jvm,
+                       lens,
+                       --
+                       HCoreNLP,
+                       --
+                       nlp-pipeline
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
+  default-language:    Haskell2010
+  
 executable analysis-runner
   hs-source-dirs:      app
   main-is:             analysis-runner.hs
