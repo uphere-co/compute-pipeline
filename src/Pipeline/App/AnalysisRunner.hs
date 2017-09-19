@@ -20,7 +20,7 @@ import           NewsAPI.DB
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
 import           SRL.Analyze
-import           SRL.Analyze.Match                      (meaningGraph,tagMG)
+import           SRL.Analyze.Match                      (changeMGText,meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure          (docStructure)
 import           SRL.Analyze.Type
 import qualified SRL.Analyze.WikiEL         as SRLWiki
@@ -48,8 +48,8 @@ mkMGs conn apredata emTagger fp article = do
       mgs = map meaningGraph sstrs
       arb = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
-      isNonFilter = False
-  print mgs
+      isNonFilter = True
+--  print mgs
 --  genARB mgs
 --  saveMG "/home/modori/temp/mgs" filename mgs
 --  saveARB "/home/modori/temp/arb" filename arb
@@ -59,14 +59,15 @@ mkMGs conn apredata emTagger fp article = do
 genMGFigs :: FilePath -> [SentStructure] -> [[Maybe Token]] -> [MeaningGraph] -> [(Range, Text)] -> Bool -> IO ()
 genMGFigs filename sstrs mtokss mgs wikilst isNonFilter = do
   forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
-    when (numberOfPredicate sstr == numberOfMGPredicate mg' || isNonFilter) $ do
+--     when (numberOfPredicate sstr == numberOfMGVerbPredicate mg' || isNonFilter) $ do
       let mgraph = getGraphFromMG mg'
       case mgraph of
         Nothing -> return ()
         Just graph -> do
           when ((farthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
             let mg = tagMG mg' wikilst
-            mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg
+                mg'' = changeMGText mg
+            mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg''
 
 genARB :: [MeaningGraph] -> IO ()
 genARB mgs = forM_ mgs $ \mg -> print $ mkARB mg
