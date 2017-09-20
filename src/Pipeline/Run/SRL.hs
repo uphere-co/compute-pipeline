@@ -119,7 +119,7 @@ mkARB mg =
           mgpredvtxs = (mgpred ^.. traverse . mv_id)
           agents = catMaybes $ map (\vtx -> findSubjectObjects mg graph vtx) mgpredvtxs -- (\vtx -> findAgentThemes mg graph vtx) mgpredvtxs
           vrtcs = mg ^. mg_vertices
-          man = map (\(v1,v2,vs) -> (,,,) <$> findFrame vrtcs v2 <*> findLabel vrtcs v1 <*> findLabel vrtcs v2 <*> (catMaybes $ map (\v3 -> findLabel vrtcs v3) vs)) agents
+          man = map (\(v1,v2,vs) -> (,,,) <$> findFrame vrtcs v2 <*> findLabel vrtcs v1 <*> findLabel vrtcs v2 <*> (Just $ catMaybes $ map (\v3 -> findLabel vrtcs v3) vs)) agents
           arbs = map (\(a,b,c,ds) -> ARB a b c ds []) (catMaybes man)
       in trace ("man : " ++ (show man) ++ "  " ++ (show agents)) arbs
 
