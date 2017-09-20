@@ -37,6 +37,7 @@ library
                   vector,
                   --
                   HCoreNLP, HCoreNLP-Proto, HWordNet,
+                  lexicon-builder,
                   multi-word-tagger,
                   network-util, newsapi, newsapi-db, nlp-shared-types, nlp-types, nyt-scrapper, nyt-db,
                   OntoNotes,

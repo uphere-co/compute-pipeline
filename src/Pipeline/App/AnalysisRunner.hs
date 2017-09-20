@@ -16,6 +16,7 @@ import           System.FilePath                        ((</>),takeFileName)
 --
 import           Data.Range                             (Range)
 import           Data.Time.Clock                        (getCurrentTime)
+import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
 import           NLP.Type.CoreNLP
@@ -79,7 +80,8 @@ genOrigSents mtokss = forM_ mtokss $ \mtks -> putStrLn $ (T.unpack $ T.dropWhile
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig "/home/modori/repo/src/lexicon-builder/config_global.json"
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   as <- getAllAnalysisFilePath
   loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)

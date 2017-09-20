@@ -21,6 +21,7 @@ import           System.FilePath                   ((</>),addExtension)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
+import           Lexicon.Data                           (loadLexDataConfig)
 import           NewsAPI.Type
 import           NLP.Type.CoreNLP
 import           WikiEL.EntityLinking
@@ -37,7 +38,8 @@ runDaemon :: IO ()
 runDaemon = do
   clspath <- getEnv "CLASSPATH"
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig "/home/modori/repo/src/lexicon-builder/config_global.json"
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -77,7 +79,8 @@ runSRL conn apredata emTagger src = do
 mkBloombergMGFig :: IO ()
 mkBloombergMGFig = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig "/home/modori/repo/src/lexicon-builder/config_global.json"
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   runSRL conn apredata emTagger "bloomberg"
   closeConnection conn
