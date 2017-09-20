@@ -59,6 +59,9 @@ mkMGDotFigs savedir i filename mtks mg = do
 saveJSON :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
 saveJSON savedir filename json = saveHashNameBSFileInPrefixSubDirs (savedir </> filename) (BL8.toStrict $ A.encode json)
 
+saveMGs :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
+saveMGs savedir filename mgs = saveJSON savedir (addExtension filename "mgs") mgs
+
 saveMG :: A.ToJSON a => FilePath -> FilePath -> Int -> a -> IO ()
 saveMG savedir filename i mg = saveJSON savedir (addExtension (filename ++ "_" ++ (show i)) "mgs") mg
 

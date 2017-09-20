@@ -62,6 +62,7 @@ mkMGs conn apredata emTagger fp article = do
       arbs = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
+  saveMGs "/home/modori/temp/mgs" filename mgs -- Temporary solution
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
       saveMG "/home/modori/temp/mgs" filename i mg
