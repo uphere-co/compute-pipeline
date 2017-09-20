@@ -59,11 +59,11 @@ mkMGDotFigs savedir i filename mtks mg = do
 saveJSON :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
 saveJSON savedir filename json = saveHashNameBSFileInPrefixSubDirs (savedir </> filename) (BL8.toStrict $ A.encode json)
 
-saveMG :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
-saveMG savedir filename mgs = saveJSON savedir (addExtension filename "mgs") mgs
+saveMG :: A.ToJSON a => FilePath -> FilePath -> Int -> a -> IO ()
+saveMG savedir filename i mg = saveJSON savedir (addExtension (filename ++ "_" ++ (show i)) "mgs") mg
 
-saveARB :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
-saveARB savedir filename arb = saveJSON savedir (addExtension filename "arb") arb
+saveARB :: A.ToJSON a => FilePath -> FilePath -> Int -> a -> IO ()
+saveARB savedir filename i arb = saveJSON savedir (addExtension (filename ++ "_" ++ (show i)) "arb") arb
 
 saveWikiEL :: A.ToJSON a => FilePath -> a -> IO ()
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)

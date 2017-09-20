@@ -7,7 +7,7 @@ module Pipeline.App.AnalysisRunner where
 import           Control.Lens
 import           Control.Monad                          (forM_,when)
 import           Data.Char                              (isSpace)
-import           Data.List                              (zip4)
+import           Data.List                              (zip5)
 import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
@@ -48,35 +48,27 @@ mkMGs conn apredata emTagger fp article = do
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
-      arb = map mkARB mgs 
+      arbs = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
---  print mgs
---  genARB mgs
   ctime <- getCurrentTime
-  saveMG "/home/modori/temp/mgs" filename mgs
-  saveARB "/home/modori/temp/arb" filename (ctime,arb)
-  genMGFigs filename sstrs mtokss mgs wikilst isNonFilter
+  forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
+    saveMG "/home/modori/temp/mgs" filename i mg
+    saveARB "/home/modori/temp/arb" filename i (ctime,arb)
+    genMGFigs filename i sstr mtks mg wikilst isNonFilter
   updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
-genMGFigs :: FilePath -> [SentStructure] -> [[Maybe Token]] -> [MeaningGraph] -> [(Range, Text)] -> Bool -> IO ()
-genMGFigs filename sstrs mtokss mgs wikilst isNonFilter = do
-  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
-    when (numberOfPredicate sstr == numberOfMGVerbPredicate mg' || isNonFilter) $ do
-      let mgraph = getGraphFromMG mg'
-      case mgraph of
-        Nothing -> return ()
-        Just graph -> do
-          when ((farthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
-            let mg = tagMG mg' wikilst
-                mg'' = changeMGText mg
-            mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg''
-
-genARB :: [MeaningGraph] -> IO ()
-genARB mgs = forM_ mgs $ \mg -> print $ mkARB mg
-  
-genOrigSents :: [[Maybe Token]] -> IO ()
-genOrigSents mtokss = forM_ mtokss $ \mtks -> putStrLn $ (T.unpack $ T.dropWhile isSpace $ mkTextFromToken mtks)
+genMGFigs :: FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> Bool -> IO ()
+genMGFigs filename i sstr mtks mg wikilst isNonFilter = do
+  when (numberOfPredicate sstr == numberOfMGVerbPredicate mg || isNonFilter) $ do
+    let mgraph = getGraphFromMG mg
+    case mgraph of
+      Nothing -> return ()
+      Just graph -> do
+        when ((farthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
+          let mg' = tagMG mg wikilst
+              mg'' = changeMGText mg'
+          mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg''
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
