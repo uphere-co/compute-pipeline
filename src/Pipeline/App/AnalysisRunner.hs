@@ -62,14 +62,14 @@ mkMGs conn apredata emTagger fp article = do
       arbs = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
-  saveMGs "/home/modori/temp/mgs" filename mgs -- Temporary solution
+  -- saveMGs "/home/modori/temp/mgs" filename mgs -- Temporary solution
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
-      saveMG "/home/modori/temp/mgs" filename i mg
-      ctime <- getCurrentTime
-      saveARB "/home/modori/temp/arb" filename i (ctime,arb)
+      -- saveMG "/home/modori/temp/mgs" filename i mg
+      -- ctime <- getCurrentTime
+      -- saveARB "/home/modori/temp/arb" filename i (ctime,arb)
       genMGFigs filename i sstr mtks mg wikilst
-  updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
+  -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
 genMGFigs :: FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
 genMGFigs filename i sstr mtks mg wikilst = do
@@ -78,8 +78,7 @@ genMGFigs filename i sstr mtks mg wikilst = do
     Nothing -> return ()
     Just graph -> do
         let mg' = tagMG mg wikilst
-            mg'' = changeMGText mg'
-        mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg''
+        mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg'
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
