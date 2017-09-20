@@ -66,6 +66,8 @@ mkMGs conn apredata emTagger mgstore mgdotfigstore arbstore fp article = do
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
   saveMGs mgstore filename mgs -- Temporary solution
+  print mgs
+  print arbs
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
       saveMG mgstore filename i mg
