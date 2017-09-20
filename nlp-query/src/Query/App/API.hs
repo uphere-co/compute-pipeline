@@ -52,9 +52,10 @@ updateARB savepath arbs = do
       else atomically (putTMVar arbs arbs')
     threadDelay 3000000
 
-loadExistingARB :: FilePath -> IO [Maybe (FilePath,(UTCTime,[[ARBText]]))]
+loadExistingARB :: FilePath -> IO [Maybe (FilePath,(UTCTime,[ARBText]))]
 loadExistingARB savepath = do
-  fps <- getFileListRecursively savepath
+  fps' <- getFileListRecursively savepath
+  let fps = filter (\x -> '_' `elem` x) fps'
   forM fps $ \fp -> do
     bstr <- B8.readFile fp
     return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
@@ -83,7 +84,7 @@ getNDayAnalyses conn txt n = do
   
 type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
-         :<|> "recentarb" :> Get '[JSON] [[[ARBText]]]
+         :<|> "recentarb" :> Get '[JSON] [[ARBText]]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
@@ -103,10 +104,10 @@ run conn = do
   void $ forkIO $ updateARB "/home/modori/temp/arb" arbs
   runSettings settings =<< (mkApp conn arbs)
 
-mkApp :: Connection -> TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> IO Application
+mkApp :: Connection -> TMVar [(FilePath, (UTCTime, [ARBText]))] -> IO Application
 mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
 
-server :: Connection -> TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Server API
+server :: Connection -> TMVar [(FilePath, (UTCTime, [ARBText]))] -> Server API
 server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
@@ -121,7 +122,7 @@ getAnalysesBySrc conn txt = do
   let result = map (\(hsh,src,mb1,mb2,mb3) -> RecentAnalysis hsh src mb1 mb2 mb3) list
   return result
 
-getARB :: TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Handler [[[ARBText]]]
+getARB :: TMVar [(FilePath, (UTCTime, [ARBText]))] -> Handler [[ARBText]]
 getARB arbs = do
   arbs' <- liftIO $ atomically (readTMVar arbs)
   let result = take 20 $ reverse $ map (\(_,(_,xs)) -> xs) $ sortOn (\(_,(ct,_)) -> ct) arbs'
