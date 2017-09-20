@@ -51,9 +51,10 @@ mkMGs :: Connection
       -> AnalyzePredata
       -> ([(Text,NamedEntityClass)] -> [EntityMention Text])
       -> FilePath
+      -> FilePath
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata emTagger fp article = do
+mkMGs conn apredata emTagger mgdotfigstore fp article = do
   let filename = takeFileName fp
       dstr = docStructure apredata emTagger article
       sstrs = catMaybes (dstr ^. ds_sentStructures)
@@ -62,41 +63,41 @@ mkMGs conn apredata emTagger fp article = do
       arbs = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
-  -- saveMGs "/home/modori/temp/mgs" filename mgs -- Temporary solution
+  -- saveMGs mgstore filename mgs -- Temporary solution
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
-      -- saveMG "/home/modori/temp/mgs" filename i mg
+      -- saveMG mgstore filename i mg
       -- ctime <- getCurrentTime
-      -- saveARB "/home/modori/temp/arb" filename i (ctime,arb)
-      genMGFigs filename i sstr mtks mg wikilst
+      -- saveARB arbstore filename i (ctime,arb)
+      genMGFigs mgdotfigstore filename i sstr mtks mg wikilst
   -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
-genMGFigs :: FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
-genMGFigs filename i sstr mtks mg wikilst = do
+genMGFigs :: FilePath -> FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
+genMGFigs mgdotfigstore filename i sstr mtks mg wikilst = do
   let mgraph = getGraphFromMG mg
   case mgraph of
     Nothing -> return ()
     Just graph -> do
         let mg' = tagMG mg wikilst
-        mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg'
+        mkMGDotFigs mgdotfigstore i filename mtks mg'
 
-runAnalysisAll :: Connection -> IO ()
-runAnalysisAll conn = do
-  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig "/home/modori/repo/src/lexicon-builder/config_global.json"
+runAnalysisAll :: Connection -> FilePath -> FilePath -> FilePath -> IO ()
+runAnalysisAll conn corenlpstore mgdotfigstore lexconfigpath = do
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig lexconfigpath
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   as <- getAllAnalysisFilePath
-  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
+  loaded' <- loadCoreNLPResult (map ((</>) corenlpstore) as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   flip mapM_ (take 100 loaded) $ \(fp,x) -> do
-    mkMGs conn apredata emTagger fp x
+    mkMGs conn apredata emTagger mgdotfigstore fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysisByChunks :: Connection -> ([NERToken] -> [EntityMention Text])
-                    -> AnalyzePredata -> [(FilePath,DocAnalysisInput)] -> IO ()
-runAnalysisByChunks conn emTagger apredata loaded = do
+                    -> AnalyzePredata -> FilePath -> [(FilePath,DocAnalysisInput)] -> IO ()
+runAnalysisByChunks conn emTagger apredata mgdotfigstore loaded = do
   flip mapM_ loaded $ \(fp,artl) -> do
-    mkMGs conn apredata emTagger fp artl
+    mkMGs conn apredata emTagger mgdotfigstore fp artl
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)

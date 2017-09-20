@@ -34,11 +34,11 @@ import           Pipeline.Run.CoreNLP
 import           Pipeline.Source.NewsAPI.Analysis
 
 
-runDaemon :: IO ()
-runDaemon = do
+runDaemon :: FilePath -> FilePath -> FilePath -> FilePath -> FilePath -> IO ()
+runDaemon corenlpstore errstore mgstore mgdotfigstore lexconfigpath = do
   clspath <- getEnv "CLASSPATH"
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig "/home/modori/repo/src/lexicon-builder/config_global.json"
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig lexconfigpath
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
@@ -51,8 +51,8 @@ runDaemon = do
                        . (ner .~ True)
                   )
     forever $ do
-      forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp src
-      forM_ prestigiousNewsSource $ \src -> runSRL conn apredata emTagger src
+      forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp corenlpstore errstore src
+      forM_ prestigiousNewsSource $ \src -> runSRL conn apredata emTagger corenlpstore mgstore mgdotfigstore src
       putStrLn "Waiting next run..."
       threadDelay 10000000
 
@@ -62,25 +62,25 @@ runDaemon = do
 coreN = 15 :: Int
 
 -- | This does SRL and generates meaning graphs.
-runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> String -> IO ()
-runSRL conn apredata emTagger src = do
+runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> FilePath -> FilePath -> FilePath -> String -> IO ()
+runSRL conn apredata emTagger corenlpstore mgstore mgdotfigstore src = do
   as' <- getAnalysisFilePathBySource src
-  -- as <- filterM (\a -> fmap not $ doesFileExist (addExtension ("/home/modori/temp/mgs" </> a) "mgs")) as'
-  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as')
+  as <- filterM (\a -> fmap not $ doesFileExist (addExtension (mgstore </> a) "mgs")) as'
+  loaded' <- loadCoreNLPResult (map ((</>) corenlpstore) as')
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
-    forkChild (runAnalysisByChunks conn emTagger apredata ls)
+    forkChild (runAnalysisByChunks conn emTagger apredata mgdotfigstore ls)
 
   waitForChildren
   refreshChildren
 
-mkBloombergMGFig :: IO ()
-mkBloombergMGFig = do
+mkBloombergMGFig :: FilePath -> FilePath -> FilePath -> FilePath -> IO ()
+mkBloombergMGFig corenlpstore mgstore mgdotfigstore lexconfigpath = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig "/home/modori/repo/src/lexicon-builder/config_global.json"
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig lexconfigpath
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-  runSRL conn apredata emTagger "bloomberg"
+  runSRL conn apredata emTagger corenlpstore mgstore mgdotfigstore "bloomberg"
   closeConnection conn

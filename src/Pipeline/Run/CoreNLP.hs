@@ -53,10 +53,10 @@ storeParsedArticles pp articles savepath errorpath = do
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
-runCoreNLPforNewsAPISource :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> String -> IO ()
-runCoreNLPforNewsAPISource pp src = do
+runCoreNLPforNewsAPISource :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> FilePath -> FilePath -> String -> IO ()
+runCoreNLPforNewsAPISource pp corenlpstore errstore src = do
   articles <- getTimeTitleDescFromSrcWithHash src
-  storeParsedArticles pp articles "/home/modori/data/newsapianalyzed" "/home/modori/data/newsapierror"
+  storeParsedArticles pp articles corenlpstore errstore
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.
 preRunForTaggingNE :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")

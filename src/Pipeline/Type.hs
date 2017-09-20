@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
@@ -5,10 +6,12 @@ module Pipeline.Type where
 
 import           Control.Lens
 import           Options.Applicative
+import           Data.Aeson
 import           Data.ByteString.Char8                       (ByteString)
 import           Data.Monoid                                 ((<>))
 import           Data.Text                                   (Text)
 import           Data.Time.Clock                             (NominalDiffTime,UTCTime)
+import           GHC.Generics
 --
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
@@ -69,3 +72,15 @@ mkNewsAPIArticleErrorDB article =
 
 nominalDay :: NominalDiffTime
 nominalDay = 86400
+
+data Config = Config
+  { _corenlpstore  :: FilePath
+  , _mgstore       :: FilePath
+  , _mgdotfigstore :: FilePath
+  , _lexconfigpath :: FilePath
+  , _arbstore      :: FilePath
+  , _errstore :: FilePath
+  } deriving (Show, Generic)
+
+instance ToJSON Config
+instance FromJSON Config
