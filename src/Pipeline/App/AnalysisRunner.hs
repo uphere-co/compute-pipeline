@@ -36,6 +36,17 @@ import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Util
 
 
+
+isSRLFiltered sstr mg =
+ let a = numberOfPredicate sstr
+     b = numberOfMGVerbPredicate mg
+     mgraph = getGraphFromMG mg
+     (c,d) = case mgraph of
+               Nothing -> (-1,-1)
+               Just gr -> (farthestPath gr, numberOfIsland gr)
+ in ((a == b) && (c >=4) && (d < 3))
+
+
 mkMGs :: Connection
       -> AnalyzePredata
       -> ([(Text,NamedEntityClass)] -> [EntityMention Text])
@@ -51,24 +62,23 @@ mkMGs conn apredata emTagger fp article = do
       arbs = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
-  ctime <- getCurrentTime
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
-    saveMG "/home/modori/temp/mgs" filename i mg
-    saveARB "/home/modori/temp/arb" filename i (ctime,arb)
-    genMGFigs filename i sstr mtks mg wikilst isNonFilter
+    when (isSRLFiltered sstr mg || isNonFilter) $ do
+      saveMG "/home/modori/temp/mgs" filename i mg
+      ctime <- getCurrentTime
+      saveARB "/home/modori/temp/arb" filename i (ctime,arb)
+      genMGFigs filename i sstr mtks mg wikilst
   updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
-genMGFigs :: FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> Bool -> IO ()
-genMGFigs filename i sstr mtks mg wikilst isNonFilter = do
-  when (numberOfPredicate sstr == numberOfMGVerbPredicate mg || isNonFilter) $ do
-    let mgraph = getGraphFromMG mg
-    case mgraph of
-      Nothing -> return ()
-      Just graph -> do
-        when ((farthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
-          let mg' = tagMG mg wikilst
-              mg'' = changeMGText mg'
-          mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg''
+genMGFigs :: FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
+genMGFigs filename i sstr mtks mg wikilst = do
+  let mgraph = getGraphFromMG mg
+  case mgraph of
+    Nothing -> return ()
+    Just graph -> do
+        let mg' = tagMG mg wikilst
+            mg'' = changeMGText mg'
+        mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg''
 
 runAnalysisAll :: Connection -> IO ()
 runAnalysisAll conn = do
