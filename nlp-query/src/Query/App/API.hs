@@ -95,12 +95,13 @@ run conn = do
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-
+  cfg <- (\ec -> case ec of {Left err -> error err;Right c -> return c;}) =<< loadConfigFile "../config/config.json"
+  let arbstore = (_arbstore cfg)
   arbs <- newEmptyTMVarIO
-  exstarbs <- loadExistingARB "/home/modori/temp/arb"
+  exstarbs <- loadExistingARB arbstore
   print exstarbs
   atomically (putTMVar arbs (catMaybes exstarbs))
-  void $ forkIO $ updateARB "/home/modori/temp/arb" arbs
+  void $ forkIO $ updateARB arbstore arbs
   runSettings settings =<< (mkApp conn arbs)
 
 mkApp :: Connection -> TMVar [(FilePath, (UTCTime, [ARB]))] -> IO Application
