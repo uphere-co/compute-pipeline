@@ -82,12 +82,12 @@ genMGFigs cfg filename i sstr mtks mg wikilst = do
       let mg' = tagMG mg wikilst
       mkMGDotFigs (cfg ^. mgdotfigstore) i filename mtks mg'
 
-runAnalysisAll :: Connection -> PathConfig -> IO ()
-runAnalysisAll conn cfg = do
+runAnalysisAll :: PathConfig -> Connection -> IO ()
+runAnalysisAll cfg conn = do
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-  as <- getAllAnalysisFilePath
+  as <- getAllAnalysisFilePath cfg
   loaded' <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   flip mapM_ (take 100 loaded) $ \(fp,x) -> do

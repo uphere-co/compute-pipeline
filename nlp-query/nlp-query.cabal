@@ -58,7 +58,9 @@ executable api
   main-is:             api.hs
   build-depends:       base,
                        --
+                       lens,
                        nlp-pipeline,
+                       optparse-applicative,
                        --
                        nlp-query
   hs-source-dirs:      app

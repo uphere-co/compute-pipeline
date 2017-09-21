@@ -113,6 +113,7 @@ executable analysis-runner
                        bytestring,
                        filepath,
                        lens,
+                       optparse-applicative,
                        split,
                        text,
                        --

@@ -88,14 +88,13 @@ type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [Recent
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
 
-run :: Connection -> IO ()
-run conn = do
+run :: Connection -> PathConfig -> IO ()
+run conn cfg = do
   let port = 3000
       settings =
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-  cfg <- (\ec -> case ec of {Left err -> error err;Right c -> return c;}) =<< loadConfigFile "../config/config.json"
   let arbstore = (_arbstore cfg)
   arbs <- newEmptyTMVarIO
   exstarbs <- loadExistingARB arbstore
