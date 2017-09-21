@@ -83,8 +83,9 @@ data PathConfig = PathConfig
   , _errstore      :: FilePath
   } deriving (Show, Generic)
 
-instance ToJSON PathConfig
+makeLenses ''PathConfig
 
+instance ToJSON PathConfig
 
 instance FromJSON PathConfig where
   parseJSON (Object o) =
