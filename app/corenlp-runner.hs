@@ -28,4 +28,4 @@ main = do
                        . (ner .~ True)
                   )
 
-    runCoreNLPforNewsAPISource pp (_corenlpstore cfg) (_errstore cfg) src
+    runCoreNLPforNewsAPISource pp cfg src

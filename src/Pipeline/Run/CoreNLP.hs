@@ -8,6 +8,7 @@
 module Pipeline.Run.CoreNLP where
 
 import           Control.Exception                            (SomeException,try)
+import           Control.Lens                                 ((^.))
 import           Control.Monad                                (forM_,when)
 import qualified Data.Aeson                            as A
 import qualified Data.ByteString.Lazy.Char8            as BL
@@ -31,32 +32,33 @@ import           Pipeline.Type
 import           Pipeline.Util
 
 storeParsedArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+                    -> PathConfig
                     -> [Maybe (Ar.ArticleH,NewsAPIArticleContent)]
-                    -> FilePath -> FilePath -> IO ()
-storeParsedArticles pp articles savepath errorpath = do
+                    -> IO ()
+storeParsedArticles pp cfg articles = do
   conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
   -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
   forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
     -- (txt,xs) <- preRunForTaggingNE pp emTagger txt' -- Necessary for pre-running of CoreNLP
-    fchk <- doesHashNameFileExistInPrefixSubDirs (savepath </> (T.unpack hsh))
-    echk <- doesHashNameFileExistInPrefixSubDirs (errorpath </> (T.unpack hsh))
+    fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh))
+    echk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh))
     when (not fchk && not echk) $ do
       eresult <- try $ runParser pp txt
       case eresult of
         Left  (_e :: SomeException) -> do
-          saveHashNameTextFileInPrefixSubDirs (errorpath </> (T.unpack hsh)) txt
+          saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
           uploadArticleError conn (mkNewsAPIArticleErrorDB article)
         Right result                -> do
-          saveHashNameBSFileInPrefixSubDirs (savepath </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
+          saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
           uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
-runCoreNLPforNewsAPISource :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> FilePath -> FilePath -> String -> IO ()
-runCoreNLPforNewsAPISource pp corenlpstore errstore src = do
+runCoreNLPforNewsAPISource :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
+runCoreNLPforNewsAPISource pp cfg src = do
   articles <- getTimeTitleDescFromSrcWithHash src
-  storeParsedArticles pp articles corenlpstore errstore
+  storeParsedArticles pp cfg articles
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.
 preRunForTaggingNE :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
