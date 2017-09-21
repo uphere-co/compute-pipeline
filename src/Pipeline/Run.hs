@@ -22,12 +22,13 @@ import           SRL.Analyze.Type
 import           Text.Format.Dot                        (mkLabelText)
 --
 import           Pipeline.Source.NewsAPI.Article        (getTitle)
+import           Pipeline.Type
 import           Pipeline.Util                          (saveHashNameBSFileInPrefixSubDirs)
 
 
-showTextMG :: MeaningGraph -> FilePath -> (t2, t1, [Maybe Token], t) -> IO ()
-showTextMG mg filename (_i,_sstr,mtks,_mg') = do
-  atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ("/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg" </> filename)
+showTextMG :: PathConfig -> MeaningGraph -> FilePath -> (t2, t1, [Maybe Token], t) -> IO ()
+showTextMG cfg mg filename (_i,_sstr,mtks,_mg') = do
+  atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ((cfg ^. newsapistore) </> "bloomberg" </> filename)
 
   let vertices = mg ^. mg_vertices
       edges = mg ^. mg_edges  
@@ -40,6 +41,7 @@ showTextMG mg filename (_i,_sstr,mtks,_mg') = do
   forM_ vertices $ \v -> do
     case v of
       MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ T.intercalate " " $ v ^. mv_verb . vp_words ^.. traverse . to (^. _1)) 
+      MGNominalPredicate {..} -> putStrLn $ "MGNominalPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame))
       MGEntity    {..} -> putStrLn $ "MGEntity    :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_text))
 
   forM_ edges $ \e -> do

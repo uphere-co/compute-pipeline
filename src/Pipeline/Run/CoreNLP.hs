@@ -36,8 +36,7 @@ storeParsedArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                     -> [Maybe (Ar.ArticleH,NewsAPIArticleContent)]
                     -> IO ()
 storeParsedArticles pp cfg articles = do
-  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  conn <- getConnection (cfg ^. dbstring)
   forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
     -- (txt,xs) <- preRunForTaggingNE pp emTagger txt' -- Necessary for pre-running of CoreNLP
     fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh))
@@ -57,7 +56,7 @@ storeParsedArticles pp cfg articles = do
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
 runCoreNLPforNewsAPISource :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
 runCoreNLPforNewsAPISource pp cfg src = do
-  articles <- getTimeTitleDescFromSrcWithHash src
+  articles <- getTimeTitleDescFromSrcWithHash cfg src
   storeParsedArticles pp cfg articles
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.

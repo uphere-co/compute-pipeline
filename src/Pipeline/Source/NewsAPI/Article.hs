@@ -2,6 +2,7 @@
 
 module Pipeline.Source.NewsAPI.Article where
 
+import           Control.Lens                      ((^.))
 import           Data.Aeson                        (eitherDecodeStrict)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B   
@@ -11,33 +12,33 @@ import qualified Data.Text                  as T
 import           Data.Time.Clock                   (UTCTime)
 import qualified Database.PostgreSQL.Simple as PGS 
 import           System.Directory                  (doesFileExist)
+import           System.FilePath                   ((</>))
 --
 import           NewsAPI.DB
 import qualified NewsAPI.DB.Article         as Ar
 import           NewsAPI.Type
 --
-
+import           Pipeline.Operation.DB
+import           Pipeline.Type
 
 
 type NewsAPIArticleContent = (Text, Text, Text, Text)
 
-getHashByTime :: UTCTime -> IO [(Text,Text)]
-getHashByTime time = do
-  let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
-  conn <- PGS.connectPostgreSQL dbconfig
+getHashByTime :: PathConfig -> UTCTime -> IO [(Text,Text)]
+getHashByTime cfg time = do
+  conn <- getConnection (cfg ^. dbstring)
   articles <- getArticleByTime time conn
   PGS.close conn
   return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x)) articles)
 
-getTimeTitleDescFromSrcWithHash :: String -> IO [Maybe (Ar.ArticleH,NewsAPIArticleContent)]
-getTimeTitleDescFromSrcWithHash src = do
-  let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
-  conn <- PGS.connectPostgreSQL dbconfig
+getTimeTitleDescFromSrcWithHash :: PathConfig -> String -> IO [Maybe (Ar.ArticleH,NewsAPIArticleContent)]
+getTimeTitleDescFromSrcWithHash cfg src = do
+  conn <- getConnection (cfg ^. dbstring)
   articles <- getArticleBySource src conn
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x
-        fileprefix = "/data/groups/uphere/repo/fetchfin/newsapi/Articles/" ++ src ++ "/"
-        filepath = fileprefix ++ hsh
+        fileprefix = (cfg ^. newsapistore) </> src
+        filepath = fileprefix </> hsh
     fchk <- doesFileExist filepath
     case fchk of
       True -> do

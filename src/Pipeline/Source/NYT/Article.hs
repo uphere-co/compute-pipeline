@@ -2,6 +2,7 @@
 
 module Pipeline.Source.NYT.Article where
 
+import           Control.Lens                      ((^.))
 import qualified Data.Binary                as Bi
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
@@ -9,22 +10,24 @@ import qualified Data.ByteString.Lazy       as BL
 import qualified Data.ByteString.Lazy.Char8 as L8
 import qualified Database.PostgreSQL.Simple as PGS
 import           System.Directory                  (doesFileExist)
+import           System.FilePath                   ((</>))
 --
 import           NYT.DB
 import qualified NYT.DB.Analysis            as Analysis
 import qualified NYT.DB.Article             as A
 import           NYT.Type                          (NYTArticleFullContent(..))
+--
+import           Pipeline.Type
 
-
-getAllParsedNYTArticle :: IO [(String, NYTArticleFullContent)]
-getAllParsedNYTArticle = do
-  let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
+getAllParsedNYTArticle :: PathConfig -> IO [(String, NYTArticleFullContent)]
+getAllParsedNYTArticle cfg = do
+  let dbconfig  = L8.toStrict . L8.pack $ (cfg ^. dbstring)
   conn <- PGS.connectPostgreSQL dbconfig
   articles <- getArticleAll conn
   result <- flip mapM articles $ \x -> do
     let hsh = (L8.unpack . L8.fromStrict . B16.encode . A._sha256) x
-        fileprefix = "/data/groups/uphere/news-archive/fetchfin/nyt/NYTArticles/"
-        filepath = fileprefix ++ hsh ++ ".info/" ++ hsh ++ ".parsed"
+        fileprefix = (cfg ^. nytstore)
+        filepath = (fileprefix </> hsh) ++ ".info/" ++ hsh ++ ".parsed"
     fchk <- doesFileExist filepath
     case fchk of
       True -> do
@@ -34,9 +37,9 @@ getAllParsedNYTArticle = do
   PGS.close conn
   return result
 
-getAllAnalyzedNYTArticle :: IO [String]
-getAllAnalyzedNYTArticle = do
-  let dbconfig  = L8.toStrict . L8.pack $ "dbname=mydb host=localhost port=65432 user=modori"
+getAllAnalyzedNYTArticle :: PathConfig -> IO [String]
+getAllAnalyzedNYTArticle cfg = do
+  let dbconfig  = L8.toStrict . L8.pack $ (cfg ^. dbstring)
   conn <- PGS.connectPostgreSQL dbconfig
   analyses <- getAnalysisAll conn
   PGS.close conn

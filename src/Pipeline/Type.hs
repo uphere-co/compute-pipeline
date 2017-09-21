@@ -74,6 +74,9 @@ data PathConfig = PathConfig
   , _lexconfigpath :: FilePath
   , _arbstore      :: FilePath
   , _errstore      :: FilePath
+  , _dbstring      :: String
+  , _newsapistore  :: FilePath
+  , _nytstore      :: FilePath
   } deriving (Show, Generic)
 
 makeLenses ''PathConfig
@@ -88,4 +91,7 @@ instance FromJSON PathConfig where
                <*> o.: "LexDataConfigPath"
                <*> o.: "ARBStore"
                <*> o.: "ErrorArticleStore"
+               <*> o.: "DBString"
+               <*> o.: "NewsAPIArticleStore"
+               <*> o.: "NYTArticleStore"
   parseJSON invalid = typeMismatch "PathConfig" invalid
