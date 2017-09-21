@@ -56,7 +56,7 @@ library
                    Pipeline.Operation.Graph
                    Pipeline.Run
                    Pipeline.Run.CoreNLP
-                   Pipeline.Run.SRL
+                   -- Pipeline.Run.SRL
                    Pipeline.Run.WikiEL
                    Pipeline.Source.NewsAPI.Analysis
                    Pipeline.Source.NewsAPI.Article
