@@ -73,14 +73,14 @@ mkNewsAPIArticleErrorDB article =
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
-data Config = Config
+data PathConfig = PathConfig
   { _corenlpstore  :: FilePath
   , _mgstore       :: FilePath
   , _mgdotfigstore :: FilePath
   , _lexconfigpath :: FilePath
   , _arbstore      :: FilePath
-  , _errstore :: FilePath
+  , _errstore      :: FilePath
   } deriving (Show, Generic)
 
-instance ToJSON Config
-instance FromJSON Config
+instance ToJSON PathConfig
+instance FromJSON PathConfig
