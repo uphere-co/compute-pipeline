@@ -22,12 +22,13 @@ import           SRL.Analyze.Type
 import           Text.Format.Dot                        (mkLabelText)
 --
 import           Pipeline.Source.NewsAPI.Article        (getTitle)
+import           Pipeline.Type
 import           Pipeline.Util                          (saveHashNameBSFileInPrefixSubDirs)
 
 
-showTextMG :: MeaningGraph -> FilePath -> (t2, t1, [Maybe Token], t) -> IO ()
-showTextMG mg filename (_i,_sstr,mtks,_mg') = do
-  atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ("/data/groups/uphere/repo/fetchfin/newsapi/Articles/bloomberg" </> filename)
+showTextMG :: PathConfig -> MeaningGraph -> FilePath -> (t2, t1, [Maybe Token], t) -> IO ()
+showTextMG cfg mg filename (_i,_sstr,mtks,_mg') = do
+  atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ((cfg ^. newsapistore) </> "bloomberg" </> filename)
 
   let vertices = mg ^. mg_vertices
       edges = mg ^. mg_edges  
@@ -40,6 +41,7 @@ showTextMG mg filename (_i,_sstr,mtks,_mg') = do
   forM_ vertices $ \v -> do
     case v of
       MGPredicate {..} -> putStrLn $ "MGPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame)) ++ "    " ++ (T.unpack $ T.intercalate " " $ v ^. mv_verb . vp_words ^.. traverse . to (^. _1)) 
+      MGNominalPredicate {..} -> putStrLn $ "MGNominalPredicate :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_frame))
       MGEntity    {..} -> putStrLn $ "MGEntity    :  " ++ (show $ v ^. mv_id) ++ "    " ++ (show (v ^. mv_range)) ++ "    " ++ (T.unpack (v ^. mv_text))
 
   forM_ edges $ \e -> do
@@ -59,11 +61,14 @@ mkMGDotFigs savedir i filename mtks mg = do
 saveJSON :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
 saveJSON savedir filename json = saveHashNameBSFileInPrefixSubDirs (savedir </> filename) (BL8.toStrict $ A.encode json)
 
-saveMG :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
-saveMG savedir filename mgs = saveJSON savedir (addExtension filename "mgs") mgs
+saveMGs :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
+saveMGs savedir filename mgs = saveJSON savedir (addExtension filename "mgs") mgs
 
-saveARB :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
-saveARB savedir filename arb = saveJSON savedir (addExtension filename "arb") arb
+saveMG :: A.ToJSON a => FilePath -> FilePath -> Int -> a -> IO ()
+saveMG savedir filename i mg = saveJSON savedir (addExtension (filename ++ "_" ++ (show i)) "mgs") mg
+
+saveARB :: A.ToJSON a => FilePath -> FilePath -> Int -> a -> IO ()
+saveARB savedir filename i arb = saveJSON savedir (addExtension (filename ++ "_" ++ (show i)) "arb") arb
 
 saveWikiEL :: A.ToJSON a => FilePath -> a -> IO ()
 saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL8.toStrict $ A.encode wikiel)

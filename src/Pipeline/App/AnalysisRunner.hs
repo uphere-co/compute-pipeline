@@ -7,7 +7,7 @@ module Pipeline.App.AnalysisRunner where
 import           Control.Lens
 import           Control.Monad                          (forM_,when)
 import           Data.Char                              (isSpace)
-import           Data.List                              (zip4)
+import           Data.List                              (zip5)
 import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
@@ -16,6 +16,7 @@ import           System.FilePath                        ((</>),takeFileName)
 --
 import           Data.Range                             (Range)
 import           Data.Time.Clock                        (getCurrentTime)
+import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
 import           NLP.Type.CoreNLP
@@ -32,67 +33,72 @@ import           Pipeline.Load
 import           Pipeline.Run
 import           Pipeline.Run.SRL
 import           Pipeline.Source.NewsAPI.Analysis
+import           Pipeline.Type
 import           Pipeline.Util
+
+
+
+isSRLFiltered sstr mg =
+ let a = numberOfPredicate sstr
+     b = numberOfMGVerbPredicate mg
+     mgraph = getGraphFromMG mg
+     (c,d) = case mgraph of
+               Nothing -> (-1,-1)
+               Just gr -> (farthestPath gr, numberOfIsland gr)
+ in ((a == b) && (c >=4) && (d < 3))
 
 
 mkMGs :: Connection
       -> AnalyzePredata
       -> ([(Text,NamedEntityClass)] -> [EntityMention Text])
+      -> PathConfig
       -> FilePath
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata emTagger fp article = do
+mkMGs conn apredata emTagger cfg fp article = do
   let filename = takeFileName fp
       dstr = docStructure apredata emTagger article
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
-      arb = map mkARB mgs 
+      arbs = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
---  print mgs
---  genARB mgs
-  ctime <- getCurrentTime
-  saveMG "/home/modori/temp/mgs" filename mgs
-  saveARB "/home/modori/temp/arb" filename (ctime,arb)
-  genMGFigs filename sstrs mtokss mgs wikilst isNonFilter
-  updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
+  saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
+  forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
+    when (isSRLFiltered sstr mg || isNonFilter) $ do
+      saveMG (cfg ^. mgstore) filename i mg
+      ctime <- getCurrentTime
+      saveARB (cfg ^. arbstore) filename i (ctime,arb)
+      -- genMGFigs mgdotfigstore filename i sstr mtks mg wikilst
+  -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
-genMGFigs :: FilePath -> [SentStructure] -> [[Maybe Token]] -> [MeaningGraph] -> [(Range, Text)] -> Bool -> IO ()
-genMGFigs filename sstrs mtokss mgs wikilst isNonFilter = do
-  forM_ (zip4 ([1..] :: [Int]) sstrs mtokss mgs) $ \(i,sstr,mtks,mg') -> do
-    when (numberOfPredicate sstr == numberOfMGVerbPredicate mg' || isNonFilter) $ do
-      let mgraph = getGraphFromMG mg'
-      case mgraph of
-        Nothing -> return ()
-        Just graph -> do
-          when ((farthestPath graph >= 4 && numberOfIsland graph < 3) || isNonFilter) $ do
-            let mg = tagMG mg' wikilst
-                mg'' = changeMGText mg
-            mkMGDotFigs "/home/modori/data/meaning_graph" i filename mtks mg''
+genMGFigs :: PathConfig -> FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
+genMGFigs cfg filename i sstr mtks mg wikilst = do
+  let mgraph = getGraphFromMG mg
+  case mgraph of
+    Nothing -> return ()
+    Just graph -> do
+      let mg' = tagMG mg wikilst
+      mkMGDotFigs (cfg ^. mgdotfigstore) i filename mtks mg'
 
-genARB :: [MeaningGraph] -> IO ()
-genARB mgs = forM_ mgs $ \mg -> print $ mkARB mg
-  
-genOrigSents :: [[Maybe Token]] -> IO ()
-genOrigSents mtokss = forM_ mtokss $ \mtks -> putStrLn $ (T.unpack $ T.dropWhile isSpace $ mkTextFromToken mtks)
-
-runAnalysisAll :: Connection -> IO ()
-runAnalysisAll conn = do
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+runAnalysisAll :: PathConfig -> Connection -> IO ()
+runAnalysisAll cfg conn = do
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-  as <- getAllAnalysisFilePath
-  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
+  as <- getAllAnalysisFilePath cfg
+  loaded' <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   flip mapM_ (take 100 loaded) $ \(fp,x) -> do
-    mkMGs conn apredata emTagger fp x
+    mkMGs conn apredata emTagger cfg fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysisByChunks :: Connection -> ([NERToken] -> [EntityMention Text])
-                    -> AnalyzePredata -> [(FilePath,DocAnalysisInput)] -> IO ()
-runAnalysisByChunks conn emTagger apredata loaded = do
+                    -> AnalyzePredata -> PathConfig -> [(FilePath,DocAnalysisInput)] -> IO ()
+runAnalysisByChunks conn emTagger apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,artl) -> do
-    mkMGs conn apredata emTagger fp artl
+    mkMGs conn apredata emTagger cfg fp artl
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)

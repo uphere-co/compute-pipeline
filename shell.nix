@@ -6,6 +6,7 @@
 , HFrameNet             ? <HFrameNet>
 , HWordNet              ? <HWordNet>
 , lexicon               ? <lexicon>
+, lexicon-builder       ? <lexicon-builder>
 , multi-word-tagger     ? <multi-word-tagger>
 #, nlp-pipeline          ? <nlp-pipeline>
 , nlp-shared-types      ? <nlp-shared-types>
@@ -54,6 +55,7 @@ let
       "HFrameNet" = self.callPackage (import HFrameNet) {};
       "HWordNet" = self.callPackage (import HWordNet) {};
       "lexicon" = self.callPackage (import lexicon) {};
+      "lexicon-builder" = self.callPackage (import lexicon-builder) {};
       "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
       "network-util" = self.callPackage (import ./nlp-query/network-util) {};
       "newsapi" = self.callPackage (import (fetchfin + "/newsapi")) {};

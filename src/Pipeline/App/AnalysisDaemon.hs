@@ -21,6 +21,7 @@ import           System.FilePath                   ((</>),addExtension)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
+import           Lexicon.Data                           (loadLexDataConfig)
 import           NewsAPI.Type
 import           NLP.Type.CoreNLP
 import           WikiEL.EntityLinking
@@ -31,13 +32,14 @@ import           Pipeline.Operation.Concurrent
 import           Pipeline.Operation.DB
 import           Pipeline.Run.CoreNLP
 import           Pipeline.Source.NewsAPI.Analysis
+import           Pipeline.Type
 
-
-runDaemon :: IO ()
-runDaemon = do
+runDaemon :: PathConfig -> IO ()
+runDaemon cfg = do
   clspath <- getEnv "CLASSPATH"
-  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+  conn <- getConnection (cfg ^. dbstring)
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -49,8 +51,8 @@ runDaemon = do
                        . (ner .~ True)
                   )
     forever $ do
-      forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp src
-      forM_ prestigiousNewsSource $ \src -> runSRL conn apredata emTagger src
+      forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp cfg src
+      forM_ prestigiousNewsSource $ \src -> runSRL conn apredata emTagger cfg src
       putStrLn "Waiting next run..."
       threadDelay 10000000
 
@@ -59,25 +61,28 @@ runDaemon = do
 
 coreN = 15 :: Int
 
+
 -- | This does SRL and generates meaning graphs.
-runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> String -> IO ()
-runSRL conn apredata emTagger src = do
-  as' <- getAnalysisFilePathBySource src
-  as <- filterM (\a -> fmap not $ doesFileExist (addExtension ("/home/modori/temp/mgs" </> a) "mgs")) as'
-  loaded' <- loadCoreNLPResult (map ((</>) "/home/modori/data/newsapianalyzed") as)
-  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
+--
+runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> PathConfig -> String  -> IO ()
+runSRL conn apredata emTagger cfg src = do
+  as1 <- getAnalysisFilePathBySource cfg src
+  as2 <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as1
+  loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as2)
+  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded1
   print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
-    forkChild (runAnalysisByChunks conn emTagger apredata ls)
+    forkChild (runAnalysisByChunks conn emTagger apredata cfg ls)
 
   waitForChildren
   refreshChildren
 
-mkBloombergMGFig :: IO ()
-mkBloombergMGFig = do
-  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig
+mkBloombergMGFig :: PathConfig ->  IO ()
+mkBloombergMGFig cfg = do
+  conn <- getConnection (cfg ^. dbstring)
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
+  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-  runSRL conn apredata emTagger "bloomberg"
+  runSRL conn apredata emTagger cfg "bloomberg"
   closeConnection conn

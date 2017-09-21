@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
@@ -5,10 +6,13 @@ module Pipeline.Type where
 
 import           Control.Lens
 import           Options.Applicative
+import           Data.Aeson
+import           Data.Aeson.Types                            (typeMismatch)
 import           Data.ByteString.Char8                       (ByteString)
 import           Data.Monoid                                 ((<>))
 import           Data.Text                                   (Text)
 import           Data.Time.Clock                             (NominalDiffTime,UTCTime)
+import           GHC.Generics
 --
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
@@ -16,24 +20,17 @@ import qualified NewsAPI.DB.Article                    as Ar
 import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
 --
 
-type SentIdx = Int
-type CharIdx = Int
-type BeginEnd = (CharIdx,CharIdx)
-type TagPos a = (CharIdx,CharIdx,a)
-type SentItem = (SentIdx,BeginEnd,Text)
 
-data ProgOption = ProgOption { dir :: FilePath
-                             , entityFile :: FilePath
-                             , dbname :: String
+data ProgOption = ProgOption { _configpath :: FilePath
                              } deriving Show
 
+makeLenses ''ProgOption
+
 pOptions :: Parser ProgOption
-pOptions = ProgOption <$> strOption (long "dir" <> short 'd' <> help "Directory")
-                      <*> strOption (long "entity" <> short 'e' <> help "Entity File")
-                      <*> strOption (long "dbname" <> short 's' <> help "DB name")
+pOptions = ProgOption <$> strOption (long "config" <> short 'c' <> help "Config JSON path")
 
 progOption :: ParserInfo ProgOption 
-progOption = info pOptions (fullDesc <> progDesc "Named Entity Recognition")
+progOption = info pOptions (fullDesc <> progDesc "NLP Pipeline")
 
 data TaggedResult = TaggedResult { resultSUTime :: T.ListTimex
                                  , resultNER :: [(Int,Int,String)]
@@ -69,3 +66,32 @@ mkNewsAPIArticleErrorDB article =
 
 nominalDay :: NominalDiffTime
 nominalDay = 86400
+
+data PathConfig = PathConfig
+  { _corenlpstore  :: FilePath
+  , _mgstore       :: FilePath
+  , _mgdotfigstore :: FilePath
+  , _lexconfigpath :: FilePath
+  , _arbstore      :: FilePath
+  , _errstore      :: FilePath
+  , _dbstring      :: String
+  , _newsapistore  :: FilePath
+  , _nytstore      :: FilePath
+  } deriving (Show, Generic)
+
+makeLenses ''PathConfig
+
+instance ToJSON PathConfig
+
+instance FromJSON PathConfig where
+  parseJSON (Object o) =
+    PathConfig <$> o .: "CoreNLPStore"
+               <*> o.: "MeaningGraphStore"
+               <*> o.: "MGDotFigStore"
+               <*> o.: "LexDataConfigPath"
+               <*> o.: "ARBStore"
+               <*> o.: "ErrorArticleStore"
+               <*> o.: "DBString"
+               <*> o.: "NewsAPIArticleStore"
+               <*> o.: "NYTArticleStore"
+  parseJSON invalid = typeMismatch "PathConfig" invalid

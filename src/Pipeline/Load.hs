@@ -12,7 +12,8 @@ import           System.Directory.Tree
 --
 import           SRL.Analyze.Type
 import           WikiEL.EntityLinking           (EntityMention)
-
+--
+import           Pipeline.Type
 
 loadCoreNLPResult :: [FilePath]
                   -> IO [(FilePath, Maybe DocAnalysisInput)]
@@ -33,3 +34,6 @@ getFileListRecursively fp = do
   list' <- readDirectoryWith return fp
   let filelist = sort . toList $ dirTree list'
   return filelist
+
+loadConfigFile :: FilePath -> IO (Either String PathConfig)
+loadConfigFile fp = A.eitherDecode' <$> BL.readFile fp

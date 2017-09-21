@@ -27,10 +27,9 @@ import           System.IO
 import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
 import qualified NewsAPI.DB.Analysis        as An
 import qualified NewsAPI.DB.Article         as Ar
-import           NLP.Shared.Type                   (RecentAnalysis(..),RecentArticle(..))
+import           NLP.Shared.Type                   (ARB(..),RecentAnalysis(..),RecentArticle(..))
 --
 import           Pipeline.Load
-import           Pipeline.Run.SRL                  (ARBText)
 import           Pipeline.Type
 import           Pipeline.Util                     (bstrHashToB16)
 
@@ -52,9 +51,10 @@ updateARB savepath arbs = do
       else atomically (putTMVar arbs arbs')
     threadDelay 3000000
 
-loadExistingARB :: FilePath -> IO [Maybe (FilePath,(UTCTime,[[ARBText]]))]
+loadExistingARB :: FilePath -> IO [Maybe (FilePath,(UTCTime,[ARB]))]
 loadExistingARB savepath = do
-  fps <- getFileListRecursively savepath
+  fps' <- getFileListRecursively savepath
+  let fps = filter (\x -> '_' `elem` x) fps'
   forM fps $ \fp -> do
     bstr <- B8.readFile fp
     return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
@@ -83,30 +83,30 @@ getNDayAnalyses conn txt n = do
   
 type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
-         :<|> "recentarb" :> Get '[JSON] [[[ARBText]]]
+         :<|> "recentarb" :> Get '[JSON] [[ARB]]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
 
-run :: Connection -> IO ()
-run conn = do
+run :: Connection -> PathConfig -> IO ()
+run conn cfg = do
   let port = 3000
       settings =
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-
+  let arbstore = (_arbstore cfg)
   arbs <- newEmptyTMVarIO
-  exstarbs <- loadExistingARB "/home/modori/temp/arb"
+  exstarbs <- loadExistingARB arbstore
   print exstarbs
   atomically (putTMVar arbs (catMaybes exstarbs))
-  void $ forkIO $ updateARB "/home/modori/temp/arb" arbs
+  void $ forkIO $ updateARB arbstore arbs
   runSettings settings =<< (mkApp conn arbs)
 
-mkApp :: Connection -> TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> IO Application
+mkApp :: Connection -> TMVar [(FilePath, (UTCTime, [ARB]))] -> IO Application
 mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
 
-server :: Connection -> TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Server API
+server :: Connection -> TMVar [(FilePath, (UTCTime, [ARB]))] -> Server API
 server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
@@ -121,7 +121,7 @@ getAnalysesBySrc conn txt = do
   let result = map (\(hsh,src,mb1,mb2,mb3) -> RecentAnalysis hsh src mb1 mb2 mb3) list
   return result
 
-getARB :: TMVar [(FilePath, (UTCTime, [[ARBText]]))] -> Handler [[[ARBText]]]
+getARB :: TMVar [(FilePath, (UTCTime, [ARB]))] -> Handler [[ARB]]
 getARB arbs = do
   arbs' <- liftIO $ atomically (readTMVar arbs)
   let result = take 20 $ reverse $ map (\(_,(_,xs)) -> xs) $ sortOn (\(_,(ct,_)) -> ct) arbs'

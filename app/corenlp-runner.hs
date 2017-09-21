@@ -9,11 +9,14 @@ import           System.Environment         (getArgs,getEnv)
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 --
+import           Pipeline.Load
 import           Pipeline.Run.CoreNLP
+import           Pipeline.Type
 
 main :: IO ()
 main = do
   [src] <- getArgs
+  cfg <- (\ec -> case ec of {Left err -> error err;Right c -> return c;}) =<< loadConfigFile "config/config.json"
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
@@ -25,4 +28,4 @@ main = do
                        . (ner .~ True)
                   )
 
-    runCoreNLPforNewsAPISource pp src
+    runCoreNLPforNewsAPISource pp cfg src

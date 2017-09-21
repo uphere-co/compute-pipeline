@@ -37,6 +37,7 @@ library
                   vector,
                   --
                   HCoreNLP, HCoreNLP-Proto, HWordNet,
+                  lexicon-builder,
                   multi-word-tagger,
                   network-util, newsapi, newsapi-db, nlp-shared-types, nlp-types, nyt-scrapper, nyt-db,
                   OntoNotes,
@@ -112,6 +113,7 @@ executable analysis-runner
                        bytestring,
                        filepath,
                        lens,
+                       optparse-applicative,
                        split,
                        text,
                        --
@@ -125,6 +127,9 @@ executable analysis-daemon
   main-is:             analysis-daemon.hs
   -- other-modules:
   build-depends:       base,
+                       --
+                       lens,
+                       optparse-applicative,
                        --
                        nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2

@@ -6,6 +6,7 @@
 , HFrameNet             ? <HFrameNet>
 , HWordNet              ? <HWordNet>
 , lexicon               ? <lexicon>
+, lexicon-builder       ? <lexicon-builder>
 , multi-word-tagger     ? <multi-word-tagger>
 , nlp-pipeline          ? <nlp-pipeline>
 , nlp-shared-types      ? <nlp-shared-types>
@@ -71,6 +72,7 @@ let
       "VerbNet" = self.callPackage (import VerbNet) {};
       "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
       "lexicon" = self.callPackage (import lexicon) {};
+      "lexicon-builder" = self.callPackage (import lexicon-builder) {};
       "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
       "graph-algorithms" = self.callPackage (import graph-algorithms) {};
       };

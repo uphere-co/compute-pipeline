@@ -4,16 +4,20 @@
 
 module Pipeline.Run.SRL where
 
-import           Control.Lens     ((^.),(^..),_2,_3)
+import           Control.Lens     ((^.),(^..),_2,_3,to)
 import           Data.Graph
 import           Data.List        (find)
 import           Data.Maybe       (catMaybes,fromJust,isNothing)
 import           Data.Text        (Text)
 import qualified Data.Tree as Tr
 --
+import           NLP.Syntax.Type.Verb    (vp_lemma)
+import           NLP.Type.PennTreebankII (Lemma(..))
+import           NLP.Shared.Type
 import           SRL.Analyze.Type
 import           SRL.Statistics
-
+--
+import           Debug.Trace
 
 isMGPredicate :: MGVertex -> Bool
 isMGPredicate (MGEntity {..}) = False
@@ -45,9 +49,19 @@ findLabel :: [MGVertex] -> Int -> Maybe Text
 findLabel mvs i =
   let mr = find (\mv -> (mv ^. mv_id) == i) mvs
   in case mr of
-    Nothing                     -> Nothing
-    Just (v@(MGEntity {..}))    -> Just (v ^. mv_text)
-    Just (v@(MGPredicate {..})) -> Just (v ^. mv_frame)
+    Nothing                            -> Nothing
+    Just (v@(MGEntity {..}))           -> Just (v ^. mv_text)
+    Just (v@(MGPredicate {..}))        -> Just (v ^. mv_verb . vp_lemma . to unLemma)
+    Just (v@(MGNominalPredicate {..})) -> Just (v ^. mv_frame)
+    
+findFrame :: [MGVertex] -> Int -> Maybe Text
+findFrame mvs i =
+  let mr = find (\mv -> (mv ^. mv_id) == i) mvs
+  in case mr of
+    Nothing                            -> Nothing
+    Just (v@(MGPredicate {..}))        -> Just (v ^. mv_frame)
+    Just (v@(MGNominalPredicate {..})) -> Just (v ^. mv_frame)
+    Just _                             -> Nothing
 
 findAgent :: MeaningGraph -> Graph -> Vertex -> Maybe Edge
 findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
@@ -60,9 +74,9 @@ findAgent mg grph vtx = case (cnvtVtxToMGV mg vtx) of
                    agent = fmap (\x -> (x ^. _2, x ^. _3)) agent'
                in agent
 
-type ARB = (Vertex, Vertex, [Vertex])
+type VertexARB = (Vertex, Vertex, [Vertex])
 
-findAgentThemes :: MeaningGraph -> Graph -> Vertex -> Maybe ARB
+findAgentThemes :: MeaningGraph -> Graph -> Vertex -> Maybe VertexARB
 findAgentThemes mg grph vtx = case (cnvtVtxToMGV mg vtx) of
   Nothing -> Nothing
   Just mv -> case (isMGPredicate mv) of
@@ -76,7 +90,7 @@ findAgentThemes mg grph vtx = case (cnvtVtxToMGV mg vtx) of
 subjectList = ["Agent","Speaker","Owner","Cognizer","Actor","Author"]
 isSubject t = any (\a -> t == a) subjectList
 
-findSubjectObjects :: MeaningGraph -> Graph -> Vertex -> Maybe ARB
+findSubjectObjects :: MeaningGraph -> Graph -> Vertex -> Maybe VertexARB
 findSubjectObjects mg grph vtx = case (cnvtVtxToMGV mg vtx) of
   Nothing -> Nothing
   Just mv -> case (isMGPredicate mv) of
@@ -87,7 +101,6 @@ findSubjectObjects mg grph vtx = case (cnvtVtxToMGV mg vtx) of
                    objects = map (\x -> Just (x ^. _3)) $ filter (\(t,i,j) -> if (isNothing $ cnvtVtxToMGV mg j) then False else (if (isMGEntity $ fromJust $ cnvtVtxToMGV mg j) then (if (isSubject t) then False else True) else False)) rels
                in ((,,) <$> subject <*> Just vtx <*> (sequence objects))
 
-                  
 attached :: Graph -> Vertex -> [Vertex]
 attached grph vtx =
   let lnodes = concat $ fmap Tr.levels $ dfs grph [vtx]
@@ -96,9 +109,7 @@ attached grph vtx =
     []    -> []
     lnode -> head lnode
 
-type ARBText = (Text, Text, [Text])
-
-mkARB :: MeaningGraph -> [Maybe ARBText]
+mkARB :: MeaningGraph -> [ARB]
 mkARB mg =
   let mgraph = getGraphFromMG mg
   in case mgraph of
@@ -108,6 +119,7 @@ mkARB mg =
           mgpredvtxs = (mgpred ^.. traverse . mv_id)
           agents = catMaybes $ map (\vtx -> findSubjectObjects mg graph vtx) mgpredvtxs -- (\vtx -> findAgentThemes mg graph vtx) mgpredvtxs
           vrtcs = mg ^. mg_vertices
-          agentsName = map (\(v1,v2,vs) -> (,,) <$> findLabel vrtcs v1 <*> findLabel vrtcs v2 <*> (sequence $ map (\v3 -> findLabel vrtcs v3) vs)) agents
-      in agentsName
+          man = map (\(v1,v2,vs) -> (,,,) <$> findFrame vrtcs v2 <*> findLabel vrtcs v1 <*> findLabel vrtcs v2 <*> (Just $ catMaybes $ map (\v3 -> findLabel vrtcs v3) vs)) agents
+          arbs = map (\(a,b,c,ds) -> ARB a b c ds []) (catMaybes man)
+      in trace ("man : " ++ (show man) ++ "  " ++ (show agents)) arbs
 
