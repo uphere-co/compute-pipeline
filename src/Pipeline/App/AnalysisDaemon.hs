@@ -37,7 +37,7 @@ import           Pipeline.Type
 runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
   clspath <- getEnv "CLASSPATH"
-  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
+  conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
@@ -64,7 +64,7 @@ coreN = 15 :: Int
 -- | This does SRL and generates meaning graphs.
 runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> PathConfig -> String  -> IO ()
 runSRL conn apredata emTagger cfg src = do
-  as' <- getAnalysisFilePathBySource src
+  as' <- getAnalysisFilePathBySource cfg src
   as <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as'
   loaded' <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as')
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
@@ -78,7 +78,7 @@ runSRL conn apredata emTagger cfg src = do
 
 mkBloombergMGFig :: PathConfig ->  IO ()
 mkBloombergMGFig cfg = do
-  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
+  conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats

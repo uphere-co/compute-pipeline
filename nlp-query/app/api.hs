@@ -1,11 +1,19 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Main where
 
-import           Pipeline.Operation.DB             (getConnection)
+import           Control.Lens                      ((^.))
+import qualified Options.Applicative          as O
 --
 import           Query.App.API
-
+--
+import           Pipeline.Load
+import           Pipeline.Operation.DB             (getConnection)
+import           Pipeline.Type
 
 main :: IO ()
 main = do
-  conn <- getConnection "dbname=mydb host=localhost port=65432 user=modori"
-  run conn
+  acfg <- O.execParser progOption
+  cfg <- (\case {Left err -> error err;Right c -> return c;}) =<< loadConfigFile (acfg ^. configpath)
+  conn <- getConnection (cfg ^. dbstring)
+  run conn cfg
