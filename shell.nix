@@ -81,6 +81,7 @@ let
   }; 
 
   hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
+            cabal-install
             inline-java
             aeson
             attoparsec
