@@ -61,13 +61,15 @@ runDaemon cfg = do
 
 coreN = 15 :: Int
 
+
 -- | This does SRL and generates meaning graphs.
+--
 runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> PathConfig -> String  -> IO ()
 runSRL conn apredata emTagger cfg src = do
-  as' <- getAnalysisFilePathBySource cfg src
-  as <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as'
-  loaded' <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as')
-  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
+  as1 <- getAnalysisFilePathBySource cfg src
+  as2 <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as1
+  loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as2)
+  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded1
   print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
