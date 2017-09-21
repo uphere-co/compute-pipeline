@@ -7,6 +7,7 @@ module Pipeline.Type where
 import           Control.Lens
 import           Options.Applicative
 import           Data.Aeson
+import           Data.Aeson.Types                            (typeMismatch)
 import           Data.ByteString.Char8                       (ByteString)
 import           Data.Monoid                                 ((<>))
 import           Data.Text                                   (Text)
@@ -83,4 +84,14 @@ data PathConfig = PathConfig
   } deriving (Show, Generic)
 
 instance ToJSON PathConfig
-instance FromJSON PathConfig
+
+
+instance FromJSON PathConfig where
+  parseJSON (Object o) =
+    PathConfig <$> o .: "CoreNLPStore"
+               <*> o.: "MeaningGraphStore"
+               <*> o.: "MGDotFigStore"
+               <*> o.: "LexDataConfigPath"
+               <*> o.: "ARBStore"
+               <*> o.: "ErrorArticleStore"
+  parseJSON invalid = typeMismatch "PathConfig" invalid
