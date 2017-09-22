@@ -22,6 +22,7 @@ import           NewsAPI.DB
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
 import           SRL.Analyze
+import           SRL.Analyze.ARB                        (mkARB)
 import           SRL.Analyze.Match                      (changeMGText,meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure          (docStructure)
 import           SRL.Analyze.Type
@@ -31,7 +32,6 @@ import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Run
-import           Pipeline.Run.SRL
 import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Type
 import           Pipeline.Util
