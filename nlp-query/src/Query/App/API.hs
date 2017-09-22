@@ -36,7 +36,7 @@ import           Pipeline.Util                     (bstrHashToB16)
 
 updateARB savepath arbs = do
   forever $ do
-    arbs' <- atomically (takeTMVar arbs)
+    arbs' <- readTVarIO arbs
     let cfps = map fst arbs'
     fps <- getFileListRecursively savepath
     let newarbs' = filter (\x -> not $ x `elem` cfps) fps
@@ -47,8 +47,8 @@ updateARB savepath arbs = do
     let newarbs = catMaybes newarbs''
     print newarbs
     if (not $ null newarbs)
-      then atomically (putTMVar arbs (arbs' ++ newarbs))
-      else atomically (putTMVar arbs arbs')
+      then atomically (writeTVar arbs (arbs' ++ newarbs))
+      else atomically (writeTVar arbs arbs')
     threadDelay 3000000
 
 loadExistingARB :: FilePath -> IO [Maybe (FilePath,(UTCTime,[ARB]))]
@@ -83,7 +83,7 @@ getNDayAnalyses conn txt n = do
   
 type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
-         :<|> "recentarb" :> Get '[JSON] [[ARB]]
+         :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,[ARB]))]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
@@ -96,17 +96,17 @@ run conn cfg = do
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
   let arbstore = (_arbstore cfg)
-  arbs <- newEmptyTMVarIO
+  arbs <- newTVarIO []
   exstarbs <- loadExistingARB arbstore
   print exstarbs
-  atomically (putTMVar arbs (catMaybes exstarbs))
+  atomically (writeTVar arbs (catMaybes exstarbs))
   void $ forkIO $ updateARB arbstore arbs
   runSettings settings =<< (mkApp conn arbs)
 
-mkApp :: Connection -> TMVar [(FilePath, (UTCTime, [ARB]))] -> IO Application
+mkApp :: Connection -> TVar [(FilePath, (UTCTime, [ARB]))] -> IO Application
 mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
 
-server :: Connection -> TMVar [(FilePath, (UTCTime, [ARB]))] -> Server API
+server :: Connection -> TVar [(FilePath, (UTCTime, [ARB]))] -> Server API
 server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
@@ -121,8 +121,10 @@ getAnalysesBySrc conn txt = do
   let result = map (\(hsh,src,mb1,mb2,mb3) -> RecentAnalysis hsh src mb1 mb2 mb3) list
   return result
 
-getARB :: TMVar [(FilePath, (UTCTime, [ARB]))] -> Handler [[ARB]]
+getARB :: TVar [(FilePath, (UTCTime, [ARB]))] -> Handler [(FilePath,(UTCTime,[ARB]))]
 getARB arbs = do
-  arbs' <- liftIO $ atomically (readTMVar arbs)
-  let result = take 20 $ reverse $ map (\(_,(_,xs)) -> xs) $ sortOn (\(_,(ct,_)) -> ct) arbs'
+  liftIO $ putStrLn "getARB called"
+  arbs' <- liftIO $ readTVarIO arbs
+  let result = take 100 $ reverse {- $ map (\(f,(_,xs)) -> (f,xs)) -} $ sortOn (\(_,(ct,_)) -> ct) arbs'
+  liftIO $ print result
   return result
