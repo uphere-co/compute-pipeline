@@ -61,7 +61,7 @@ mkMGs conn apredata emTagger cfg fp article = do
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
-      arbs = map mkARB mgs 
+      arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
