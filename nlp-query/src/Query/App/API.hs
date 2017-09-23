@@ -161,10 +161,8 @@ whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_
             ]
 
 
-
-
-isWithObjOrWhiteListed x = check x && all check (x^..objectB.traverse._2._Left)
-  where check x = (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList) 
+isWithObjOrWhiteListed x = check x && all isWithObjOrWhiteListed (x^..objectB.traverse._2._Left)
+  where check x = (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList)
 
 
 haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left)
@@ -173,7 +171,7 @@ haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left)
 
 filterARB :: Int -> [(FilePath,(UTCTime,[ARB]))] -> [(FilePath,(UTCTime,[ARB]))]
 filterARB n arbs =
-  let arbs0 = map (\(f,(t,xs))-> (f,(t,filter (\x -> isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs))) arbs 
+  let arbs0 = map (\(f,(t,xs))-> (f,(t,filter (\x -> isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs))) arbs
       -- we start with two times more sets considering filter-out items.
       arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs0
       templst = do (f,(t,arbs'')) <- arbs1
