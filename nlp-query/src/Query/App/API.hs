@@ -161,6 +161,10 @@ whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_
             ]
 
 
+blackList :: [Text]
+blackList = [ "He", "We", "I", "She", "They", "You", "It", "This", "That", "These", "Those" ]
+
+
 isWithObjOrWhiteListed x = check x && all isWithObjOrWhiteListed (x^..objectB.traverse._2._Left)
   where check x = (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList)
 
@@ -169,9 +173,12 @@ haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left)
   where check x = (x^.subjectA._2 == ",") || any (== ",") (x^..objectB.traverse._2._Right.po_main)
 
 
+isSubjectBlackListed x = x ^.subjectA._2 `elem` blackList
+
+
 filterARB :: Int -> [(FilePath,(UTCTime,[ARB]))] -> [(FilePath,(UTCTime,[ARB]))]
 filterARB n arbs =
-  let arbs0 = map (\(f,(t,xs))-> (f,(t,filter (\x -> isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs))) arbs
+  let arbs0 = map (\(f,(t,xs))-> (f,(t,filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs))) arbs
       -- we start with two times more sets considering filter-out items.
       arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs0
       templst = do (f,(t,arbs'')) <- arbs1
