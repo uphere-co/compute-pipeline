@@ -8,13 +8,14 @@ module Query.App.API where
 
 import           Control.Concurrent
 import           Control.Concurrent.STM
-import           Control.Lens                      ((^.),_1,_2,to)
+import           Control.Lens                      ((^.),(^..),_1,_2,to,traverse)
 import           Control.Monad                     (forever,forM,void)
 import           Control.Monad.IO.Class            (liftIO)
 -- import           Control.Monad.Trans.Except
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as BL
+import           Data.Either                       (lefts)
 import           Data.Function                     (on)
 import           Data.Hashable
 -- import           Data.HashSet                      (HashSet)
@@ -156,8 +157,14 @@ whiteList :: [Text]
 whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_stop", "Process_pause", "Process_continue", "Process_end"
             , "Self_motion", "Arriving" ]
 
+
+isWithObjOrWhiteListed x = (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList) 
+
+isWithObjOrWhiteListedAll x = isWithObjOrWhiteListed x && all isWithObjOrWhiteListedAll (lefts (x^..objectB.traverse._2))
+
+
 filterARBwoB :: [ARB] -> [ARB]
-filterARBwoB = filter (\x -> (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList))  
+filterARBwoB = filter isWithObjOrWhiteListedAll
 
 
 
