@@ -8,14 +8,14 @@ module Query.App.API where
 
 import           Control.Concurrent
 import           Control.Concurrent.STM
-import           Control.Lens                      ((^.),(^..),_1,_2,to,traverse)
+import           Control.Lens                      ((^.),(^..),_1,_2,_Left,_Right,to,traverse)
 import           Control.Monad                     (forever,forM,void)
 import           Control.Monad.IO.Class            (liftIO)
 -- import           Control.Monad.Trans.Except
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as BL
-import           Data.Either                       (lefts)
+-- import           Data.Either                       (lefts)
 import           Data.Function                     (on)
 import           Data.Hashable
 -- import           Data.HashSet                      (HashSet)
@@ -35,7 +35,8 @@ import           System.IO
 import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
 import qualified NewsAPI.DB.Analysis        as An
 import qualified NewsAPI.DB.Article         as Ar
-import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..),objectB,predicateR,subjectA)
+import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..)
+                                                   ,objectB,predicateR,subjectA,po_main)
 --
 import           Pipeline.Load
 import           Pipeline.Type
@@ -155,24 +156,24 @@ getAnalysesBySrc conn txt = do
 
 whiteList :: [Text]
 whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_stop", "Process_pause", "Process_continue", "Process_end"
-            , "Self_motion", "Arriving" ]
+            , "Self_motion", "Arriving"
+            , "Expansion"
+            ]
 
 
 
 
-isWithObjOrWhiteListed x = check x && all check (lefts (x^..objectB.traverse._2))
+isWithObjOrWhiteListed x = check x && all check (x^..objectB.traverse._2._Left)
   where check x = (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList) 
 
--- filterARBwoB :: [ARB] -> [ARB]
--- filterARBwoB = filter isWithObjOrWhiteListedAll
 
-
--- filterComma :: [ARB] -
+haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left)
+  where check x = (x^.subjectA._2 == ",") || any (== ",") (x^..objectB.traverse._2._Right.po_main)
 
 
 filterARB :: Int -> [(FilePath,(UTCTime,[ARB]))] -> [(FilePath,(UTCTime,[ARB]))]
 filterARB n arbs =
-  let arbs0 = map (\(f,(t,xs))-> (f,(t,filter isWithObjOrWhiteListed xs))) arbs 
+  let arbs0 = map (\(f,(t,xs))-> (f,(t,filter (\x -> isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs))) arbs 
       -- we start with two times more sets considering filter-out items.
       arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs0
       templst = do (f,(t,arbs'')) <- arbs1
