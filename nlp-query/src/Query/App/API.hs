@@ -1,14 +1,14 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
-
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
 
 module Query.App.API where
 
 import           Control.Concurrent
 import           Control.Concurrent.STM
-import           Control.Lens                      ((^.),_1,_2)
+import           Control.Lens                      ((^.),_1,_2,to)
 import           Control.Monad                     (forever,forM,void)
 import           Control.Monad.IO.Class            (liftIO)
 -- import           Control.Monad.Trans.Except
@@ -34,7 +34,7 @@ import           System.IO
 import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
 import qualified NewsAPI.DB.Analysis        as An
 import qualified NewsAPI.DB.Article         as Ar
-import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..))
+import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..),objectB,predicateR,subjectA)
 --
 import           Pipeline.Load
 import           Pipeline.Type
@@ -152,10 +152,20 @@ getAnalysesBySrc conn txt = do
   return result
 
 
+whiteList :: [Text]
+whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_stop", "Process_pause", "Process_continue", "Process_end"
+            , "Self_motion", "Arriving" ]
+
+filterARBwoB :: [ARB] -> [ARB]
+filterARBwoB = filter (\x -> (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList))  
+
+
+
 filterARB :: Int -> [(FilePath,(UTCTime,[ARB]))] -> [(FilePath,(UTCTime,[ARB]))]
 filterARB n arbs =
-  let -- we start with two times more sets considering filter-out items.
-      arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs
+  let arbs0 = map (\(f,(t,xs))-> (f,(t,filterARBwoB xs))) arbs 
+      -- we start with two times more sets considering filter-out items.
+      arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs0
       templst = do (f,(t,arbs'')) <- arbs1
                    arb <- arbs''
                    return (hash arb,f,t,arb)
