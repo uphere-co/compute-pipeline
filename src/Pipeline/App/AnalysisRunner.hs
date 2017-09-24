@@ -70,7 +70,7 @@ mkMGs conn apredata emTagger cfg fp article = do
       saveMG (cfg ^. mgstore) filename i mg
       ctime <- getCurrentTime
       saveARB (cfg ^. arbstore) filename i (ctime,arb)
-      -- genMGFigs mgdotfigstore filename i sstr mtks mg wikilst
+      genMGFigs cfg filename i sstr mtks mg wikilst
   -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
 genMGFigs :: PathConfig -> FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()

@@ -24,6 +24,7 @@ library
                   bytestring,
                   containers,
                   distributed-process,
+                  filepath,
                   hashable,
                   jvm,
                   lens,
