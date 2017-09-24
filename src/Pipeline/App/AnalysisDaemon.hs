@@ -70,7 +70,7 @@ runSRL conn apredata emTagger cfg src = do
   as2 <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as1
   loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as2)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded1
-  print $ (src,length loaded)
+  -- print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
     forkChild (runAnalysisByChunks conn emTagger apredata cfg ls)
