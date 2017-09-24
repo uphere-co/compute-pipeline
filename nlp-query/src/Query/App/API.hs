@@ -30,6 +30,7 @@ import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.Cors
 import           Servant
+import           System.FilePath                   (takeExtension, takeBaseName)
 import           System.IO
 --
 import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
@@ -52,13 +53,16 @@ instance Hashable ARB
 
 
 
-updateARB :: FilePath -> TVar [(FilePath,(UTCTime,[ARB]))] -> IO ()
-updateARB savepath arbs = do
+updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,[ARB]))] -> IO ()
+updateARB cfg arbs = do
+  let arbpath = cfg^.arbstore
+      dotpath = cfg^.mgdotfigstore
   forever $ do
     arbs' <- readTVarIO arbs
     let cfps = map fst arbs'
-    fps <- getFileListRecursively savepath
-    let newarbs' = filter (\x -> not $ x `elem` cfps) fps
+    fps_arb <- getFileListRecursively arbpath
+    fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath
+    let newarbs' = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot) && (not (x `elem` cfps))) fps_arb
 
     newarbs'' <- forM newarbs' $ \fp -> do
       bstr <- B8.readFile fp
@@ -71,10 +75,13 @@ updateARB savepath arbs = do
     threadDelay 3000000
 
 
-loadExistingARB :: FilePath -> IO [Maybe (FilePath,(UTCTime,[ARB]))]
-loadExistingARB savepath = do
-  fps' <- getFileListRecursively savepath
-  let fps = filter (\x -> '_' `elem` x) fps'
+loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,[ARB]))]
+loadExistingARB cfg  = do
+  let arbpath = cfg^.arbstore
+      dotpath = cfg^.mgdotfigstore
+  fps_arb <- getFileListRecursively arbpath
+  fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath
+  let fps = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot)) fps_arb
   forM fps $ \fp -> do
     bstr <- B8.readFile fp
     return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
@@ -125,10 +132,10 @@ run conn cfg = do
         defaultSettings
   let arbstore = (_arbstore cfg)
   arbs <- newTVarIO []
-  exstarbs <- loadExistingARB arbstore
+  exstarbs <- loadExistingARB cfg -- arbstore
   putStrLn ("number of existing A-R-Bs is " ++ show (length exstarbs))
   atomically (writeTVar arbs (catMaybes exstarbs))
-  void $ forkIO $ updateARB arbstore arbs
+  void $ forkIO $ updateARB cfg {- arbstore  -} arbs
   runSettings settings =<< (mkApp conn arbs)
 
 
@@ -162,7 +169,7 @@ whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_
 
 
 blackList :: [Text]
-blackList = [ "He", "We", "I", "She", "They", "You", "It", "This", "That", "These", "Those" ]
+blackList = [ "he", "we", "i", "she", "they", "you", "it", "this", "that", "these", "those" ]
 
 
 isWithObjOrWhiteListed x = check x && all isWithObjOrWhiteListed (x^..objectB.traverse._2._Left)
@@ -173,7 +180,7 @@ haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left)
   where check x = (x^.subjectA._2 == ",") || any (== ",") (x^..objectB.traverse._2._Right.po_main)
 
 
-isSubjectBlackListed x = x ^.subjectA._2 `elem` blackList
+isSubjectBlackListed x = x ^.subjectA._2.to T.toLower `elem` blackList
 
 
 filterARB :: Int -> [(FilePath,(UTCTime,[ARB]))] -> [(FilePath,(UTCTime,[ARB]))]
