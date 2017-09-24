@@ -169,7 +169,7 @@ whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_
 
 
 blackList :: [Text]
-blackList = [ "He", "We", "I", "She", "They", "You", "It", "This", "That", "These", "Those" ]
+blackList = [ "he", "we", "i", "she", "they", "you", "it", "this", "that", "these", "those" ]
 
 
 isWithObjOrWhiteListed x = check x && all isWithObjOrWhiteListed (x^..objectB.traverse._2._Left)
@@ -180,7 +180,7 @@ haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left)
   where check x = (x^.subjectA._2 == ",") || any (== ",") (x^..objectB.traverse._2._Right.po_main)
 
 
-isSubjectBlackListed x = x ^.subjectA._2 `elem` blackList
+isSubjectBlackListed x = x ^.subjectA._2.to T.toLower `elem` blackList
 
 
 filterARB :: Int -> [(FilePath,(UTCTime,[ARB]))] -> [(FilePath,(UTCTime,[ARB]))]
