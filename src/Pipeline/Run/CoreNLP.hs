@@ -37,6 +37,7 @@ storeParsedArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                     -> IO ()
 storeParsedArticles pp cfg articles = do
   conn <- getConnection (cfg ^. dbstring)
+  (tagger,entityResolve) <- loadWikiData
   forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
     -- (txt,xs) <- preRunForTaggingNE pp emTagger txt' -- Necessary for pre-running of CoreNLP
     fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh))
@@ -48,6 +49,8 @@ storeParsedArticles pp cfg articles = do
           saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
           uploadArticleError conn (mkNewsAPIArticleErrorDB article)
         Right result                -> do
+          sents <- preRunParser pp txt
+          runEL sents tagger entityResolve
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
           uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
