@@ -19,6 +19,9 @@ import           Data.Time.Clock                        (getCurrentTime)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
+import           NLP.Shared.Type                        (PathConfig
+                                                        ,arbstore,corenlpstore,lexconfigpath
+                                                        ,mgstore,mgdotfigstore)
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
 import           SRL.Analyze

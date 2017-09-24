@@ -16,6 +16,7 @@ import           System.FilePath                        ((</>),(<.>),addExtensio
 import           System.Process                         (readProcess)
 --
 import           MWE.Util                               (mkTextFromToken)
+import           NLP.Shared.Type                        (PathConfig,newsapistore)
 import           NLP.Syntax.Type.Verb
 import           NLP.Type.CoreNLP                       (Token)
 import           SRL.Analyze.Format                     (dotMeaningGraph)
