@@ -8,7 +8,6 @@
 , lexicon               ? <lexicon>
 , lexicon-builder       ? <lexicon-builder>
 , multi-word-tagger     ? <multi-word-tagger>
-#, nlp-pipeline          ? <nlp-pipeline>
 , nlp-shared-types      ? <nlp-shared-types>
 , nlp-types             ? <nlp-types>
 , OntoNotes             ? <OntoNotes>
