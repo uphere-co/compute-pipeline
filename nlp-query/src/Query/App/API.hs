@@ -169,7 +169,10 @@ whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_
 
 
 blackList :: [Text]
-blackList = [ "he", "we", "i", "she", "they", "you", "it", "this", "that", "these", "those" ]
+blackList = [ "he", "we", "i", "she", "they", "you", "it"
+            , "this", "that", "these", "those"
+            , "and"
+            ]
 
 
 isWithObjOrWhiteListed x = check x && all isWithObjOrWhiteListed (x^..objectB.traverse._2._Left)
