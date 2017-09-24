@@ -13,6 +13,7 @@ import qualified Data.Text.IO                   as T.IO
 import qualified Data.Vector                    as V
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity
+import           NLP.Type.PennTreebankII
 import           System.FilePath                          ((</>))
 import           WikiEL.EntityLinking
 import qualified WikiEL.EntityMentionPruning    as EMP
@@ -58,24 +59,20 @@ getWikiAllMentions emTagger sents =
 mkConstraintFromWikiEL :: [EntityMention Text] -> [(Int,Int)]
 mkConstraintFromWikiEL wikiel = map (\x -> let irange = entityIRange x in (beg irange, end irange)) $ wikiel
 
-runEL sents (tagger,entityResolve) = do
-  let
-    wnps = prepareWNP sents
-    linked_mentions = tagger wnps
-    disambiguated_mentions = entityResolve linked_mentions
-
+runEL sents tagger entityResolve = do
+  let wnps = prepareWNP sents
+      linked_mentions = tagger wnps
+      disambiguated_mentions = entityResolve linked_mentions
   mapM_ print disambiguated_mentions
 
-
-loadWikiData sents = do
+loadWikiData :: IO ([(Text, NamedEntityClass,POSTag)] -> [EntityMention Text], [EntityMention Text] -> [EntityMention Text])
+loadWikiData = do
   edges  <- WEL.loadAndSortEdges graphFilesG
   uidTag <- WEL.loadFiles classFilesG
   titles <- WEL.loadWikipageMapping wikiTitleMappingFileG
   tagger <- WEL.loadFEMtagger reprFileG classFilesG
-  entityResolve = WEL.disambiguateMentions edges uidTag titles
-
-
-  runEL sents (tagger,entityResolve)
+  let entityResolve = WEL.disambiguateMentions edges uidTag titles
+  return (tagger,entityResolve)
 
 reprFileTinyG       = EntityReprFile (globalData </> "wiki-ner/data/wikidata.test.entities")
 orgItemFileG        = ItemIDFile (globalData </> "wiki-ner/data/ne.org")
