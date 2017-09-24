@@ -57,7 +57,7 @@ instance Hashable ARB
 
 
 
-updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))] -> IO ()
+updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))] -> IO ()
 updateARB cfg arbs = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
@@ -79,7 +79,7 @@ updateARB cfg arbs = do
     threadDelay 3000000
 
 
-loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))]
+loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 loadExistingARB cfg  = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
@@ -122,7 +122,7 @@ getNDayAnalyses conn txt n = do
 
 type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
-         :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))]
+         :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
@@ -144,13 +144,13 @@ run conn cfg = do
 
 
 mkApp :: Connection
-      -> TVar [(FilePath, (UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))]
+      -> TVar [(FilePath, (UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
       -> IO Application
 mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
 
 
 server :: Connection
-       -> TVar [(FilePath, (UTCTime, ([ARB],TagPos TokIdx (EntityMention Text))))]
+       -> TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
        -> Server API
 server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
@@ -195,8 +195,8 @@ isSubjectBlackListed x = x ^.subjectA._2.to T.toLower `elem` blackList
 
 
 filterARB :: Int
-          -> [(FilePath,(UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))]
-          -> [(FilePath,(UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))]
+          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 filterARB n arbs =
   let arbs0 = map (\(f,(t,(xs,ner)))-> (f,(t,(filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs,ner)))) arbs
       -- we start with two times more sets considering filter-out items.
@@ -213,10 +213,12 @@ filterARB n arbs =
 
 
 
-getARB :: TVar [(FilePath, (UTCTime, ([ARB],TagPos TokIdx (EntityMention Text))))]
-       -> Handler [(FilePath,(UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))]
+getARB :: TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
+       -> Handler [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 getARB arbs = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
   let n = 100
-  return (filterARB n arbs1)
+      result = filterARB n arbs1
+  liftIO $ mapM_ print (take 3 result)
+  return result
