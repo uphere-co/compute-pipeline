@@ -68,7 +68,7 @@ runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Te
 runSRL conn apredata emTagger cfg src = do
   as1 <- getAnalysisFilePathBySource cfg src
   as2 <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as1
-  loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as2)
+  loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as1)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded1
   print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
@@ -84,5 +84,5 @@ mkBloombergMGFig cfg = do
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
   (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
   let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-  runSRL conn apredata emTagger cfg "bloomberg"
+  forM_ prestigiousNewsSource $ \src -> runSRL conn apredata emTagger cfg src
   closeConnection conn

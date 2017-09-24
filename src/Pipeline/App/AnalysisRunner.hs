@@ -64,13 +64,13 @@ mkMGs conn apredata emTagger cfg fp article = do
       arbs = map mkARB mgs 
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
-  saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
+  -- saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
-      saveMG (cfg ^. mgstore) filename i mg
-      ctime <- getCurrentTime
-      saveARB (cfg ^. arbstore) filename i (ctime,arb)
-      -- genMGFigs mgdotfigstore filename i sstr mtks mg wikilst
+      -- saveMG (cfg ^. mgstore) filename i mg
+      -- ctime <- getCurrentTime
+      -- saveARB (cfg ^. arbstore) filename i (ctime,arb)
+      genMGFigs cfg filename i sstr mtks mg wikilst
   -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
 genMGFigs :: PathConfig -> FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
