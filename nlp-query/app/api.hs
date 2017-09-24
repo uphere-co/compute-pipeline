@@ -5,11 +5,13 @@ module Main where
 import           Control.Lens                      ((^.))
 import qualified Options.Applicative          as O
 --
-import           Query.App.API
+import           NLP.Shared.Type                   (dbstring)
 --
 import           Pipeline.Load
 import           Pipeline.Operation.DB             (getConnection)
 import           Pipeline.Type
+--
+import           Query.App.API
 
 main :: IO ()
 main = do
