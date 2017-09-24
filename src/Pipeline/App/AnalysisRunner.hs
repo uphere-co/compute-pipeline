@@ -61,15 +61,15 @@ mkMGs conn apredata emTagger cfg fp article = do
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       mgs = map meaningGraph sstrs
-      arbs = map mkARB mgs 
+      arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
-  -- saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
+  saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
-      -- saveMG (cfg ^. mgstore) filename i mg
-      -- ctime <- getCurrentTime
-      -- saveARB (cfg ^. arbstore) filename i (ctime,arb)
+      saveMG (cfg ^. mgstore) filename i mg
+      ctime <- getCurrentTime
+      saveARB (cfg ^. arbstore) filename i (ctime,arb)
       genMGFigs cfg filename i sstr mtks mg wikilst
   -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 

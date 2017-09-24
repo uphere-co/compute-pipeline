@@ -40,7 +40,6 @@ library
                   lexicon-builder,
                   multi-word-tagger,
                   network-util, newsapi, newsapi-db, nlp-shared-types, nlp-types, nyt-scrapper, nyt-db,
-                  OntoNotes,
                   predicate-matrix, PropBank,
                   semantic-role-labeler, syntactic-analysis,
                   time-tagger,
