@@ -53,7 +53,7 @@ instance Hashable ARB
 
 
 
-updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,[ARB]))] -> IO ()
+updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))] -> IO ()
 updateARB cfg arbs = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
@@ -75,7 +75,7 @@ updateARB cfg arbs = do
     threadDelay 3000000
 
 
-loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,[ARB]))]
+loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,([ARB],TagPos TokIdx (EntityMention Text))))]
 loadExistingARB cfg  = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore

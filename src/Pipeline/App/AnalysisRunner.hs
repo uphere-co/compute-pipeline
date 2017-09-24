@@ -24,6 +24,7 @@ import           NLP.Shared.Type                        (PathConfig
                                                         ,mgstore,mgdotfigstore)
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
+import           NLP.Type.TagPos                        (leftTagPos)
 import           SRL.Analyze
 import           SRL.Analyze.ARB                        (mkARB)
 import           SRL.Analyze.Match                      (changeMGText,meaningGraph,tagMG)
@@ -63,6 +64,7 @@ mkMGs conn apredata netagger cfg fp article = do
       dstr = docStructure apredata netagger article
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
+      netags = leftTagPos (dstr^.ds_mergedtags)
       mgs = map meaningGraph sstrs
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
       wikilst = SRLWiki.mkWikiList dstr
@@ -72,7 +74,7 @@ mkMGs conn apredata netagger cfg fp article = do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
       saveMG (cfg ^. mgstore) filename i mg
       ctime <- getCurrentTime
-      saveARB (cfg ^. arbstore) filename i (ctime,arb)
+      saveARB (cfg ^. arbstore) filename i (ctime,(arb,netags))
       genMGFigs cfg filename i sstr mtks mg wikilst
   -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
