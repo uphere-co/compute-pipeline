@@ -24,10 +24,11 @@ import qualified NewsAPI.DB.Article                    as Ar
 import           NLP.Type.CoreNLP
 import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
 import           WikiEL.EntityLinking
+import           WikiEL.Run
 --
 import           Pipeline.Source.NewsAPI.Article
 import           Pipeline.Operation.DB
-import           Pipeline.Run.WikiEL
+-- import           Pipeline.Run.WikiEL
 import           Pipeline.Type
 import           Pipeline.Util
 
@@ -50,7 +51,7 @@ storeParsedArticles pp cfg articles = do
           uploadArticleError conn (mkNewsAPIArticleErrorDB article)
         Right result                -> do
           sents <- preRunParser pp txt
-          runEL sents tagger entityResolve
+          -- runEL sents tagger entityResolve
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
           uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
@@ -62,6 +63,8 @@ runCoreNLPforNewsAPISource pp cfg src = do
   articles <- getTimeTitleDescFromSrcWithHash cfg src
   storeParsedArticles pp cfg articles
 
+
+{- 
 -- | Pre-run of CoreNLP for changing named entity with special rule.
 preRunForTaggingNE :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                    -> ([NERToken] -> [EntityMention Text])
@@ -71,3 +74,4 @@ preRunForTaggingNE pp emTagger txt = do
   let wikiel = getWikiResolvedMentions emTagger sents
       constraint = mkConstraintFromWikiEL wikiel
   getReplacedTextWithNewWikiEL sents constraint
+-}
