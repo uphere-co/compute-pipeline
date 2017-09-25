@@ -14,6 +14,7 @@ import qualified Database.PostgreSQL.Simple as PGS
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
+import           NLP.Shared.Type
 import           RSS.DB
 import qualified RSS.DB.Article             as Ar
 import           RSS.Type
@@ -38,7 +39,7 @@ getTimeTitleDescFromSrcWithHash cfg src = do
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x
         fileprefix = (cfg ^. rssstore) </> src
-        filepath = fileprefix </> hsh
+        filepath = fileprefix </> "articles" </> hsh
     fchk <- doesFileExist filepath
     case fchk of
       True -> do

@@ -17,6 +17,8 @@ import           GHC.Generics
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified NewsAPI.DB.Article                    as Ar
+import qualified RSS.DB.Article                        as RAr
+import           RSS.Type
 import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
 --
 
@@ -63,6 +65,14 @@ mkNewsAPIArticleErrorDB article =
                         , article_error_created = Ar._created article
                         }
 
+mkRSSAnalysisDBInfo das article =
+  RSSAnalysisDBInfo { _rss_analysis_hash    = RAr._sha256 article
+                    , _rss_analysis_source  = RAr._source article
+                    , _rss_analysis_corenlp = das ^. done_corenlp
+                    , _rss_analysis_srl     = das ^. done_srl
+                    , _rss_analysis_ner     = das ^. done_ner
+                    , _rss_analysis_created_time = RAr._created article
+                    }
 
 nominalDay :: NominalDiffTime
 nominalDay = 86400
