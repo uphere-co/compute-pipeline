@@ -179,7 +179,8 @@ whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_
 blackList :: [Text]
 blackList = [ "he", "we", "i", "she", "they", "you", "it"
             , "this", "that", "these", "those"
-            , "and", "but", "to"
+            , "and", "but", "to", "*"
+            , "-lrb-", "-rrb-", "-lsb-", "-rsb-"
             ]
 
 
@@ -218,7 +219,7 @@ getARB :: TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)]
 getARB arbs = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
-  let n = 100
+  let n = 1000
       result = filterARB n arbs1
   liftIO $ mapM_ print (take 3 result)
   return result
