@@ -74,7 +74,7 @@ storeParsedRSSArticles pp cfg articles = do
           saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
         Right result                -> do
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
-          uploadRSSAnalysis conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
+          uploadRSSAnalysisIfMissing conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
 
 
