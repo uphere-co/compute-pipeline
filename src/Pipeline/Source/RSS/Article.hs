@@ -37,7 +37,7 @@ getTimeTitleDescFromSrcWithHash cfg src = do
   articles <- getRSSArticleBySource src conn
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x
-        fileprefix = (cfg ^. newsapistore) </> src
+        fileprefix = (cfg ^. rssstore) </> src
         filepath = fileprefix </> hsh
     fchk <- doesFileExist filepath
     case fchk of

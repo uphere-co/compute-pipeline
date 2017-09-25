@@ -26,6 +26,7 @@ import           SRL.Analyze.CoreNLP                          (preRunParser,runP
 import           WikiEL.EntityLinking
 --
 import           Pipeline.Source.NewsAPI.Article
+import qualified Pipeline.Source.RSS.Article           as RSS
 import           Pipeline.Operation.DB
 import           Pipeline.Run.WikiEL
 import           Pipeline.Type
@@ -64,7 +65,7 @@ runCoreNLPforNewsAPISource pp cfg src = do
 
 runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
 runCoreNLPforRSS pp cfg src = do
-  articles <- getTitmeTitleDescFromSrcWithHash cfg src
+  articles <- RSS.getTitmeTitleDescFromSrcWithHash cfg src
   storeParsedArticles pp cfg articles
 
 -- | Pre-run of CoreNLP for changing named entity with special rule.
