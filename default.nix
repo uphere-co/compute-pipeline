@@ -4,7 +4,7 @@
 , HWordNet, newsapi, nyt-db, nyt-scrapper, jvm, lens, mtl, multi-word-tagger, network-transport, network-transport-tcp, network-util
 , nlp-types, nlp-shared-types
 , optparse-applicative, OntoNotes, postgresql-simple, predicate-matrix
-, PropBank, protocol-buffers, semantic-role-labeler, stdenv, text, textview, time, time-tagger
+, PropBank, protocol-buffers, rss-db, rss-scraper, semantic-role-labeler, stdenv, text, textview, time, time-tagger
 , transformers, yaml, yayaml
 , wiki-ner
 }:
@@ -19,7 +19,7 @@ mkDerivation {
     directory directory-tree discrimination either filepath haskeline
     HCoreNLP HCoreNLP-Proto hedis HWordNet newsapi nyt-db nyt-scrapper jvm lens mtl multi-word-tagger
     network-transport network-transport-tcp network-util nlp-types nlp-shared-types
-    optparse-applicative OntoNotes postgresql-simple predicate-matrix PropBank semantic-role-labeler
+    optparse-applicative OntoNotes postgresql-simple predicate-matrix PropBank rss-db rss-scraper semantic-role-labeler
     protocol-buffers text textview time time-tagger transformers yaml yayaml
     wiki-ner
   ];

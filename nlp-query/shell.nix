@@ -67,6 +67,8 @@ let
       "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
       "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};
       "time-tagger" = self.callPackage (import time-tagger) {};
+      "rss-db" = self.callPackage (import (fetchfin + "/rss-scraper/db")) {};
+      "rss-scraper" = self.callPackage (import (fetchfin + "/rss-scraper")) {};
       "OntoNotes" = self.callPackage (import OntoNotes) {};
       "HFrameNet" = self.callPackage (import HFrameNet) {};
       "VerbNet" = self.callPackage (import VerbNet) {};
