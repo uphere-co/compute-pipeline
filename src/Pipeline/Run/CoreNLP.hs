@@ -19,7 +19,7 @@ import           Language.Java                         as J
 import           System.FilePath                              ((</>))
 --
 import           MWE.NamedEntity
-import           NewsAPI.DB                                   (uploadAnalysis,uploadArticleError)
+import           NewsAPI.DB                                   (uploadAnalysisIfMissing,uploadArticleError)
 import qualified NewsAPI.DB.Article                    as Ar
 import           NLP.Shared.Type                              (PathConfig,corenlpstore,dbstring,errstore)
 import           NLP.Type.CoreNLP
@@ -54,7 +54,7 @@ storeParsedArticles pp cfg articles = do
           uploadArticleError conn (mkNewsAPIArticleErrorDB article)
         Right result                -> do
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
-          uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
+          uploadAnalysisIfMissing conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
 
 
@@ -74,7 +74,7 @@ storeParsedRSSArticles pp cfg articles = do
           saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
         Right result                -> do
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
-          uploadRSSAnalysis conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
+          uploadRSSAnalysisIfMissing conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
 
 
