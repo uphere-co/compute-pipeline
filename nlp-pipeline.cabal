@@ -61,6 +61,7 @@ library
                    Pipeline.Source.NewsAPI.Analysis
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article
+                   Pipeline.Source.RSS.Analysis
                    Pipeline.Source.RSS.Article
                    Pipeline.Type
                    Pipeline.Util
