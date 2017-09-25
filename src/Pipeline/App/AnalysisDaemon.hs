@@ -73,9 +73,9 @@ runSRL conn apredata netagger cfg src = do
   as1a <- getAnalysisFilePathBySource cfg src
   as1b <- getRSSAnalysisFilePathBySource cfg src
   let as1 = as1a ++ as1b
-  as2 <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as1
-  loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as1)
-  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded1
+  as2 <- filterM (\(fp,tm) -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> fp) "mgs")) as1
+  loaded1 <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as1
+  let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) loaded1
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
     forkChild (runAnalysisByChunks conn netagger apredata cfg ls)
