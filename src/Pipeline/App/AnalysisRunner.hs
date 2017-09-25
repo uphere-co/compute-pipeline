@@ -19,8 +19,12 @@ import           Data.Time.Clock                        (getCurrentTime)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
+import           NLP.Shared.Type                        (PathConfig
+                                                        ,arbstore,corenlpstore,lexconfigpath
+                                                        ,mgstore,mgdotfigstore)
 import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
+import           NLP.Type.TagPos                        (leftTagPos)
 import           SRL.Analyze
 import           SRL.Analyze.ARB                        (mkARB)
 import           SRL.Analyze.Match                      (changeMGText,meaningGraph,tagMG)
@@ -50,16 +54,17 @@ isSRLFiltered sstr mg =
 
 mkMGs :: Connection
       -> AnalyzePredata
-      -> ([(Text,NamedEntityClass)] -> [EntityMention Text])
+      -> ([Sentence] -> [EntityMention Text])
       -> PathConfig
       -> FilePath
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata emTagger cfg fp article = do
+mkMGs conn apredata netagger cfg fp article = do
   let filename = takeFileName fp
-      dstr = docStructure apredata emTagger article
+      dstr = docStructure apredata netagger article
       sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
+      netags = leftTagPos (dstr^.ds_mergedtags)
       mgs = map meaningGraph sstrs
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
       wikilst = SRLWiki.mkWikiList dstr
@@ -69,7 +74,7 @@ mkMGs conn apredata emTagger cfg fp article = do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
       saveMG (cfg ^. mgstore) filename i mg
       ctime <- getCurrentTime
-      saveARB (cfg ^. arbstore) filename i (ctime,arb)
+      saveARB (cfg ^. arbstore) filename i (ctime,(arb,netags))
       genMGFigs cfg filename i sstr mtks mg wikilst
   -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
@@ -85,20 +90,21 @@ genMGFigs cfg filename i sstr mtks mg wikilst = do
 runAnalysisAll :: PathConfig -> Connection -> IO ()
 runAnalysisAll cfg conn = do
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
-  let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
+  (apredata,netagger) <- loadConfig cfgG
+  -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) 
+  -- let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   as <- getAllAnalysisFilePath cfg
   loaded' <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
   flip mapM_ (take 100 loaded) $ \(fp,x) -> do
-    mkMGs conn apredata emTagger cfg fp x
+    mkMGs conn apredata netagger cfg fp x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
 
-runAnalysisByChunks :: Connection -> ([NERToken] -> [EntityMention Text])
+runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text])
                     -> AnalyzePredata -> PathConfig -> [(FilePath,DocAnalysisInput)] -> IO ()
-runAnalysisByChunks conn emTagger apredata cfg loaded = do
+runAnalysisByChunks conn netagger apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,artl) -> do
-    mkMGs conn apredata emTagger cfg fp artl
+    mkMGs conn apredata netagger cfg fp artl
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)

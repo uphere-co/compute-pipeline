@@ -5,6 +5,8 @@ module Main where
 import           Control.Lens                      ((^.))
 import qualified Options.Applicative          as O
 --
+import           NLP.Shared.Type (dbstring)
+--
 import           Pipeline.App.AnalysisRunner
 import           Pipeline.Load
 import           Pipeline.Operation.DB

@@ -67,31 +67,3 @@ mkNewsAPIArticleErrorDB article =
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
-data PathConfig = PathConfig
-  { _corenlpstore  :: FilePath
-  , _mgstore       :: FilePath
-  , _mgdotfigstore :: FilePath
-  , _lexconfigpath :: FilePath
-  , _arbstore      :: FilePath
-  , _errstore      :: FilePath
-  , _dbstring      :: String
-  , _newsapistore  :: FilePath
-  , _nytstore      :: FilePath
-  } deriving (Show, Generic)
-
-makeLenses ''PathConfig
-
-instance ToJSON PathConfig
-
-instance FromJSON PathConfig where
-  parseJSON (Object o) =
-    PathConfig <$> o .: "CoreNLPStore"
-               <*> o.: "MeaningGraphStore"
-               <*> o.: "MGDotFigStore"
-               <*> o.: "LexDataConfigPath"
-               <*> o.: "ARBStore"
-               <*> o.: "ErrorArticleStore"
-               <*> o.: "DBString"
-               <*> o.: "NewsAPIArticleStore"
-               <*> o.: "NYTArticleStore"
-  parseJSON invalid = typeMismatch "PathConfig" invalid
