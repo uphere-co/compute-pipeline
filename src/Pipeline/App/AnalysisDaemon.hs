@@ -53,9 +53,9 @@ runDaemon cfg = do
                        . (ner .~ True)
                   )
     forever $ do
-      forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp cfg src
+      -- forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp cfg src
       forM_ rssList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (src ++ "/" ++ sec)
-      forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
+      -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
       forM_ rssList $ \(src,sec,url) -> runSRL conn apredata netagger cfg (src ++ "/" ++ sec)
       putStrLn "Waiting next run..."
       threadDelay 10000000
@@ -72,7 +72,7 @@ runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Te
 runSRL conn apredata netagger cfg src = do
   as1a <- getAnalysisFilePathBySource cfg src
   as1b <- getRSSAnalysisFilePathBySource cfg src
-  let as1 = as1a ++ as1b
+  let as1 = as1b -- as1a ++ as1b
   as2 <- filterM (\(fp,tm) -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> fp) "mgs")) as1
   loaded1 <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as1
   let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) loaded1
