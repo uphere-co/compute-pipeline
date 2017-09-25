@@ -7,6 +7,7 @@ import           System.FilePath                   ((</>))
 --
 import           NewsAPI.DB
 import qualified NewsAPI.DB.Analysis        as An
+import           NLP.Shared.Type                   (PathConfig,dbstring)
 --
 import           Pipeline.Operation.DB
 import           Pipeline.Type

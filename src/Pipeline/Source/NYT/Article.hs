@@ -12,6 +12,7 @@ import qualified Database.PostgreSQL.Simple as PGS
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
+import           NLP.Shared.Type                   (PathConfig,dbstring,nytstore)
 import           NYT.DB
 import qualified NYT.DB.Analysis            as Analysis
 import qualified NYT.DB.Article             as A

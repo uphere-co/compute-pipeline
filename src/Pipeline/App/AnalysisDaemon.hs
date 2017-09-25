@@ -21,8 +21,9 @@ import           System.FilePath                   ((</>),addExtension)
 --
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
-import           Lexicon.Data                           (loadLexDataConfig)
+import           Lexicon.Data                      (loadLexDataConfig)
 import           NewsAPI.Type
+import           NLP.Shared.Type                   (PathConfig,corenlpstore,dbstring,lexconfigpath,mgstore)
 import           NLP.Type.CoreNLP
 import           WikiEL.EntityLinking
 --
@@ -40,8 +41,6 @@ runDaemon cfg = do
   conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
   (apredata,netagger) <- loadConfig cfgG
-  -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
-  -- let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
                        . (words2sentences .~ True)
@@ -71,7 +70,6 @@ runSRL conn apredata netagger cfg src = do
   as2 <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as1
   loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as1)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded1
-  -- print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
     forkChild (runAnalysisByChunks conn netagger apredata cfg ls)
@@ -79,13 +77,12 @@ runSRL conn apredata netagger cfg src = do
   waitForChildren
   refreshChildren
 
-
+{- 
 mkBloombergMGFig :: PathConfig ->  IO ()
 mkBloombergMGFig cfg = do
   conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
   (apredata,netagger) <- loadConfig cfgG
-  -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
-  -- let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
   closeConnection conn
+-}

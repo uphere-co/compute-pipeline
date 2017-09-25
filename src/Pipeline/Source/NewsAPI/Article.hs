@@ -17,6 +17,7 @@ import           System.FilePath                   ((</>))
 import           NewsAPI.DB
 import qualified NewsAPI.DB.Article         as Ar
 import           NewsAPI.Type
+import           NLP.Shared.Type                   (PathConfig,dbstring,newsapistore)
 --
 import           Pipeline.Operation.DB
 import           Pipeline.Type

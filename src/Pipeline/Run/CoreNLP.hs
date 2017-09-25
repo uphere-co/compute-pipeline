@@ -21,6 +21,7 @@ import           System.FilePath                              ((</>))
 import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysis,uploadArticleError)
 import qualified NewsAPI.DB.Article                    as Ar
+import           NLP.Shared.Type                              (PathConfig,corenlpstore,dbstring,errstore)
 import           NLP.Type.CoreNLP
 import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
 import           WikiEL.EntityLinking
