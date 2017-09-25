@@ -37,7 +37,11 @@ import           NewsAPI.DB                        (getAnalysisBySourceAndTime,g
 import qualified NewsAPI.DB.Analysis        as An
 import qualified NewsAPI.DB.Article         as Ar
 import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..)
+                                                   ,PathConfig(..)
+                                                   ,arbstore,mgdotfigstore
                                                    ,objectB,predicateR,subjectA,po_main)
+import           NLP.Type.TagPos                   (TagPos,TokIdx)
+import           WikiEL.EntityLinking              (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Type
@@ -53,7 +57,7 @@ instance Hashable ARB
 
 
 
-updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,[ARB]))] -> IO ()
+updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))] -> IO ()
 updateARB cfg arbs = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
@@ -75,7 +79,7 @@ updateARB cfg arbs = do
     threadDelay 3000000
 
 
-loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,[ARB]))]
+loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 loadExistingARB cfg  = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
@@ -118,7 +122,7 @@ getNDayAnalyses conn txt n = do
 
 type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
-         :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,[ARB]))]
+         :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
@@ -139,11 +143,15 @@ run conn cfg = do
   runSettings settings =<< (mkApp conn arbs)
 
 
-mkApp :: Connection -> TVar [(FilePath, (UTCTime, [ARB]))] -> IO Application
+mkApp :: Connection
+      -> TVar [(FilePath, (UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+      -> IO Application
 mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
 
 
-server :: Connection -> TVar [(FilePath, (UTCTime, [ARB]))] -> Server API
+server :: Connection
+       -> TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
+       -> Server API
 server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 
@@ -171,7 +179,7 @@ whiteList = [ "Ceasing_to_be", "Success_or_failure" , "Process_start", "Process_
 blackList :: [Text]
 blackList = [ "he", "we", "i", "she", "they", "you", "it"
             , "this", "that", "these", "those"
-            , "and"
+            , "and", "but"
             ]
 
 
@@ -186,26 +194,31 @@ haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left)
 isSubjectBlackListed x = x ^.subjectA._2.to T.toLower `elem` blackList
 
 
-filterARB :: Int -> [(FilePath,(UTCTime,[ARB]))] -> [(FilePath,(UTCTime,[ARB]))]
+filterARB :: Int
+          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 filterARB n arbs =
-  let arbs0 = map (\(f,(t,xs))-> (f,(t,filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs))) arbs
+  let arbs0 = map (\(f,(t,(xs,ner)))-> (f,(t,(filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs,ner)))) arbs
       -- we start with two times more sets considering filter-out items.
       arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs0
-      templst = do (f,(t,arbs'')) <- arbs1
+      templst = do (f,(t,(arbs'',ner))) <- arbs1
                    arb <- arbs''
-                   return (hash arb,f,t,arb)
+                   return (hash arb,f,t,(arb,ner))
       templst1 = (map (\(_h,t,f,x) -> ((t,f),x)) . map head . groupBy ((==) `on` (^._1)) . sortBy (compare `on` (^._1))) templst
-      grouper lst = let ((t,f),_) = head lst
-                        rs = map (^._2) lst
-                    in (t,(f,rs))
+      grouper lst = let ((t,f),(_,ner)) = head lst
+                        rs = map (^._2._1) lst
+                    in (t,(f,(rs,ner)))
       arbs2 = (map grouper . groupBy ((==) `on` (^._1)) .  sortBy (compare `on` (^._1))) templst1
   in take n $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs2
 
 
 
-getARB :: TVar [(FilePath, (UTCTime, [ARB]))] -> Handler [(FilePath,(UTCTime,[ARB]))]
+getARB :: TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
+       -> Handler [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 getARB arbs = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
   let n = 100
-  return (filterARB n arbs1)
+      result = filterARB n arbs1
+  liftIO $ mapM_ print (take 3 result)
+  return result
