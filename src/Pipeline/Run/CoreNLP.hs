@@ -62,6 +62,11 @@ runCoreNLPforNewsAPISource pp cfg src = do
   articles <- getTimeTitleDescFromSrcWithHash cfg src
   storeParsedArticles pp cfg articles
 
+runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
+runCoreNLPforRSS pp cfg src = do
+  articles <- getTitmeTitleDescFromSrcWithHash cfg src
+  storeParsedArticles pp cfg articles
+
 -- | Pre-run of CoreNLP for changing named entity with special rule.
 preRunForTaggingNE :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                    -> ([NERToken] -> [EntityMention Text])
