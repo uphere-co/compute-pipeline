@@ -41,6 +41,7 @@ library
                   multi-word-tagger,
                   network-util, newsapi, newsapi-db, nlp-shared-types, nlp-types, nyt-scrapper, nyt-db,
                   predicate-matrix, PropBank,
+                  rss-db, rss-scraper,
                   semantic-role-labeler, syntactic-analysis,
                   time-tagger,
                   unordered-containers,
@@ -60,6 +61,8 @@ library
                    Pipeline.Source.NewsAPI.Analysis
                    Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article
+                   Pipeline.Source.RSS.Analysis
+                   Pipeline.Source.RSS.Article
                    Pipeline.Type
                    Pipeline.Util
                    Pipeline.View.YAML.YAYAML

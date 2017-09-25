@@ -23,11 +23,14 @@ import           NewsAPI.DB                                   (uploadAnalysis,up
 import qualified NewsAPI.DB.Article                    as Ar
 import           NLP.Shared.Type                              (PathConfig,corenlpstore,dbstring,errstore)
 import           NLP.Type.CoreNLP
+import           RSS.DB
+import qualified RSS.DB.Article                        as RAr
 import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
 import           WikiEL.EntityLinking
 import           WikiEL.Run
 --
 import           Pipeline.Source.NewsAPI.Article
+import qualified Pipeline.Source.RSS.Article           as RSS
 import           Pipeline.Operation.DB
 -- import           Pipeline.Run.WikiEL
 import           Pipeline.Type
@@ -39,7 +42,6 @@ storeParsedArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                     -> IO ()
 storeParsedArticles pp cfg articles = do
   conn <- getConnection (cfg ^. dbstring)
-  (tagger,entityResolve) <- loadWikiData
   forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
     -- (txt,xs) <- preRunForTaggingNE pp emTagger txt' -- Necessary for pre-running of CoreNLP
     fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh))
@@ -51,11 +53,31 @@ storeParsedArticles pp cfg articles = do
           saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
           uploadArticleError conn (mkNewsAPIArticleErrorDB article)
         Right result                -> do
-          sents <- preRunParser pp txt
-          -- runEL sents tagger entityResolve
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
           uploadAnalysis conn (mkNewsAPIAnalysisDB (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
+
+
+storeParsedRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+                       -> PathConfig
+                       -> [Maybe (RAr.RSSArticleH,RSS.RSSArticleContent)]
+                       -> IO ()
+storeParsedRSSArticles pp cfg articles = do
+  conn <- getConnection (cfg ^. dbstring)
+  forM_ (catMaybes articles) $ \(article,(hsh,_,_,txt)) -> do
+    fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh))
+    echk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh))
+    when (not fchk && not echk) $ do
+      eresult <- try $ runParser pp txt
+      case eresult of
+        Left  (_e :: SomeException) -> do
+          saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
+        Right result                -> do
+          saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
+          uploadRSSAnalysis conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
+  closeConnection conn
+
+
 
 -- | Parse and Save
 -- This runs CoreNLP for a specific source from NewsAPI scrapper, and save the result.
@@ -64,8 +86,13 @@ runCoreNLPforNewsAPISource pp cfg src = do
   articles <- getTimeTitleDescFromSrcWithHash cfg src
   storeParsedArticles pp cfg articles
 
+runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
+runCoreNLPforRSS pp cfg src = do
+  articles <- RSS.getTimeTitleDescFromSrcWithHash cfg src
+  storeParsedRSSArticles pp cfg articles
 
-{- 
+
+{-
 -- | Pre-run of CoreNLP for changing named entity with special rule.
 preRunForTaggingNE :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                    -> ([NERToken] -> [EntityMention Text])

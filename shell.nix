@@ -66,6 +66,8 @@ let
       "OntoNotes" = self.callPackage (import OntoNotes) {};           
       "predicate-matrix" = self.callPackage (import predicate-matrix) {};
       "PropBank" = self.callPackage (import PropBank) {};
+      "rss-db" = self.callPackage (import (fetchfin + "/rss-scraper/db")) {};
+      "rss-scraper" = self.callPackage (import (fetchfin + "/rss-scraper")) {};
       "semantic-role-labeler" = self.callPackage (import semantic-role-labeler) {};
       "syntactic-analysis" = self.callPackage (import syntactic-analysis) {};
       "textview" = self.callPackage (import textview) {};
@@ -117,6 +119,8 @@ let
             p.network-util
             p.nyt-db
             p.nyt-scrapper
+            p.rss-db
+            p.rss-scraper
             p.time-tagger
             p.OntoNotes
             p.multi-word-tagger
