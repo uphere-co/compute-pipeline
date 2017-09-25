@@ -39,8 +39,9 @@ runDaemon cfg = do
   clspath <- getEnv "CLASSPATH"
   conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
-  let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
+  (apredata,netagger) <- loadConfig cfgG
+  -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
+  -- let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
                        . (words2sentences .~ True)
@@ -52,7 +53,7 @@ runDaemon cfg = do
                   )
     forever $ do
       forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp cfg src
-      forM_ prestigiousNewsSource $ \src -> runSRL conn apredata emTagger cfg src
+      forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
       putStrLn "Waiting next run..."
       threadDelay 10000000
 
@@ -64,8 +65,8 @@ coreN = 15 :: Int
 
 -- | This does SRL and generates meaning graphs.
 --
-runSRL :: PGS.Connection -> AnalyzePredata -> ([NERToken] -> [EntityMention T.Text]) -> PathConfig -> String  -> IO ()
-runSRL conn apredata emTagger cfg src = do
+runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Text]) -> PathConfig -> String  -> IO ()
+runSRL conn apredata netagger cfg src = do
   as1 <- getAnalysisFilePathBySource cfg src
   as2 <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as1
   loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as1)
@@ -73,16 +74,18 @@ runSRL conn apredata emTagger cfg src = do
   -- print $ (src,length loaded)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
-    forkChild (runAnalysisByChunks conn emTagger apredata cfg ls)
+    forkChild (runAnalysisByChunks conn netagger apredata cfg ls)
 
   waitForChildren
   refreshChildren
+
 
 mkBloombergMGFig :: PathConfig ->  IO ()
 mkBloombergMGFig cfg = do
   conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
-  let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
-  forM_ prestigiousNewsSource $ \src -> runSRL conn apredata emTagger cfg src
+  (apredata,netagger) <- loadConfig cfgG
+  -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) <- loadConfig cfgG
+  -- let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
+  forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
   closeConnection conn
