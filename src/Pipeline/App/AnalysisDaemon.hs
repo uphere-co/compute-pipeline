@@ -72,7 +72,7 @@ runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Te
 runSRL conn apredata netagger cfg src = do
   as1a <- getAnalysisFilePathBySource cfg src
   as1b <- getRSSAnalysisFilePathBySource cfg src
-  let as1 = as1b
+  let as1 = as1a ++ as1b
   as2 <- filterM (\a -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> a) "mgs")) as1
   loaded1 <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as1)
   let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded1
