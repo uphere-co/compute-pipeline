@@ -16,13 +16,13 @@ getAllRSSAnalysisFilePath :: PathConfig -> IO [FilePath]
 getAllRSSAnalysisFilePath cfg = do
   conn <- getConnection (cfg ^. dbstring)
   as <- getRSSAnalysisAll conn
-  return $ getRSSAnalysisHashInB16 as
+  return $ map (\x -> (take 2 x) </> x) $ getRSSAnalysisHashInB16 as
 
 getRSSAnalysisFilePathBySource :: PathConfig -> String -> IO [FilePath]
 getRSSAnalysisFilePathBySource cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   as <- getRSSAnalysisBySource src conn
-  return $ getRSSAnalysisHashInB16 as
+  return $ map (\x -> (take 2 x) </> x) $ getRSSAnalysisHashInB16 as
 
 getRSSAnalysisHashInB16 :: [An.RSSAnalysisH] -> [FilePath]
 getRSSAnalysisHashInB16 as = map (BL8.unpack . BL8.fromStrict . B16.encode . An._sha256) as
