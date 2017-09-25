@@ -15,7 +15,7 @@ import           Database.PostgreSQL.Simple             (Connection)
 import           System.FilePath                        ((</>),takeFileName)
 --
 import           Data.Range                             (Range)
-import           Data.Time.Clock                        (getCurrentTime)
+import           Data.Time.Clock                        (UTCTime,getCurrentTime)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
@@ -57,9 +57,10 @@ mkMGs :: Connection
       -> ([Sentence] -> [EntityMention Text])
       -> PathConfig
       -> FilePath
+      -> UTCTime
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata netagger cfg fp article = do
+mkMGs conn apredata netagger cfg fp tm article = do
   let filename = takeFileName fp
       dstr = docStructure apredata netagger article
       sstrs = catMaybes (dstr ^. ds_sentStructures)
@@ -73,8 +74,7 @@ mkMGs conn apredata netagger cfg fp article = do
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
       saveMG (cfg ^. mgstore) filename i mg
-      ctime <- getCurrentTime
-      saveARB (cfg ^. arbstore) filename i (ctime,(arb,netags))
+      saveARB (cfg ^. arbstore) filename i (tm,(arb,netags))
       genMGFigs cfg filename i sstr mtks mg wikilst
   -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
@@ -94,17 +94,17 @@ runAnalysisAll cfg conn = do
   -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) 
   -- let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
   as <- getAllAnalysisFilePath cfg
-  loaded' <- loadCoreNLPResult (map ((</>) (cfg ^. corenlpstore)) as)
-  let loaded = catMaybes $ map (\x -> (,) <$> Just (fst x) <*> snd x) loaded'
-  flip mapM_ (take 100 loaded) $ \(fp,x) -> do
-    mkMGs conn apredata netagger cfg fp x
+  loaded' <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as
+  let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) loaded'
+  flip mapM_ loaded $ \(fp,tm,x) -> do
+    mkMGs conn apredata netagger cfg fp tm x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
 
 runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text])
-                    -> AnalyzePredata -> PathConfig -> [(FilePath,DocAnalysisInput)] -> IO ()
+                    -> AnalyzePredata -> PathConfig -> [(FilePath,UTCTime,DocAnalysisInput)] -> IO ()
 runAnalysisByChunks conn netagger apredata cfg loaded = do
-  flip mapM_ loaded $ \(fp,artl) -> do
-    mkMGs conn apredata netagger cfg fp artl
+  flip mapM_ loaded $ \(fp,tm,artl) -> do
+    mkMGs conn apredata netagger cfg fp tm artl
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)

@@ -8,6 +8,7 @@ import qualified Data.ByteString.Lazy.Char8     as BL
 import           Data.Foldable                  (toList)
 import           Data.List                      (sort)
 import           Data.Text                      (Text)
+import           Data.Time.Clock                (UTCTime)
 import           System.Directory.Tree
 --
 import           NLP.Shared.Type                (PathConfig)
@@ -16,12 +17,12 @@ import           WikiEL.EntityLinking           (EntityMention)
 --
 import           Pipeline.Type
 
-loadCoreNLPResult :: [FilePath]
-                  -> IO [(FilePath, Maybe DocAnalysisInput)]
-loadCoreNLPResult fps = do
-  forM fps $ \fp -> do
+loadCoreNLPResult :: [(FilePath,UTCTime)]
+                  -> IO [(FilePath,UTCTime,Maybe DocAnalysisInput)]
+loadCoreNLPResult fptms = do
+  forM fptms $ \(fp,tm) -> do
     bstr <- B.readFile fp
-    return $ (fp,A.decode (BL.fromStrict bstr))
+    return $ (fp,tm,A.decode (BL.fromStrict bstr))
 
 
 loadWikiELResult :: [FilePath] -> IO [(FilePath,Maybe [EntityMention Text])]
