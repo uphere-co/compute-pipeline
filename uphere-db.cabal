@@ -21,6 +21,8 @@ library
                        DB.Schema.NewsAPI.ArticleError
                        DB.Schema.NYT.Analysis
                        DB.Schema.NYT.Article
+                       DB.Schema.RSS.Analysis
+                       DB.Schema.RSS.Article
   -- other-modules:
   -- other-extensions:
   build-depends:       base,
