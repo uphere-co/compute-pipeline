@@ -70,11 +70,16 @@ mkMGs conn apredata netagger cfg fp tm article = do
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
       wikilst = SRLWiki.mkWikiList dstr
       isNonFilter = False
+  putStrLn $ "Analyzing " ++ filename
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
   forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
+      putStrLn $ filename ++ " is filtered in!"
+      putStrLn $ filename ++ ": saving MGS"      
       saveMG (cfg ^. mgstore) filename i mg
+      putStrLn $ filename ++ ": saving ARB"            
       saveARB (cfg ^. arbstore) filename i (tm,(arb,netags))
+      putStrLn $ filename ++ ": saving DOT"                  
       genMGFigs cfg filename i sstr mtks mg wikilst
   -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 

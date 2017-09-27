@@ -58,7 +58,7 @@ runDaemon cfg = do
       -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
       forM_ rssList $ \(src,sec,url) -> runSRL conn apredata netagger cfg (src ++ "/" ++ sec)
       putStrLn "Waiting next run..."
-      let sec = 1000000 in threadDelay (20*sec)
+      let sec = 1000000 in threadDelay (60*sec)
 
   closeConnection conn
 
