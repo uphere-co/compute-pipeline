@@ -90,9 +90,7 @@ genMGFigs cfg filename i sstr mtks mg wikilst = do
 runAnalysisAll :: PathConfig -> Connection -> IO ()
 runAnalysisAll cfg conn = do
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger) <- loadConfig cfgG
-  -- (sensemap,sensestat,framedb,ontomap,emTagger,rolemap,subcats) 
-  -- let apredata = AnalyzePredata sensemap sensestat framedb ontomap rolemap subcats
+  (apredata,netagger) <- loadConfig False cfgG
   as <- getAllAnalysisFilePath cfg
   loaded' <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as
   let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) loaded'
