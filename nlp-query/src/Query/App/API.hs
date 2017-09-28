@@ -76,7 +76,7 @@ updateARB cfg arbs = do
     if (not $ null newarbs)
       then atomically (writeTVar arbs (arbs' ++ newarbs))
       else atomically (writeTVar arbs arbs')
-    threadDelay 3000000
+    let sec = 1000000 in threadDelay (10*sec)
 
 
 loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]

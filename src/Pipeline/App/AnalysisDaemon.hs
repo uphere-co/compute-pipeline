@@ -42,7 +42,7 @@ runDaemon cfg = do
   clspath <- getEnv "CLASSPATH"
   conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger) <- loadConfig cfgG
+  (apredata,netagger) <- loadConfig False cfgG
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
     pp <- prepare (def & (tokenizer .~ True)
                        . (words2sentences .~ True)
@@ -58,7 +58,7 @@ runDaemon cfg = do
       -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
       forM_ rssList $ \(src,sec,url) -> runSRL conn apredata netagger cfg (src ++ "/" ++ sec)
       putStrLn "Waiting next run..."
-      threadDelay 10000000
+      let sec = 1000000 in threadDelay (60*sec)
 
   closeConnection conn
 
