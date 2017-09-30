@@ -7,7 +7,7 @@ import           Data.Time.Clock                   (UTCTime)
 import           System.FilePath                   ((</>))
 --
 import           RSS.DB
-import qualified RSS.DB.Analysis            as RAn
+import qualified DB.Schema.RSS.Analysis            as RAn
 import           NLP.Shared.Type                   (PathConfig,dbstring)
 --
 import           Pipeline.Operation.DB

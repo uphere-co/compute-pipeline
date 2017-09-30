@@ -39,12 +39,13 @@ library
                   HCoreNLP, HCoreNLP-Proto, HWordNet,
                   lexicon-builder,
                   multi-word-tagger,
-                  network-util, newsapi, newsapi-db, nlp-shared-types, nlp-types, nyt-scrapper, nyt-db,
+                  network-util, newsapi, nlp-shared-types, nlp-types, nyt-scrapper,
                   predicate-matrix, PropBank,
-                  rss-db, rss-scraper,
+                  rss-scraper,
                   semantic-role-labeler, syntactic-analysis,
                   time-tagger,
                   unordered-containers,
+                  uphere-db,
                   wiki-ner,
                   yaml, yayaml
   exposed-modules: Pipeline.App.AnalysisDaemon

@@ -15,7 +15,7 @@ import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
 import           NewsAPI.DB
-import qualified NewsAPI.DB.Article         as Ar
+import qualified DB.Schema.NewsAPI.Article         as Ar
 import           NewsAPI.Type
 import           NLP.Shared.Type                   (PathConfig,dbstring,newsapistore)
 --

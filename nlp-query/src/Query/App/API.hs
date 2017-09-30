@@ -34,8 +34,8 @@ import           System.FilePath                   (takeExtension, takeBaseName)
 import           System.IO
 --
 import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
-import qualified NewsAPI.DB.Analysis        as An
-import qualified NewsAPI.DB.Article         as Ar
+import qualified DB.Schema.NewsAPI.Analysis        as An
+import qualified DB.Schema.NewsAPI.Article         as Ar
 import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..)
                                                    ,PathConfig(..)
                                                    ,arbstore,mgdotfigstore
