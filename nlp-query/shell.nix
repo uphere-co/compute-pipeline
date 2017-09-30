@@ -20,6 +20,7 @@
 , time-tagger           ? <time-tagger>
 , uphere-opaleye        ? <uphere-opaleye>
 , VerbNet               ? <VerbNet>
+, uphere-db             ? <uphere-db>
 , wiki-ner              ? <wiki-ner>
 }:
 
@@ -60,14 +61,11 @@ let
       "wiki-ner" = self.callPackage (import wiki-ner) {};
       "syntactic-analysis" = self.callPackage (import syntactic-analysis) {};
       "fastText" = self.callPackage fastTextNix { inherit fasttext; };
-      "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
       "nlp-pipeline" = self.callPackage (import nlp-pipeline) {};
-      "nyt-db" = self.callPackage (import (fetchfin + "/nyt/db")) {};
       "nyt-scrapper" = self.callPackage (import (fetchfin + "/nyt")) {};
       "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
       "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};
       "time-tagger" = self.callPackage (import time-tagger) {};
-      "rss-db" = self.callPackage (import (fetchfin + "/rss-scraper/db")) {};
       "rss-scraper" = self.callPackage (import (fetchfin + "/rss-scraper")) {};
       "OntoNotes" = self.callPackage (import OntoNotes) {};
       "HFrameNet" = self.callPackage (import HFrameNet) {};
@@ -77,6 +75,7 @@ let
       "lexicon-builder" = self.callPackage (import lexicon-builder) {};
       "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
       "graph-algorithms" = self.callPackage (import graph-algorithms) {};
+      "uphere-db" = self.callPackage (import uphere-db) {};
       };
   newHaskellpkgs = haskellPackages.override {
     overrides = self: super: config1 self super // config2 self super;
@@ -119,11 +118,11 @@ let
             p.semantic-role-labeler
             p.wiki-ner
             p.nlp-pipeline
-            p.nyt-db
             p.nyt-scrapper
             p.time-tagger
             p.OntoNotes
             p.network-util
+            p.uphere-db
           ]);
 
 in
