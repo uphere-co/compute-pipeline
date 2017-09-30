@@ -16,7 +16,7 @@ import           System.FilePath                   ((</>))
 --
 import           NLP.Shared.Type
 import           RSS.DB
-import qualified RSS.DB.Article             as Ar
+import qualified DB.Schema.RSS.Article             as Ar
 import           RSS.Type
 --
 import           Pipeline.Operation.DB

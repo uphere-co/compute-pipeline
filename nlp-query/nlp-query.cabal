@@ -50,8 +50,8 @@ library
                   wiki-ner,
                   --
                   newsapi,
-                  newsapi-db,
-                  nlp-pipeline
+                  nlp-pipeline,
+                  uphere-db
   exposed-modules:  Query
                     Query.App.API
                     Query.DB.NewsAPI

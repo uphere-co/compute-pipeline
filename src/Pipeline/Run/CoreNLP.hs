@@ -20,11 +20,11 @@ import           System.FilePath                              ((</>))
 --
 import           MWE.NamedEntity
 import           NewsAPI.DB                                   (uploadAnalysisIfMissing,uploadArticleError)
-import qualified NewsAPI.DB.Article                    as Ar
+import qualified DB.Schema.NewsAPI.Article                    as Ar
 import           NLP.Shared.Type                              (PathConfig,corenlpstore,dbstring,errstore)
 import           NLP.Type.CoreNLP
 import           RSS.DB
-import qualified RSS.DB.Article                        as RAr
+import qualified DB.Schema.RSS.Article                        as RAr
 import           SRL.Analyze.CoreNLP                          (preRunParser,runParser)
 import           WikiEL.EntityLinking
 import           WikiEL.Run
