@@ -55,6 +55,7 @@ instance Hashable (PrepOr Text)
 
 instance Hashable ARB
 
+instance Hashable (PrepOr ARB)
 
 
 updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))] -> IO ()
@@ -184,11 +185,11 @@ blackList = [ "he", "we", "i", "she", "they", "you", "it"
             ]
 
 
-isWithObjOrWhiteListed x = check x && all isWithObjOrWhiteListed (x^..objectB.traverse._2._Left)
+isWithObjOrWhiteListed x = check x && all isWithObjOrWhiteListed (x^..objectB.traverse._2._Left.po_main)
   where check x = (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList)
 
 
-haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left)
+haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left.po_main)
   where check x = (x^.subjectA._2 == ",") || any (== ",") (x^..objectB.traverse._2._Right.po_main)
 
 
