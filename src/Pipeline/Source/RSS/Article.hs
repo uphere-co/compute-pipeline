@@ -28,14 +28,14 @@ type RSSArticleContent = (Text, UTCTime, Text, Text)
 getHashByTime :: PathConfig -> UTCTime -> IO [(Text,Text)]
 getHashByTime cfg time = do
   conn <- getConnection (cfg ^. dbstring)
-  articles <- getRSSArticleByTime time conn
+  articles <- getRSSArticleByTime conn time
   PGS.close conn
   return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x)) articles)
 
 getTimeTitleDescFromSrcWithHash :: PathConfig -> String -> IO [Maybe (Ar.RSSArticleH,RSSArticleContent)]
 getTimeTitleDescFromSrcWithHash cfg src = do
   conn <- getConnection (cfg ^. dbstring)
-  articles <- getRSSArticleBySource src conn
+  articles <- getRSSArticleBySource conn src
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x
         fileprefix = (cfg ^. rssstore) </> src
