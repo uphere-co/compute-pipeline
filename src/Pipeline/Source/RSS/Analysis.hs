@@ -22,7 +22,7 @@ getAllRSSAnalysisFilePath cfg = do
 getRSSAnalysisFilePathBySource :: PathConfig -> String -> IO [(FilePath,UTCTime)]
 getRSSAnalysisFilePathBySource cfg src = do
   conn <- getConnection (cfg ^. dbstring)
-  as <- getRSSAnalysisBySource src conn
+  as <- getRSSAnalysisBySource conn src
   return $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
 
 ranHshB16 :: RAn.RSSAnalysisH -> FilePath

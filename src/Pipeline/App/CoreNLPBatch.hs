@@ -14,10 +14,10 @@ import           System.Process                               (spawnProcess,wait
 import           NewsAPI.Type
 --
 
-
 batchCoreNLP :: IO ()
 batchCoreNLP = do
   forM_ (chunksOf (length prestigiousNewsSource) prestigiousNewsSource) $ \ns -> do
     phs <- forM ns $ \n -> do
       spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n]
     forM_ phs $ \ph -> waitForProcess ph
+  
