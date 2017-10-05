@@ -16,6 +16,7 @@ import           System.FilePath                        ((</>),takeFileName)
 --
 import           Data.Range                             (Range)
 import           Data.Time.Clock                        (UTCTime,getCurrentTime)
+import           Graph.Algorithm.Basic                  (maxConnectedNodes,numberOfIsland)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
@@ -48,7 +49,7 @@ isSRLFiltered sstr mg =
      mgraph = getGraphFromMG mg
      (c,d) = case mgraph of
                Nothing -> (-1,-1)
-               Just gr -> (farthestPath gr, numberOfIsland gr)
+               Just gr -> (maxConnectedNodes gr, numberOfIsland gr)
  in ((a == b) && (c >=4) && (d < 3))
 
 

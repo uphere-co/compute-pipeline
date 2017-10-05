@@ -36,6 +36,7 @@ library
                   text, textview, time, transformers,
                   vector,
                   --
+                  graph-algorithms,
                   HCoreNLP, HCoreNLP-Proto, HWordNet,
                   lexicon-builder,
                   multi-word-tagger,
