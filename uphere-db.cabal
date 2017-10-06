@@ -16,19 +16,22 @@ extra-source-files:  ChangeLog.md, README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     DB.Schema.NewsAPI.Analysis
+  exposed-modules:     DB.Operation
+                       DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article
                        DB.Schema.NewsAPI.ArticleError
                        DB.Schema.NYT.Analysis
                        DB.Schema.NYT.Article
                        DB.Schema.RSS.Analysis
                        DB.Schema.RSS.Article
+                       DB.Type
   -- other-modules:
   -- other-extensions:
   build-depends:       base,
                        --
                        bytestring,
                        opaleye,
+                       postgresql-simple,
                        text,
                        time,
                        template-haskell,
