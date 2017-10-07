@@ -17,6 +17,8 @@
 , syntactic-analysis    ? <syntactic-analysis>
 , textview              ? <textview>
 , time-tagger           ? <time-tagger>
+, uphere-db             ? <uphere-db>
+, uphere-network-util   ? <uphere-network-util>
 , uphere-opaleye        ? <uphere-opaleye>
 , VerbNet               ? <VerbNet>
 , wiki-ner              ? <wiki-ner>
@@ -47,34 +49,35 @@ let
   };
   config2 =
     self: super: {
-      "fastText" = self.callPackage fastTextNix { inherit fasttext; };
-      "graph-algorithms" = self.callPackage (import graph-algorithms) {};
-      "HCoreNLP" = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
-      "HCoreNLP-Proto" = self.callPackage (import (HCoreNLP + "/HCoreNLP-Proto")) {};       
-      "HFrameNet" = self.callPackage (import HFrameNet) {};
-      "HWordNet" = self.callPackage (import HWordNet) {};
-      "lexicon" = self.callPackage (import lexicon) {};
-      "lexicon-builder" = self.callPackage (import lexicon-builder) {};
-      "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
-      "network-util" = self.callPackage (import ./nlp-query/network-util) {};
-      "newsapi" = self.callPackage (import (fetchfin + "/newsapi")) {};
-      "newsapi-db" = self.callPackage (import (fetchfin + "/newsapi/db")) {};
-      "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};      
-      "nlp-types" = self.callPackage (import nlp-types) {};
-      "nyt-db" = self.callPackage (import (fetchfin + "/nyt/db")) {};
-      "nyt-scrapper" = self.callPackage (import (fetchfin + "/nyt")) {};
-      "OntoNotes" = self.callPackage (import OntoNotes) {};           
-      "predicate-matrix" = self.callPackage (import predicate-matrix) {};
-      "PropBank" = self.callPackage (import PropBank) {};
-      "rss-db" = self.callPackage (import (fetchfin + "/rss-scraper/db")) {};
-      "rss-scraper" = self.callPackage (import (fetchfin + "/rss-scraper")) {};
+      "fastText"              = self.callPackage fastTextNix { inherit fasttext; };
+      "graph-algorithms"      = self.callPackage (import graph-algorithms) {};
+      "HCoreNLP"              = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
+      "HCoreNLP-Proto"        = self.callPackage (import (HCoreNLP + "/HCoreNLP-Proto")) {};       
+      "HFrameNet"             = self.callPackage (import HFrameNet) {};
+      "HWordNet"              = self.callPackage (import HWordNet) {};
+      "lexicon"               = self.callPackage (import lexicon) {};
+      "lexicon-builder"       = self.callPackage (import lexicon-builder) {};
+      "multi-word-tagger"     = self.callPackage (import multi-word-tagger) {};
+      "newsapi"               = self.callPackage (import (fetchfin + "/newsapi")) {};
+      # "newsapi-db"            = self.callPackage (import (fetchfin + "/newsapi/db")) {};
+      "nlp-shared-types"      = self.callPackage (import nlp-shared-types) {};      
+      "nlp-types"             = self.callPackage (import nlp-types) {};
+      #"nyt-db"                = self.callPackage (import (fetchfin + "/nyt/db")) {};
+      "nyt-scrapper"          = self.callPackage (import (fetchfin + "/nyt")) {};
+      "OntoNotes"             = self.callPackage (import OntoNotes) {};           
+      "predicate-matrix"      = self.callPackage (import predicate-matrix) {};
+      "PropBank"              = self.callPackage (import PropBank) {};
+      "rss-db"                = self.callPackage (import (fetchfin + "/rss-scraper/db")) {};
+      "rss-scraper"           = self.callPackage (import (fetchfin + "/rss-scraper")) {};
       "semantic-role-labeler" = self.callPackage (import semantic-role-labeler) {};
-      "syntactic-analysis" = self.callPackage (import syntactic-analysis) {};
-      "textview" = self.callPackage (import textview) {};
-      "time-tagger" = self.callPackage (import time-tagger) {};
-      "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
-      "VerbNet" = self.callPackage (import VerbNet) {};
-      "wiki-ner" = self.callPackage (import wiki-ner) {};
+      "syntactic-analysis"    = self.callPackage (import syntactic-analysis) {};
+      "textview"              = self.callPackage (import textview) {};
+      "time-tagger"           = self.callPackage (import time-tagger) {};
+      "uphere-db"             = self.callPackage (import uphere-db) {};
+      "uphere-network-util"   = self.callPackage (import uphere-network-util) {};
+      "uphere-opaleye"        = self.callPackage (import uphere-opaleye) {};
+      "VerbNet"               = self.callPackage (import VerbNet) {};
+      "wiki-ner"              = self.callPackage (import wiki-ner) {};
 
       };
   newHaskellPackages = haskellPackages.override {
@@ -116,10 +119,10 @@ let
             p.PropBank
             p.semantic-role-labeler
             p.wiki-ner
-            p.network-util
-            p.nyt-db
+            p.uphere-network-util
+           # p.nyt-db
             p.nyt-scrapper
-            p.rss-db
+            #p.rss-db
             p.rss-scraper
             p.time-tagger
             p.OntoNotes
