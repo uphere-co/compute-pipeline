@@ -32,7 +32,6 @@ library
                   network-simple,
                   network-transport,
                   network-transport-tcp,
-                  network-util,
                   nlp-shared-types,
                   nlp-types,
                   postgresql-simple,
@@ -51,7 +50,9 @@ library
                   --
                   newsapi,
                   nlp-pipeline,
-                  uphere-db
+                  uphere-db,
+                  uphere-network-util
+                  
   exposed-modules:  Query
                     Query.App.API
                     Query.DB.NewsAPI
