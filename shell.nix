@@ -18,9 +18,10 @@
 , syntactic-analysis    ? <syntactic-analysis>
 , textview              ? <textview>
 , time-tagger           ? <time-tagger>
+, uphere-db             ? <uphere-db>
+, uphere-network-util   ? <uphere-network-util>
 , uphere-opaleye        ? <uphere-opaleye>
 , VerbNet               ? <VerbNet>
-, uphere-db             ? <uphere-db>
 , wiki-ner              ? <wiki-ner>
 }:
 
@@ -70,7 +71,7 @@ let
       "OntoNotes" = self.callPackage (import OntoNotes) {};
       "HFrameNet" = self.callPackage (import HFrameNet) {};
       "VerbNet" = self.callPackage (import VerbNet) {};
-      "network-util" = self.callPackage (import (nlp-pipeline + "/nlp-query/network-util")) {};
+      "uphere-network-util" = self.callPackage (import uphere-network-util) {};
       "lexicon" = self.callPackage (import lexicon) {};
       "lexicon-builder" = self.callPackage (import lexicon-builder) {};
       "multi-word-tagger" = self.callPackage (import multi-word-tagger) {};
@@ -97,6 +98,7 @@ let
             lens
             monad-loops
             network-simple
+            network-transport-tcp
             opaleye
             optparse-applicative
             postgresql-simple
@@ -121,8 +123,8 @@ let
             p.nyt-scrapper
             p.time-tagger
             p.OntoNotes
-            p.network-util
             p.uphere-db
+            p.uphere-network-util
           ]);
 
 in
