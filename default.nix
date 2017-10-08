@@ -1,12 +1,14 @@
-{ mkDerivation, aeson, attoparsec, base, base16-bytestring
-, bytestring, containers, distributed-process, directory, directory-tree, discrimination
-, either, filepath, haskeline, HCoreNLP, HCoreNLP-Proto, hedis
-, HWordNet, newsapi, nyt-scrapper, jvm, lens, mtl, multi-word-tagger, network-transport, network-transport-tcp, network-util
-, nlp-types, nlp-shared-types
-, optparse-applicative, OntoNotes, postgresql-simple, predicate-matrix
-, PropBank, protocol-buffers, rss-scraper, semantic-role-labeler, stdenv, text, textview, time, time-tagger
-, transformers, yaml, yayaml
-, wiki-ner
+{ mkDerivation, aeson, async, attoparsec, base, base16-bytestring
+, binary, bytestring, containers, data-default, directory
+, directory-tree, discrimination, either, filepath, haskeline
+, HCoreNLP, HCoreNLP-Proto, HWordNet, jni, jvm, lens
+, lexicon-builder, monad-loops, mtl, multi-word-tagger, newsapi
+, nlp-shared-types, nlp-types, nyt-scrapper, opaleye
+, optparse-applicative, postgresql-simple, process
+, protocol-buffers, rss-scraper, scientific, semantic-role-labeler
+, split, stdenv, stm, syntactic-analysis, text, textview, time
+, time-tagger, transformers, unordered-containers, uphere-db
+, uphere-network-util, vector, wiki-ner, yayaml
 }:
 mkDerivation {
   pname = "nlp-pipeline";
@@ -15,14 +17,20 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    aeson attoparsec base base16-bytestring bytestring containers distributed-process
-    directory directory-tree discrimination either filepath haskeline
-    HCoreNLP HCoreNLP-Proto hedis HWordNet newsapi nyt-scrapper jvm lens mtl multi-word-tagger
-    network-transport network-transport-tcp network-util nlp-types nlp-shared-types
-    optparse-applicative OntoNotes postgresql-simple predicate-matrix PropBank rss-scraper semantic-role-labeler
-    protocol-buffers text textview time time-tagger transformers yaml yayaml
-    wiki-ner
+    aeson async attoparsec base base16-bytestring binary bytestring
+    containers data-default directory directory-tree discrimination
+    either filepath haskeline HCoreNLP HCoreNLP-Proto HWordNet jni jvm
+    lens lexicon-builder monad-loops mtl multi-word-tagger newsapi
+    nlp-shared-types nlp-types nyt-scrapper opaleye
+    optparse-applicative postgresql-simple process protocol-buffers
+    rss-scraper scientific semantic-role-labeler split stm
+    syntactic-analysis text textview time time-tagger transformers
+    unordered-containers uphere-db uphere-network-util vector wiki-ner
+    yayaml
   ];
-  executableHaskellDepends = [ base filepath text ];
+  executableHaskellDepends = [
+    aeson base bytestring data-default filepath HCoreNLP jvm lens
+    nlp-shared-types optparse-applicative split text
+  ];
   license = stdenv.lib.licenses.unfree;
 }
