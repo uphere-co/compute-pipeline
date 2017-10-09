@@ -98,7 +98,7 @@ runAnalysisAll cfg conn = do
   (apredata,netagger) <- loadConfig False cfgG
   as <- getAllAnalysisFilePath cfg
   loaded' <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as
-  let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) loaded'
+  let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded')
   flip mapM_ loaded $ \(fp,tm,x) -> do
     mkMGs conn apredata netagger cfg fp tm x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))

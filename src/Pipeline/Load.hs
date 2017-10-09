@@ -1,6 +1,8 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Pipeline.Load where
 
-
+import           Control.Exception              (SomeException,try)
 import           Control.Monad                  (forM)
 import qualified Data.Aeson                     as A
 import qualified Data.ByteString.Char8          as B
@@ -18,11 +20,13 @@ import           WikiEL.EntityLinking           (EntityMention)
 import           Pipeline.Type
 
 loadCoreNLPResult :: [(FilePath,UTCTime)]
-                  -> IO [(FilePath,UTCTime,Maybe DocAnalysisInput)]
+                  -> IO [Maybe (FilePath,UTCTime,Maybe DocAnalysisInput)]
 loadCoreNLPResult fptms = do
   forM fptms $ \(fp,tm) -> do
-    bstr <- B.readFile fp
-    return $ (fp,tm,A.decode (BL.fromStrict bstr))
+    ebstr <- try $ B.readFile fp
+    case ebstr of
+      Left  (_e :: SomeException) -> return Nothing
+      Right bstr -> return $ Just (fp,tm,A.decode (BL.fromStrict bstr))
 
 
 loadWikiELResult :: [FilePath] -> IO [(FilePath,Maybe [EntityMention Text])]
