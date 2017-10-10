@@ -50,7 +50,7 @@ makeLenses ''DoneAnalysis
 
 mkNewsAPIAnalysisDB :: DoneAnalysis -> Ar.ArticleP a ByteString Text UTCTime -> NewsAPIAnalysisDB
 mkNewsAPIAnalysisDB das article =
-  NewsAPIAnalysisDB { analysis_sha256 = Ar._sha256 article
+  NewsAPIAnalysisDB { analysis_hash = Ar._hash article
                     , analysis_source = Ar._source article
                     , analysis_corenlp = das ^. done_corenlp
                     , analysis_srl     = das ^. done_srl
@@ -60,7 +60,7 @@ mkNewsAPIAnalysisDB das article =
 
 mkNewsAPIArticleErrorDB :: Ar.ArticleP a ByteString Text UTCTime -> NewsAPIArticleErrorDB
 mkNewsAPIArticleErrorDB article =
-  NewsAPIArticleErrorDB { article_error_hash = Ar._sha256 article
+  NewsAPIArticleErrorDB { article_error_hash = Ar._hash article
                         , article_error_source = Ar._source article
                         , article_error_created = Ar._created article
                         }

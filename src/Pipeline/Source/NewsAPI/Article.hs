@@ -30,14 +30,14 @@ getHashByTime cfg time = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- getArticleByTime time conn
   PGS.close conn
-  return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x)) articles)
+  return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x)) articles)
 
 getTimeTitleDescFromSrcWithHash :: PathConfig -> String -> IO [Maybe (Ar.ArticleH,NewsAPIArticleContent)]
 getTimeTitleDescFromSrcWithHash cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- getArticleBySource src conn
   result <- flip mapM articles $ \x -> do
-    let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x
+    let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         fileprefix = (cfg ^. newsapistore) </> src
         filepath = fileprefix </> hsh
     fchk <- doesFileExist filepath
