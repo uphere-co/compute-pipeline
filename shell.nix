@@ -22,7 +22,6 @@
 , uphere-opaleye        ? <uphere-opaleye>
 , VerbNet               ? <VerbNet>
 , wiki-ner              ? <wiki-ner>
-, uphere-db             ? <uphere-db>
 }:
 
 let newpkgs = import pkgs.path {
