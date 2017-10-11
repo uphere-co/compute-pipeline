@@ -55,7 +55,7 @@ runDaemon cfg = do
     forever $ do
       -- forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp cfg src
       forM_ rssList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (src ++ "/" ++ sec)
-      runCoreNLPforRSS pp cfg ("reuters" ++ "/" ++ "Archive")
+      -- runCoreNLPforRSS pp cfg ("reuters" ++ "/" ++ "Archive")
       -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
       forM_ rssList $ \(src,sec,url) -> runSRL conn apredata netagger cfg (src ++ "/" ++ sec)
       putStrLn "Waiting next run..."
