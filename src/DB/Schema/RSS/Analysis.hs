@@ -61,5 +61,5 @@ newRSSAnalysis hsh src mcore msrl mner ctm
 --   ner boolean,
 --   created timestamp with time zone NOT NULL,
 
---   constraint unique_rssanalysis_sha256 UNIQUE (sha256)
+--   constraint unique_rssanalysis_hash UNIQUE (hash)
 -- );

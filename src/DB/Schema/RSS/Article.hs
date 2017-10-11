@@ -48,5 +48,5 @@ newRSSArticle hsh src ctm
 --   source text NOT NULL,
 --   created timestamp with time zone,
 
---   constraint unique_rssarticle_sha256 UNIQUE (sha256)
+--   constraint unique_rssarticle_hash UNIQUE (hash)
 -- );
