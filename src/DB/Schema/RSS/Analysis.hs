@@ -16,7 +16,8 @@ import Model.Opaleye.ShowConstant (constant)
 import Prelude
 
 $(makeTypes [d|
-    data RSSAnalysis = RSSAnalysis { _sha256   :: ByteString
+    data RSSAnalysis = RSSAnalysis { _id       :: Int
+                                   , _sha256   :: ByteString
                                    , _source   :: Text
                                    , _corenlp  :: Nullable Bool
                                    , _srl      :: Nullable Bool
@@ -41,7 +42,8 @@ newRSSAnalysis :: ByteString
                -> UTCTime
                -> To Maybe (To Column RSSAnalysis)
 newRSSAnalysis s sr mcore msrl mner ct
-  = RSSAnalysis (Just (constant s))
+  = RSSAnalysis Nothing
+                (Just (constant s))
                 (Just (constant sr))
                 ((toNullable . constant) <$> mcore)
                 ((toNullable . constant) <$> msrl)
@@ -51,6 +53,7 @@ newRSSAnalysis s sr mcore msrl mner ct
 -- The PostgreSQL table was created as follows.
 
 -- create table rssanalysis (
+--   id serial PRIMARY KEY,
 --   sha256 bytea NOT NULL,
 --   source text NOT NULL,
 --   corenlp boolean,

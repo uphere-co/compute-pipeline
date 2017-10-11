@@ -24,9 +24,9 @@ import qualified DB.Schema.NewsAPI.Article      as A
 --
 import           DB.Type
 
-uploadArticle :: (ToArticle a) => PGS.Connection -> a -> IO ()
+uploadArticle :: (ToRSSArticle a) => PGS.Connection -> a -> IO ()
 uploadArticle conn x = do
-  let a = toArticle x
+  let a = toRSSArticle x
   runInsert conn A.table $
-    A.newArticle (_hash a) (_source a) (_created a)
+    A.newArticle (_rss_hash a) (_rss_source a) (_rss_created a)
   return ()

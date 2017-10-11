@@ -20,8 +20,6 @@ library
                        DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article
                        DB.Schema.NewsAPI.ArticleError
-                       DB.Schema.NYT.Analysis
-                       DB.Schema.NYT.Article
                        DB.Schema.RSS.Analysis
                        DB.Schema.RSS.Article
                        DB.Type

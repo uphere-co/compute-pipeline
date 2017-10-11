@@ -9,29 +9,38 @@ import           Data.Time.Clock                   (UTCTime)
 import qualified Database.PostgreSQL.Simple as PGS
 --
 
-
-data ArticleDB = ArticleDB
-  { _id      :: Int
-  , _hash    :: ByteString
-  , _source  :: Text
-  , _created :: UTCTime
+data RSSArticleDB = RSSArticleDB
+  { _rss_hash    :: ByteString
+  , _rss_source  :: Text
+  , _rss_created :: UTCTime
   } deriving (Show)
 
-{-
-data AnalysisDB = AnalysisDB
-  {
-  }
-data ArticleErrorDB = ArticleErrorDB { }
--}
+data RSSAnalysisDB = RSSAnalysisDB
+  { _rss_analysis_hash         :: ByteString
+  , _rss_analysis_source       :: Text
+  , _rss_analysis_corenlp      :: Maybe Bool
+  , _rss_analysis_srl          :: Maybe Bool
+  , _rss_analysis_ner          :: Maybe Bool
+  , _rss_analysis_created_time :: UTCTime
+  } deriving (Show)
 
-class ToArticle a where
-  toArticle :: a -> ArticleDB
+
+-- data ArticleErrorDB = ArticleErrorDB { }
 
 
-{-
-class Analysis a where
-  toAnalysis :: a -> AnalysisDB
+class ToRSSArticle a where
+  toRSSArticle :: a -> RSSArticleDB
 
-class ArticleError a where
-  toArticleError :: a -> ArticleErrorDB
--}
+instance ToRSSArticle RSSArticleDB where
+  toRSSArticle = id
+
+class ToRSSAnalysis a where
+  toRSSAnalysis :: a -> RSSAnalysisDB
+
+instance ToRSSAnalysis RSSAnalysisDB where
+  toRSSAnalysis = id
+
+
+-- class ArticleError a where
+--  toArticleError :: a -> ArticleErrorDB
+
