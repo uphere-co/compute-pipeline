@@ -141,7 +141,7 @@ queryRSSAnalysisBySourceAndTime src time = proc () -> do
 queryRSSAnalysisByHash :: ByteString -> Query (To Column (An.RSSAnalysis))
 queryRSSAnalysisByHash hsh = proc () -> do
   r <- An.queryAll -< ()
-  restrict -< An._sha256 r .== (constant hsh)
+  restrict -< An._hash r .== (constant hsh)
   returnA -< r
 
 getRSSArticleAll :: Connection -> IO [A.RSSArticleH]
