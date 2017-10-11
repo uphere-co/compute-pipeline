@@ -16,12 +16,13 @@ import Model.Opaleye.ShowConstant (constant)
 import Prelude
 
 $(makeTypes [d|
-    data RSSAnalysis = RSSAnalysis { _sha256   :: ByteString
-                                   , _source   :: Text
-                                   , _corenlp  :: Nullable Bool
-                                   , _srl      :: Nullable Bool
-                                   , _ner      :: Nullable Bool
-                                   , _created  :: UTCTime
+    data RSSAnalysis = RSSAnalysis { _id      :: Int
+                                   , _hash    :: ByteString
+                                   , _source  :: Text
+                                   , _corenlp :: Nullable Bool
+                                   , _srl     :: Nullable Bool
+                                   , _ner     :: Nullable Bool
+                                   , _created :: UTCTime
                                    }
                      deriving Show |])
 
@@ -40,23 +41,25 @@ newRSSAnalysis :: ByteString
                -> Maybe Bool
                -> UTCTime
                -> To Maybe (To Column RSSAnalysis)
-newRSSAnalysis s sr mcore msrl mner ct
-  = RSSAnalysis (Just (constant s))
-                (Just (constant sr))
+newRSSAnalysis hsh src mcore msrl mner ctm
+  = RSSAnalysis Nothing
+                (Just (constant hsh))
+                (Just (constant src))
                 ((toNullable . constant) <$> mcore)
                 ((toNullable . constant) <$> msrl)
                 ((toNullable . constant) <$> mner)
-                (Just (constant ct))
+                (Just (constant ctm))
 
 -- The PostgreSQL table was created as follows.
 
 -- create table rssanalysis (
---   sha256 bytea NOT NULL,
+--   id serial PRIMARY KEY,
+--   hash bytea NOT NULL,
 --   source text NOT NULL,
 --   corenlp boolean,
 --   srl boolean,
 --   ner boolean,
 --   created timestamp with time zone NOT NULL,
 
---   constraint unique_rssanalysis_sha256 UNIQUE (sha256)
+--   constraint unique_rssanalysis_hash UNIQUE (hash)
 -- );

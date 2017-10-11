@@ -16,9 +16,9 @@ import Model.Opaleye.ShowConstant (constant)
 import Prelude
 
 $(makeTypes [d|
-    data Article = Article { _id :: Int
-                           , _sha256 :: ByteString
-                           , _source :: Text
+    data Article = Article { _id      :: Int
+                           , _hash    :: ByteString
+                           , _source  :: Text
                            , _created :: UTCTime
                            }
                  deriving Show |])
@@ -35,10 +35,10 @@ newArticle :: ByteString
            -> Text
            -> UTCTime
            -> To Maybe (To Column Article)
-newArticle s sn ct
-  = Article Nothing (Just (constant s))
-                    (Just (constant sn))
-                    (Just (constant ct))
+newArticle hsh src ctm
+  = Article Nothing (Just (constant hsh))
+                    (Just (constant src))
+                    (Just (constant ctm))
 
 -- The PostgreSQL table was created as follows.
 
