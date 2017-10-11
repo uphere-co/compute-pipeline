@@ -1,8 +1,11 @@
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 
 module DB.Type where
 
+import           Control.Lens                      (makeLenses)
 import           Data.ByteString.Char8             (ByteString)
 import           Data.Text                         (Text)
 import           Data.Time.Clock                   (UTCTime)
@@ -15,6 +18,8 @@ data RSSArticleDB = RSSArticleDB
   , _rss_created :: UTCTime
   } deriving (Show)
 
+makeLenses ''RSSArticleDB
+
 data RSSAnalysisDB = RSSAnalysisDB
   { _rss_analysis_hash         :: ByteString
   , _rss_analysis_source       :: Text
@@ -24,7 +29,7 @@ data RSSAnalysisDB = RSSAnalysisDB
   , _rss_analysis_created_time :: UTCTime
   } deriving (Show)
 
-
+makeLenses ''RSSAnalysisDB
 -- data ArticleErrorDB = ArticleErrorDB { }
 
 

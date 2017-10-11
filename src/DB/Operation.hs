@@ -6,6 +6,7 @@
 module DB.Operation where
 
 import           Control.Arrow
+import           Control.Lens                               ((^.))
 import           Control.Monad.IO.Class                     (liftIO)
 import           Data.ByteString.Char8                      (ByteString)
 import qualified Data.ByteString.Lazy.Char8     as BL
@@ -28,5 +29,5 @@ uploadArticle :: (ToRSSArticle a) => PGS.Connection -> a -> IO ()
 uploadArticle conn x = do
   let a = toRSSArticle x
   runInsert conn A.table $
-    A.newArticle (_rss_hash a) (_rss_source a) (_rss_created a)
+    A.newArticle (a ^. rss_hash) (a ^. rss_source) (a ^. rss_created)
   return ()
