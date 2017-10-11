@@ -13,20 +13,20 @@ import qualified Database.PostgreSQL.Simple as PGS
 --
 
 data RSSArticleDB = RSSArticleDB
-  { _rss_hash    :: ByteString
-  , _rss_source  :: Text
-  , _rss_created :: UTCTime
+  { _rss_article_hash    :: ByteString
+  , _rss_article_source  :: Text
+  , _rss_article_created :: UTCTime
   } deriving (Show)
 
 makeLenses ''RSSArticleDB
 
 data RSSAnalysisDB = RSSAnalysisDB
-  { _rss_analysis_hash         :: ByteString
-  , _rss_analysis_source       :: Text
-  , _rss_analysis_corenlp      :: Maybe Bool
-  , _rss_analysis_srl          :: Maybe Bool
-  , _rss_analysis_ner          :: Maybe Bool
-  , _rss_analysis_created_time :: UTCTime
+  { _rss_analysis_hash    :: ByteString
+  , _rss_analysis_source  :: Text
+  , _rss_analysis_corenlp :: Maybe Bool
+  , _rss_analysis_srl     :: Maybe Bool
+  , _rss_analysis_ner     :: Maybe Bool
+  , _rss_analysis_created :: UTCTime
   } deriving (Show)
 
 makeLenses ''RSSAnalysisDB
