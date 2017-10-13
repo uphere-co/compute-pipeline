@@ -29,9 +29,9 @@ import           NLP.Type.TagPos                        (leftTagPos)
 import           SRL.Analyze
 import           SRL.Analyze.ARB                        (mkARB)
 import           SRL.Analyze.Match                      (changeMGText,meaningGraph,tagMG)
-import           SRL.Analyze.SentenceStructure          (docStructure)
+import           SRL.Analyze.SentenceStructure          (docStructure,mkWikiList)
 import           SRL.Analyze.Type
-import qualified SRL.Analyze.WikiEL         as SRLWiki
+-- import qualified SRL.Analyze.WikiEL         as SRLWiki
 import           SRL.Statistics
 import           WikiEL.EntityLinking                   (EntityMention)
 --
@@ -69,7 +69,7 @@ mkMGs conn apredata netagger cfg fp tm article = do
       netags = leftTagPos (dstr^.ds_mergedtags)
       mgs = map meaningGraph sstrs
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
-      wikilst = SRLWiki.mkWikiList dstr
+      wikilst = mkWikiList dstr
       isNonFilter = False
   putStrLn $ "Analyzing " ++ filename
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
