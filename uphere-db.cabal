@@ -23,10 +23,12 @@ library
                        DB.Schema.RSS.Analysis
                        DB.Schema.RSS.Article
                        DB.Type
+                       DB.Util
   -- other-modules:
   -- other-extensions:
   build-depends:       base,
                        --
+                       base16-bytestring,
                        bytestring,
                        lens,
                        opaleye,
