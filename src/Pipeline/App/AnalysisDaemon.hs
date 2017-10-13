@@ -25,7 +25,7 @@ import           Lexicon.Data                      (loadLexDataConfig)
 import           NewsAPI.Type
 import           NLP.Shared.Type                   (PathConfig,corenlpstore,dbstring,lexconfigpath,mgstore)
 import           NLP.Type.CoreNLP
-import           RSS                               (rssList)
+import           RSS.Data                          (rssList)
 import           WikiEL.EntityLinking
 --
 import           Pipeline.App.AnalysisRunner
