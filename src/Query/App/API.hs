@@ -103,7 +103,7 @@ oneDayArticles conn txt = do
 getOneDayArticles :: Connection -> Text -> IO [(Int,Text,Text)]
 getOneDayArticles conn txt = do
   articles <- oneDayArticles conn txt
-  let aList = map (\x -> (Ar._id x, T.pack $ bstrHashToB16 $ Ar._sha256 x, Ar._source x)) articles
+  let aList = map (\x -> (Ar._id x, T.pack $ bstrHashToB16 $ Ar._hash x, Ar._source x)) articles
   return aList
 
 

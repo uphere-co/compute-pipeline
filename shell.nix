@@ -63,7 +63,7 @@ let
       "syntactic-analysis" = self.callPackage (import syntactic-analysis) {};
       "fastText" = self.callPackage fastTextNix { inherit fasttext; };
       "nlp-pipeline" = self.callPackage (import nlp-pipeline) {};
-      "nyt-scrapper" = self.callPackage (import (fetchfin + "/nyt")) {};
+      #"nyt-scrapper" = self.callPackage (import (fetchfin + "/nyt")) {};
       "uphere-opaleye" = self.callPackage (import uphere-opaleye) {};
       "nlp-shared-types" = self.callPackage (import nlp-shared-types) {};
       "time-tagger" = self.callPackage (import time-tagger) {};
@@ -120,7 +120,7 @@ let
             p.semantic-role-labeler
             p.wiki-ner
             p.nlp-pipeline
-            p.nyt-scrapper
+            #p.nyt-scrapper
             p.time-tagger
             p.OntoNotes
             p.uphere-db
