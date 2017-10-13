@@ -61,7 +61,7 @@ let
       "newsapi"               = self.callPackage (import (fetchfin + "/newsapi")) {};
       "nlp-shared-types"      = self.callPackage (import nlp-shared-types) {};      
       "nlp-types"             = self.callPackage (import nlp-types) {};
-      "nyt-scrapper"          = self.callPackage (import (fetchfin + "/nyt")) {};
+      #"nyt-scrapper"          = self.callPackage (import (fetchfin + "/nyt")) {};
       "OntoNotes"             = self.callPackage (import OntoNotes) {};           
       "predicate-matrix"      = self.callPackage (import predicate-matrix) {};
       "PropBank"              = self.callPackage (import PropBank) {};
@@ -116,7 +116,7 @@ let
             p.semantic-role-labeler
             p.wiki-ner
             p.uphere-network-util
-            p.nyt-scrapper
+            #p.nyt-scrapper
             p.rss-scraper
             p.time-tagger
             p.OntoNotes

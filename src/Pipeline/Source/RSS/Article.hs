@@ -15,7 +15,8 @@ import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
 import           NLP.Shared.Type
-import           RSS.DB
+-- import           RSS.DB
+import           DB.Operation
 import qualified DB.Schema.RSS.Article             as Ar
 import           RSS.Type
 --
@@ -30,14 +31,14 @@ getHashByTime cfg time = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- getRSSArticleByTime conn time
   PGS.close conn
-  return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x)) articles)
+  return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x)) articles)
 
 getTimeTitleDescFromSrcWithHash :: PathConfig -> String -> IO [Maybe (Ar.RSSArticleH,RSSArticleContent)]
 getTimeTitleDescFromSrcWithHash cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- getRSSArticleBySource conn src
   result <- flip mapM articles $ \x -> do
-    let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._sha256 x
+    let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         fileprefix = (cfg ^. rssstore) </> src
         filepath = fileprefix </> "articles" </> hsh
     fchk <- doesFileExist filepath

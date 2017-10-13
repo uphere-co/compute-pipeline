@@ -63,7 +63,7 @@ library
                   newsapi,
                   nlp-shared-types,
                   nlp-types,
-                  nyt-scrapper,
+                  -- nyt-scrapper,
                   -- predicate-matrix,
                   -- PropBank,
                   rss-scraper,

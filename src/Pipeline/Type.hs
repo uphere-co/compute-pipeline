@@ -18,6 +18,7 @@ import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
 import qualified DB.Schema.NewsAPI.Article                    as Ar
 import qualified DB.Schema.RSS.Article                        as RAr
+import           DB.Type
 import           RSS.Type
 import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
 --
@@ -50,7 +51,7 @@ makeLenses ''DoneAnalysis
 
 mkNewsAPIAnalysisDB :: DoneAnalysis -> Ar.ArticleP a ByteString Text UTCTime -> NewsAPIAnalysisDB
 mkNewsAPIAnalysisDB das article =
-  NewsAPIAnalysisDB { analysis_sha256 = Ar._sha256 article
+  NewsAPIAnalysisDB { analysis_hash = Ar._hash article
                     , analysis_source = Ar._source article
                     , analysis_corenlp = das ^. done_corenlp
                     , analysis_srl     = das ^. done_srl
@@ -60,19 +61,19 @@ mkNewsAPIAnalysisDB das article =
 
 mkNewsAPIArticleErrorDB :: Ar.ArticleP a ByteString Text UTCTime -> NewsAPIArticleErrorDB
 mkNewsAPIArticleErrorDB article =
-  NewsAPIArticleErrorDB { article_error_hash = Ar._sha256 article
+  NewsAPIArticleErrorDB { article_error_hash = Ar._hash article
                         , article_error_source = Ar._source article
                         , article_error_created = Ar._created article
                         }
 
 mkRSSAnalysisDBInfo das article =
-  RSSAnalysisDBInfo { _rss_analysis_hash    = RAr._sha256 article
-                    , _rss_analysis_source  = RAr._source article
-                    , _rss_analysis_corenlp = das ^. done_corenlp
-                    , _rss_analysis_srl     = das ^. done_srl
-                    , _rss_analysis_ner     = das ^. done_ner
-                    , _rss_analysis_created_time = RAr._created article
-                    }
+  RSSAnalysisDB { _rss_analysis_hash    = RAr._hash article
+                , _rss_analysis_source  = RAr._source article
+                , _rss_analysis_corenlp = das ^. done_corenlp
+                , _rss_analysis_srl     = das ^. done_srl
+                , _rss_analysis_ner     = das ^. done_ner
+                , _rss_analysis_created = RAr._created article
+                }
 
 nominalDay :: NominalDiffTime
 nominalDay = 86400

@@ -6,7 +6,8 @@ import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Time.Clock                   (UTCTime)
 import           System.FilePath                   ((</>))
 --
-import           RSS.DB
+-- import           RSS.DB
+import           DB.Operation
 import qualified DB.Schema.RSS.Analysis            as RAn
 import           NLP.Shared.Type                   (PathConfig,dbstring)
 --
@@ -26,4 +27,4 @@ getRSSAnalysisFilePathBySource cfg src = do
   return $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
 
 ranHshB16 :: RAn.RSSAnalysisH -> FilePath
-ranHshB16 a = (BL8.unpack . BL8.fromStrict . B16.encode . RAn._sha256) a
+ranHshB16 a = (BL8.unpack . BL8.fromStrict . B16.encode . RAn._hash) a

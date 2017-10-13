@@ -3,7 +3,9 @@
 , directory-tree, discrimination, either, filepath, haskeline
 , HCoreNLP, HCoreNLP-Proto, HWordNet, jni, jvm, lens
 , lexicon-builder, monad-loops, mtl, multi-word-tagger, newsapi
-, nlp-shared-types, nlp-types, nyt-scrapper, opaleye
+, nlp-shared-types, nlp-types
+#, nyt-scrapper
+, opaleye
 , optparse-applicative, postgresql-simple, process
 , protocol-buffers, rss-scraper, scientific, semantic-role-labeler
 , split, stdenv, stm, syntactic-analysis, text, textview, time
@@ -21,7 +23,9 @@ mkDerivation {
     containers data-default directory directory-tree discrimination
     either filepath haskeline HCoreNLP HCoreNLP-Proto HWordNet jni jvm
     lens lexicon-builder monad-loops mtl multi-word-tagger newsapi
-    nlp-shared-types nlp-types nyt-scrapper opaleye
+    nlp-shared-types nlp-types
+    #nyt-scrapper
+    opaleye
     optparse-applicative postgresql-simple process protocol-buffers
     rss-scraper scientific semantic-role-labeler split stm
     syntactic-analysis text textview time time-tagger transformers

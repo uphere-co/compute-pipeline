@@ -13,10 +13,12 @@ import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
 import           NLP.Shared.Type                   (PathConfig,dbstring,nytstore)
-import           NYT.DB
-import qualified DB.Schema.NYT.Analysis     as Analysis
-import qualified DB.Schema.NYT.Article      as A
-import           NYT.Type                          (NYTArticleFullContent(..))
+-- import           NYT.DB
+-- import           RSS.Source.NYT.DB
+import           DB.Operation                      (getRSSArticleAll,getRSSAnalysisAll)
+import qualified DB.Schema.RSS.Analysis     as Analysis
+import qualified DB.Schema.RSS.Article      as A
+import           RSS.Type                          (NYTArticleFullContent(..))
 --
 import           Pipeline.Type
 
@@ -24,9 +26,9 @@ getAllParsedNYTArticle :: PathConfig -> IO [(String, NYTArticleFullContent)]
 getAllParsedNYTArticle cfg = do
   let dbconfig  = L8.toStrict . L8.pack $ (cfg ^. dbstring)
   conn <- PGS.connectPostgreSQL dbconfig
-  articles <- getArticleAll conn
+  articles <- getRSSArticleAll conn
   result <- flip mapM articles $ \x -> do
-    let hsh = (L8.unpack . L8.fromStrict . B16.encode . A._sha256) x
+    let hsh = (L8.unpack . L8.fromStrict . B16.encode . A._hash) x
         fileprefix = (cfg ^. nytstore)
         filepath = (fileprefix </> hsh) ++ ".info/" ++ hsh ++ ".parsed"
     fchk <- doesFileExist filepath
@@ -42,7 +44,7 @@ getAllAnalyzedNYTArticle :: PathConfig -> IO [String]
 getAllAnalyzedNYTArticle cfg = do
   let dbconfig  = L8.toStrict . L8.pack $ (cfg ^. dbstring)
   conn <- PGS.connectPostgreSQL dbconfig
-  analyses <- getAnalysisAll conn
+  analyses <- getRSSAnalysisAll conn
   PGS.close conn
-  return $ map (L8.unpack . L8.fromStrict . B16.encode . Analysis._sha256) analyses
+  return $ map (L8.unpack . L8.fromStrict . B16.encode . Analysis._hash) analyses
 
