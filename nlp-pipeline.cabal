@@ -87,8 +87,8 @@ library
                    Pipeline.Run.CoreNLP
                    -- Pipeline.Run.SRL
                    -- Pipeline.Run.WikiEL
-                   Pipeline.Source.NewsAPI.Analysis
-                   Pipeline.Source.NewsAPI.Article
+                   -- Pipeline.Source.NewsAPI.Analysis
+                   -- Pipeline.Source.NewsAPI.Article
                    Pipeline.Source.NYT.Article
                    Pipeline.Source.RSS.Analysis
                    Pipeline.Source.RSS.Article
@@ -134,24 +134,24 @@ executable corenlp-batch
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
   
-executable analysis-runner
-  hs-source-dirs:      app
-  main-is:             analysis-runner.hs
-  -- other-modules:
-  build-depends:       base,
-                       --
-                       aeson,
-                       bytestring,
-                       filepath,
-                       lens,
-                       optparse-applicative,
-                       split,
-                       text,
-                       --
-                       nlp-shared-types,
-                       nlp-pipeline
-  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
-  default-language:    Haskell2010
+-- executable analysis-runner
+--   hs-source-dirs:      app
+--   main-is:             analysis-runner.hs
+--   -- other-modules:
+--   build-depends:       base,
+--                        --
+--                        aeson,
+--                        bytestring,
+--                        filepath,
+--                        lens,
+--                        optparse-applicative,
+--                        split,
+--                        text,
+--                        --
+--                        nlp-shared-types,
+--                        nlp-pipeline
+--   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
+--   default-language:    Haskell2010
 
 
 executable analysis-daemon
