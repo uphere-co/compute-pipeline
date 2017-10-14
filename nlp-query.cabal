@@ -53,8 +53,7 @@ library
                   uphere-db,
                   uphere-network-util
                   
-  exposed-modules:  Query
-                    Query.App.API
+  exposed-modules:  Query.App.API
                     Query.DB.NewsAPI
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
