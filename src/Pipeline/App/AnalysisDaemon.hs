@@ -22,7 +22,7 @@ import           System.FilePath                   ((</>),addExtension)
 import           CoreNLP.Simple
 import           CoreNLP.Simple.Type
 import           Lexicon.Data                      (loadLexDataConfig)
-import           NewsAPI.Type
+-- import           NewsAPI.Type
 import           NLP.Shared.Type                   (PathConfig,corenlpstore,dbstring,lexconfigpath,mgstore)
 import           NLP.Type.CoreNLP
 import           RSS.Data                          (rssList)
@@ -33,7 +33,7 @@ import           Pipeline.Load
 import           Pipeline.Operation.Concurrent
 import           Pipeline.Operation.DB
 import           Pipeline.Run.CoreNLP
-import           Pipeline.Source.NewsAPI.Analysis
+-- import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Source.RSS.Analysis
 import           Pipeline.Type
 
@@ -71,7 +71,7 @@ coreN = 15 :: Int
 --
 runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Text]) -> PathConfig -> String  -> IO ()
 runSRL conn apredata netagger cfg src = do
-  as1a <- getAnalysisFilePathBySource cfg src
+  -- as1a <- getAnalysisFilePathBySource cfg src
   as1b <- getRSSAnalysisFilePathBySource cfg src
   let as1 = as1b -- as1a ++ as1b
   as2 <- filterM (\(fp,tm) -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> fp) "mgs")) as1

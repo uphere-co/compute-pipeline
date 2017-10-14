@@ -36,7 +36,7 @@ import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Run
-import           Pipeline.Source.NewsAPI.Analysis
+-- import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Type
 import           Pipeline.Util
 
@@ -92,6 +92,7 @@ genMGFigs cfg filename i sstr mtks mg wikilst = do
       let mg' = tagMG mg wikilst
       mkMGDotFigs (cfg ^. mgdotfigstore) i filename mtks mg'
 
+{-
 runAnalysisAll :: PathConfig -> Connection -> IO ()
 runAnalysisAll cfg conn = do
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
@@ -103,6 +104,7 @@ runAnalysisAll cfg conn = do
     mkMGs conn apredata netagger cfg fp tm x
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
+-}
 
 runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text])
                     -> AnalyzePredata -> PathConfig -> [(FilePath,UTCTime,DocAnalysisInput)] -> IO ()
