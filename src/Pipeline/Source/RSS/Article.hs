@@ -24,6 +24,8 @@ import           Pipeline.Operation.DB
 import           Pipeline.Type
 
 
+rssItemDirectory = "RSSItem"
+
 type RSSArticleContent = (Text, UTCTime, Text, Text)
 
 getHashByTime :: PathConfig -> UTCTime -> IO [(Text,Text)]
@@ -40,7 +42,7 @@ getTimeTitleDescFromSrcWithHash cfg src = do
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         fileprefix = (cfg ^. rssstore) </> src
-        filepath = fileprefix </> "articles" </> hsh
+        filepath = fileprefix </> rssItemDirectory </> hsh
     fchk <- doesFileExist filepath
     case fchk of
       True -> do
