@@ -16,7 +16,7 @@ import           System.FilePath                        ((</>),takeFileName)
 --
 import           Data.Range                             (Range)
 import           Data.Time.Clock                        (UTCTime,getCurrentTime)
-import           Graph.Algorithm.Basic                  (maxConnectedNodes,numberOfIsland)
+import           Data.Graph.Algorithm.Basic             (maxConnectedNodes,numberOfIsland)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
