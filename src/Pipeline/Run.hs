@@ -23,11 +23,11 @@ import           SRL.Analyze.Format                     (dotMeaningGraph)
 import           SRL.Analyze.Type
 import           Text.Format.Dot                        (mkLabelText)
 --
-import           Pipeline.Source.NewsAPI.Article        (getTitle)
+-- import           Pipeline.Source.NewsAPI.Article        (getTitle)
 import           Pipeline.Type
 import           Pipeline.Util                          (saveHashNameBSFileInPrefixSubDirs,splitPrefixSubDirs)
 
-
+{- 
 showTextMG :: PathConfig -> MeaningGraph -> FilePath -> (t2, t1, [Maybe Token], t) -> IO ()
 showTextMG cfg mg filename (_i,_sstr,mtks,_mg') = do
   atctitle <- fmap (T.unpack . (T.dropWhile isSpace)) $ getTitle ((cfg ^. newsapistore) </> "bloomberg" </> filename)
@@ -50,6 +50,7 @@ showTextMG cfg mg filename (_i,_sstr,mtks,_mg') = do
     putStrLn $ "MGEdge       :  " ++ (T.unpack (e ^. me_relation)) ++ "    " ++  (show $ e ^. me_start) ++ "    "  ++ (show $ e ^. me_end)
 
   putStrLn "=======================================================================================\n"
+-}
 
 mkMGDotFigs :: (Show a) => FilePath -> a -> FilePath -> [Maybe Token] -> MeaningGraph -> IO ()
 mkMGDotFigs savedir i filename mtks mg = do
