@@ -26,6 +26,7 @@ import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Database.PostgreSQL.Simple        (Connection)
+import           DB.Operation                      (getRSSAnalysisBySourceAndTime,getRSSArticleBySourceAndTime)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.Cors
@@ -33,9 +34,8 @@ import           Servant
 import           System.FilePath                   (takeExtension, takeBaseName)
 import           System.IO
 --
-import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
-import qualified DB.Schema.NewsAPI.Analysis        as An
-import qualified DB.Schema.NewsAPI.Article         as Ar
+import qualified DB.Schema.RSS.Analysis        as An
+import qualified DB.Schema.RSS.Article         as Ar
 import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..)
                                                    ,PathConfig(..)
                                                    ,arbstore,mgdotfigstore
@@ -92,11 +92,11 @@ loadExistingARB cfg  = do
     return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
 
 
-oneDayArticles :: Connection -> Text -> IO [Ar.ArticleH]
+oneDayArticles :: Connection -> Text -> IO [Ar.RSSArticleH]
 oneDayArticles conn txt = do
   ctime <- getCurrentTime
   let yesterday = addUTCTime (-nominalDay) ctime
-  articles <- getArticleBySourceAndTime conn (T.unpack txt) yesterday
+  articles <- getRSSArticleBySourceAndTime conn (T.unpack txt) yesterday
   return articles
 
 
@@ -107,18 +107,18 @@ getOneDayArticles conn txt = do
   return aList
 
 
-nDayAnalyses :: Connection -> Text -> NominalDiffTime -> IO [An.AnalysisH]
+nDayAnalyses :: Connection -> Text -> NominalDiffTime -> IO [An.RSSAnalysisH]
 nDayAnalyses conn txt n = do
   ctime <- getCurrentTime
   let nBeforeDays = addUTCTime (-(nominalDay * n)) ctime
-  analyses <- getAnalysisBySourceAndTime conn (T.unpack txt) nBeforeDays
+  analyses <- getRSSAnalysisBySourceAndTime conn (T.unpack txt) nBeforeDays
   return analyses
 
 
 getNDayAnalyses :: Connection -> Text -> NominalDiffTime -> IO [(Text,Text,Maybe Bool,Maybe Bool,Maybe Bool)]
 getNDayAnalyses conn txt n = do
   analyses <- nDayAnalyses conn txt n
-  let anList = map (\x -> (T.pack $ bstrHashToB16 $ An._sha256 x, An._source x, An._corenlp x, An._srl x, An._ner x)) analyses
+  let anList = map (\x -> (T.pack $ bstrHashToB16 $ An._hash x, An._source x, An._corenlp x, An._srl x, An._ner x)) analyses
   return anList
 
 type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
