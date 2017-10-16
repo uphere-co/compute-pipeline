@@ -1,8 +1,9 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module Query.App.API where
 
@@ -41,6 +42,7 @@ import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAna
                                                    ,arbstore,mgdotfigstore
                                                    ,objectB,predicateR,subjectA,po_main)
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
+import           RSS.Type                          (ItemRSS(..))
 import           WikiEL.EntityLinking              (EntityMention)
 --
 import           Pipeline.Load
@@ -121,7 +123,7 @@ getNDayAnalyses conn txt n = do
   let anList = map (\x -> (T.pack $ bstrHashToB16 $ An._hash x, An._source x, An._corenlp x, An._srl x, An._ner x)) analyses
   return anList
 
-type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Get '[JSON] [RecentArticle]
+type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] [ItemRSS]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
          :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
@@ -156,12 +158,14 @@ server :: Connection
 server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 
-getArticlesBySrc :: Connection -> T.Text -> T.Text -> Handler [RecentArticle]
-getArticlesBySrc conn src sec = do
-  list <- liftIO $ getOneDayArticles conn (T.intercalate "/" [src,sec])
-  let result = map (\(i,hsh,src) -> RecentArticle i hsh src) list
-  return result
-
+getArticlesBySrc :: Connection -> T.Text -> T.Text -> T.Text -> Handler [ItemRSS]
+getArticlesBySrc conn src sec hsh = do
+  let filepath = (T.intercalate "/" ["/home/modori/data/RSS",src,sec,"RSSItem",hsh])
+  bstr <- liftIO $ B8.readFile (T.unpack filepath)
+  let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) bstr
+  case mitem of
+    Nothing -> return []
+    Just item -> return [item]
 
 getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
 getAnalysesBySrc conn txt = do

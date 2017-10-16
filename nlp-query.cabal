@@ -35,6 +35,7 @@ library
                   nlp-shared-types,
                   nlp-types,
                   postgresql-simple,
+                  rss-scraper,
                   servant,
                   servant-client,
                   servant-server,
