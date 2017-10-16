@@ -144,24 +144,26 @@ run conn cfg = do
   putStrLn ("number of existing A-R-Bs is " ++ show (length exstarbs))
   atomically (writeTVar arbs (catMaybes exstarbs))
   void $ forkIO $ updateARB cfg {- arbstore  -} arbs
-  runSettings settings =<< (mkApp conn arbs)
+  runSettings settings =<< (mkApp conn cfg arbs)
 
 
 mkApp :: Connection
+      -> PathConfig
       -> TVar [(FilePath, (UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
       -> IO Application
-mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
+mkApp conn cfg arbs = return $ simpleCors (serve recentarticleAPI (server conn cfg arbs))
 
 
 server :: Connection
+       -> PathConfig
        -> TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
        -> Server API
-server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
+server conn cfg arbs = (getArticlesBySrc conn cfg) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 
-getArticlesBySrc :: Connection -> T.Text -> T.Text -> T.Text -> Handler (Maybe ItemRSS)
-getArticlesBySrc conn src sec hsh = do
-  let filepath = (T.intercalate "/" ["/home/modori/data/RSS",src,sec,"RSSItem",hsh])
+getArticlesBySrc :: Connection -> PathConfig -> T.Text -> T.Text -> T.Text -> Handler (Maybe ItemRSS)
+getArticlesBySrc conn cfg src sec hsh = do
+  let filepath = (T.intercalate "/" [T.pack (_rssstore cfg),src,sec,"RSSItem",hsh])
   ebstr <- liftIO $ try $ B8.readFile (T.unpack filepath)
   case ebstr of
     Left (_e :: IOException) -> return Nothing
