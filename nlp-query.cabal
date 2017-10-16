@@ -34,6 +34,7 @@ library
                   network-transport-tcp,
                   nlp-shared-types,
                   nlp-types,
+                  optparse-applicative,
                   postgresql-simple,
                   rss-scraper,
                   servant,
@@ -56,6 +57,7 @@ library
 
   exposed-modules:  Query.App.API
                     Query.DB.NewsAPI
+                    Query.Type
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2

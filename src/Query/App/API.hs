@@ -131,10 +131,9 @@ type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Tex
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
 
-run :: Connection -> PathConfig -> IO ()
-run conn cfg = do
-  let port = 2999
-      settings =
+run :: Connection -> PathConfig -> Int -> IO ()
+run conn cfg port = do
+  let settings =
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
