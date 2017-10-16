@@ -17,7 +17,8 @@ import           Control.Monad.IO.Class            (liftIO)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as BL
--- import           Data.Either                       (lefts)
+import           Data.Either                       (rights)
+
 import           Data.Function                     (on)
 import           Data.Hashable
 -- import           Data.HashSet                      (HashSet)
@@ -43,6 +44,7 @@ import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAna
                                                    ,arbstore,mgdotfigstore
                                                    ,objectB,predicateR,subjectA,po_main)
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
+import           RSS.Data                          (rssList)
 import           RSS.Type                          (ItemRSS(..))
 import           WikiEL.EntityLinking              (EntityMention)
 --
@@ -125,6 +127,7 @@ getNDayAnalyses conn txt n = do
   return anList
 
 type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
+         :<|> "rssarticle" :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
          :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
@@ -157,7 +160,7 @@ server :: Connection
        -> PathConfig
        -> TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
        -> Server API
-server conn cfg arbs = (getArticlesBySrc conn cfg) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
+server conn cfg arbs = (getArticlesBySrc conn cfg) :<|> (getRSSArticle conn cfg) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 
 getArticlesBySrc :: Connection -> PathConfig -> T.Text -> T.Text -> T.Text -> Handler (Maybe ItemRSS)
@@ -169,6 +172,15 @@ getArticlesBySrc conn cfg src sec hsh = do
     Right bstr -> do
       let mitem = (A.decode . BL.fromStrict) bstr
       return mitem
+
+getRSSArticle :: Connection -> PathConfig -> T.Text -> Handler (Maybe ItemRSS)
+getRSSArticle conn cfg hsh = do
+  let fps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssList
+  (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\fp -> try $ B8.readFile (T.unpack fp)) fps
+  let bstrs = rights ebstrs
+  case bstrs of
+    []   -> return Nothing
+    x:xs -> return ((A.decode . BL.fromStrict) x)
 
 getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
 getAnalysesBySrc conn txt = do
