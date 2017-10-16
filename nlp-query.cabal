@@ -52,7 +52,7 @@ library
                   nlp-pipeline,
                   uphere-db,
                   uphere-network-util
-                  
+
   exposed-modules:  Query.App.API
                     Query.DB.NewsAPI
   other-extensions: TemplateHaskell
@@ -68,16 +68,6 @@ executable api
                        --
                        nlp-pipeline,
                        nlp-shared-types,
-                       --
-                       nlp-query
-  hs-source-dirs:      app
-  default-language:    Haskell2010
-
-executable nlp-query
-  main-is:             Main.hs
-  -- other-modules:
-  -- other-extensions:
-  build-depends:       base,
                        --
                        nlp-query
   hs-source-dirs:      app
