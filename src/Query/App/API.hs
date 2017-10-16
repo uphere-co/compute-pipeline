@@ -1,13 +1,15 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module Query.App.API where
 
 import           Control.Concurrent
 import           Control.Concurrent.STM
+import           Control.Exception                 (IOException,try)
 import           Control.Lens                      ((^.),(^..),_1,_2,_Left,_Right,to,traverse)
 import           Control.Monad                     (forever,forM,void)
 import           Control.Monad.IO.Class            (liftIO)
@@ -26,6 +28,7 @@ import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Database.PostgreSQL.Simple        (Connection)
+import           DB.Operation                      (getRSSAnalysisBySourceAndTime,getRSSArticleBySourceAndTime)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.Cors
@@ -33,14 +36,14 @@ import           Servant
 import           System.FilePath                   (takeExtension, takeBaseName)
 import           System.IO
 --
-import           NewsAPI.DB                        (getAnalysisBySourceAndTime,getArticleBySourceAndTime)
-import qualified DB.Schema.NewsAPI.Analysis        as An
-import qualified DB.Schema.NewsAPI.Article         as Ar
+import qualified DB.Schema.RSS.Analysis        as An
+import qualified DB.Schema.RSS.Article         as Ar
 import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..)
                                                    ,PathConfig(..)
                                                    ,arbstore,mgdotfigstore
                                                    ,objectB,predicateR,subjectA,po_main)
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
+import           RSS.Type                          (ItemRSS(..))
 import           WikiEL.EntityLinking              (EntityMention)
 --
 import           Pipeline.Load
@@ -92,11 +95,11 @@ loadExistingARB cfg  = do
     return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
 
 
-oneDayArticles :: Connection -> Text -> IO [Ar.ArticleH]
+oneDayArticles :: Connection -> Text -> IO [Ar.RSSArticleH]
 oneDayArticles conn txt = do
   ctime <- getCurrentTime
   let yesterday = addUTCTime (-nominalDay) ctime
-  articles <- getArticleBySourceAndTime conn (T.unpack txt) yesterday
+  articles <- getRSSArticleBySourceAndTime conn (T.unpack txt) yesterday
   return articles
 
 
@@ -107,31 +110,30 @@ getOneDayArticles conn txt = do
   return aList
 
 
-nDayAnalyses :: Connection -> Text -> NominalDiffTime -> IO [An.AnalysisH]
+nDayAnalyses :: Connection -> Text -> NominalDiffTime -> IO [An.RSSAnalysisH]
 nDayAnalyses conn txt n = do
   ctime <- getCurrentTime
   let nBeforeDays = addUTCTime (-(nominalDay * n)) ctime
-  analyses <- getAnalysisBySourceAndTime conn (T.unpack txt) nBeforeDays
+  analyses <- getRSSAnalysisBySourceAndTime conn (T.unpack txt) nBeforeDays
   return analyses
 
 
 getNDayAnalyses :: Connection -> Text -> NominalDiffTime -> IO [(Text,Text,Maybe Bool,Maybe Bool,Maybe Bool)]
 getNDayAnalyses conn txt n = do
   analyses <- nDayAnalyses conn txt n
-  let anList = map (\x -> (T.pack $ bstrHashToB16 $ An._sha256 x, An._source x, An._corenlp x, An._srl x, An._ner x)) analyses
+  let anList = map (\x -> (T.pack $ bstrHashToB16 $ An._hash x, An._source x, An._corenlp x, An._srl x, An._ner x)) analyses
   return anList
 
-type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
+type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
          :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
 
-run :: Connection -> PathConfig -> IO ()
-run conn cfg = do
-  let port = 3000
-      settings =
+run :: Connection -> PathConfig -> Int -> IO ()
+run conn cfg port = do
+  let settings =
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
@@ -141,27 +143,32 @@ run conn cfg = do
   putStrLn ("number of existing A-R-Bs is " ++ show (length exstarbs))
   atomically (writeTVar arbs (catMaybes exstarbs))
   void $ forkIO $ updateARB cfg {- arbstore  -} arbs
-  runSettings settings =<< (mkApp conn arbs)
+  runSettings settings =<< (mkApp conn cfg arbs)
 
 
 mkApp :: Connection
+      -> PathConfig
       -> TVar [(FilePath, (UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
       -> IO Application
-mkApp conn arbs = return $ simpleCors (serve recentarticleAPI (server conn arbs))
+mkApp conn cfg arbs = return $ simpleCors (serve recentarticleAPI (server conn cfg arbs))
 
 
 server :: Connection
+       -> PathConfig
        -> TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
        -> Server API
-server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
+server conn cfg arbs = (getArticlesBySrc conn cfg) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 
-getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
-getArticlesBySrc conn txt = do
-  list <- liftIO $ getOneDayArticles conn txt
-  let result = map (\(i,hsh,src) -> RecentArticle i hsh src) list
-  return result
-
+getArticlesBySrc :: Connection -> PathConfig -> T.Text -> T.Text -> T.Text -> Handler (Maybe ItemRSS)
+getArticlesBySrc conn cfg src sec hsh = do
+  let filepath = (T.intercalate "/" [T.pack (_rssstore cfg),src,sec,"RSSItem",hsh])
+  ebstr <- liftIO $ try $ B8.readFile (T.unpack filepath)
+  case ebstr of
+    Left (_e :: IOException) -> return Nothing
+    Right bstr -> do
+      let mitem = (A.decode . BL.fromStrict) bstr
+      return mitem
 
 getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
 getAnalysesBySrc conn txt = do
