@@ -9,6 +9,7 @@ module Query.App.API where
 
 import           Control.Concurrent
 import           Control.Concurrent.STM
+import           Control.Exception                 (IOException,try)
 import           Control.Lens                      ((^.),(^..),_1,_2,_Left,_Right,to,traverse)
 import           Control.Monad                     (forever,forM,void)
 import           Control.Monad.IO.Class            (liftIO)
@@ -123,7 +124,7 @@ getNDayAnalyses conn txt n = do
   let anList = map (\x -> (T.pack $ bstrHashToB16 $ An._hash x, An._source x, An._corenlp x, An._srl x, An._ner x)) analyses
   return anList
 
-type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] [ItemRSS]
+type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
          :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
@@ -158,14 +159,15 @@ server :: Connection
 server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 
-getArticlesBySrc :: Connection -> T.Text -> T.Text -> T.Text -> Handler [ItemRSS]
+getArticlesBySrc :: Connection -> T.Text -> T.Text -> T.Text -> Handler (Maybe ItemRSS)
 getArticlesBySrc conn src sec hsh = do
   let filepath = (T.intercalate "/" ["/home/modori/data/RSS",src,sec,"RSSItem",hsh])
-  bstr <- liftIO $ B8.readFile (T.unpack filepath)
-  let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) bstr
-  case mitem of
-    Nothing -> return []
-    Just item -> return [item]
+  ebstr <- liftIO $ try $ B8.readFile (T.unpack filepath)
+  case ebstr of
+    Left (_e :: IOException) -> return Nothing
+    Right bstr -> do
+      let mitem = (A.decode . BL.fromStrict) bstr
+      return mitem
 
 getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
 getAnalysesBySrc conn txt = do
