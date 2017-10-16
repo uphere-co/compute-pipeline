@@ -121,7 +121,7 @@ getNDayAnalyses conn txt n = do
   let anList = map (\x -> (T.pack $ bstrHashToB16 $ An._hash x, An._source x, An._corenlp x, An._srl x, An._ner x)) analyses
   return anList
 
-type API =    "recentarticle" :> Capture "ASource" T.Text :> Get '[JSON] [RecentArticle]
+type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Get '[JSON] [RecentArticle]
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
          :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
@@ -130,7 +130,7 @@ recentarticleAPI = Proxy
 
 run :: Connection -> PathConfig -> IO ()
 run conn cfg = do
-  let port = 3000
+  let port = 2999
       settings =
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
@@ -156,9 +156,9 @@ server :: Connection
 server conn arbs = (getArticlesBySrc conn) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
 
-getArticlesBySrc :: Connection -> T.Text -> Handler [RecentArticle]
-getArticlesBySrc conn txt = do
-  list <- liftIO $ getOneDayArticles conn txt
+getArticlesBySrc :: Connection -> T.Text -> T.Text -> Handler [RecentArticle]
+getArticlesBySrc conn src sec = do
+  list <- liftIO $ getOneDayArticles conn (T.intercalate "/" [src,sec])
   let result = map (\(i,hsh,src) -> RecentArticle i hsh src) list
   return result
 
