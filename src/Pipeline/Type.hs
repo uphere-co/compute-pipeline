@@ -16,10 +16,9 @@ import           GHC.Generics
 --
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
-import qualified DB.Schema.NewsAPI.Article                    as Ar
-import qualified DB.Schema.RSS.Article                        as RAr
+import qualified DB.Schema.NewsAPI.Article             as Ar
+import qualified DB.Schema.RSS.Article                 as RAr
 import           DB.Type
-import           RSS.Type
 import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
 --
 

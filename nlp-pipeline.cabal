@@ -55,6 +55,7 @@ library
                   transformers,
                   vector,
                   --
+                  graph-algorithms,
                   HCoreNLP,
                   HCoreNLP-Proto,
                   HWordNet,
