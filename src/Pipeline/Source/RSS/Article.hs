@@ -48,7 +48,7 @@ getTimeTitleDescFromSrcWithHash cfg src = do
         bstr <- B.readFile filepath
         content <- getTimeTitleDescFromByteStringWithHash bstr hsh
         return ((,) <$> Just x <*> content)
-      False -> print hsh >> error "error"
+      False -> putStrLn ("Following article exists in DB, but does not exist on disk : " ++ hsh) >> return Nothing -- error "error"
   PGS.close conn
   return result
 
