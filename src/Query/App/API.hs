@@ -45,7 +45,7 @@ import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAna
                                                    ,objectB,predicateR,subjectA,po_main)
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
 import           RSS.Data                          (rssList)
-import           RSS.Type                          (ItemRSS(..))
+import           RSS.Type                          (ItemRSS,link)
 import           WikiEL.EntityLinking              (EntityMention)
 --
 import           Pipeline.Load
@@ -127,7 +127,7 @@ getNDayAnalyses conn txt n = do
   return anList
 
 type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
-         :<|> "rssarticle" :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
+         :<|> "rssarticle" :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe Text)
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
          :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
@@ -173,14 +173,16 @@ getArticlesBySrc conn cfg src sec hsh = do
       let mitem = (A.decode . BL.fromStrict) bstr
       return mitem
 
-getRSSArticle :: Connection -> PathConfig -> T.Text -> Handler (Maybe ItemRSS)
+getRSSArticle :: Connection -> PathConfig -> T.Text -> Handler (Maybe Text)
 getRSSArticle conn cfg hsh = do
   let fps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssList
   (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\fp -> try $ B8.readFile (T.unpack fp)) fps
   let bstrs = rights ebstrs
   case bstrs of
     []   -> return Nothing
-    x:xs -> return ((A.decode . BL.fromStrict) x)
+    x:xs -> let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) x in case mitem of
+      Nothing   -> return Nothing
+      Just item -> return (Just (item ^. link))
 
 getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
 getAnalysesBySrc conn txt = do
