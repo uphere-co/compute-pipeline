@@ -33,6 +33,14 @@ uploadRSSArticle conn x = do
     A.newRSSArticle (a ^. rss_article_hash) (a ^. rss_article_source) (a ^. rss_article_created)
   return ()
 
+uploadRSSArticleIfMissing :: (ToRSSArticle a) => Connection -> a -> IO ()
+uploadRSSArticleIfMissing conn x = do
+  let a = toRSSArticle x
+  as' <- getRSSArticleByHash conn (a ^. rss_article_hash)
+  case as' of
+    []  -> uploadRSSArticle conn a
+    _as -> putStrLn "Already exists"
+
 uploadRSSAnalysis :: (ToRSSAnalysis a) => Connection -> a -> IO ()
 uploadRSSAnalysis conn x = do
   let a = toRSSAnalysis x
@@ -91,6 +99,12 @@ queryRSSArticleBySourceAndTime src time = proc () -> do
   r <- A.queryAll -< ()
   restrict -< A._source r .== (constant (T.pack src))
   restrict -< pgUTCTime time .<= (safeCoerceToRep $ A._created r)
+  returnA -< r
+
+queryRSSArticleByHash :: ByteString -> Query (To Column (A.RSSArticle))
+queryRSSArticleByHash hsh = proc () -> do
+  r <- A.queryAll -< ()
+  restrict -< A._hash r .== (constant hsh)
   returnA -< r
 
 countRSSAnalysisAll :: Query (Column PGInt8)
@@ -167,6 +181,9 @@ getRSSArticleByTime conn time = runQuery conn (queryRSSArticleByTime time)
 
 getRSSArticleBySourceAndTime :: Connection -> String -> UTCTime -> IO [A.RSSArticleH]
 getRSSArticleBySourceAndTime conn src time = runQuery conn (queryRSSArticleBySourceAndTime src time)
+
+getRSSArticleByHash :: Connection -> ByteString -> IO [A.RSSArticleH]
+getRSSArticleByHash conn hsh = (runQuery conn (queryRSSArticleByHash hsh) :: IO [A.RSSArticleH])
 
 getCountRSSAnalysisAll conn = do
   [n] <- liftIO $ (runQuery conn countRSSAnalysisAll :: IO [Int64])
