@@ -7,7 +7,7 @@ module Pipeline.App.AnalysisRunner where
 import           Control.Lens
 import           Control.Monad                          (forM_,when)
 import           Data.Char                              (isSpace)
-import           Data.List                              (zip5)
+import           Data.List                              (zip6)
 import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
@@ -69,11 +69,11 @@ mkMGs conn apredata netagger cfg fp tm article = do
       netags = leftTagPos (dstr^.ds_mergedtags)
       mgs = map meaningGraph sstrs
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
-      wikilst = mkWikiList dstr
+      wikilsts = map mkWikiList sstrs
       isNonFilter = False
   putStrLn $ "Analyzing " ++ filename
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
-  forM_ (zip5 ([1..] :: [Int]) sstrs mtokss mgs arbs) $ \(i,sstr,mtks,mg,arb) -> do
+  forM_ (zip6 ([1..] :: [Int]) sstrs mtokss mgs arbs wikilsts) $ \(i,sstr,mtks,mg,arb,wikilst) -> do
     when (isSRLFiltered sstr mg || isNonFilter) $ do
       putStrLn $ filename ++ " is filtered in!"
       putStrLn $ filename ++ ": saving MGS"      
