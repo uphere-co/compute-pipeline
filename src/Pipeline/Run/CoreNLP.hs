@@ -50,7 +50,7 @@ preprocessRSSArticle (article,(hsh,x,y,txt0)) =
                                    else let txt = T.intercalate " " (T.words txt1)
                                         in Just (article,(hsh,x,y,txt))
 
-{-
+{- 
 testFilter = filter (\x-> x^._2._1 `elem`
                             [ "066da3a1ad30aa1525071e9d556c0257895d6e54112d55e919a1e151eacc7ded"
                             , "fff98b05ca41700b439ffedf461fe7516f6fdd00e2b92de90cae1629d2ac5bf4"
@@ -58,11 +58,14 @@ testFilter = filter (\x-> x^._2._1 `elem`
                             , "0bc334f992db52211f0dec3038c02f5fdaa5656bc0f74d2a1636686a45901989"
                             , "47a6f3c53c358897a6b58d9b532a51e99e942645e487f937f0a611ec281e1251"
                             , "22320b1b4334597048c7903223bf03ec6a5cd2d031c537f05b0ca650af0ce5e7"
+                            , "faf226eadeb958753a6c5be5b46b2b811077bacef96ece006f19c9792b365458"
                             ]
                     )
 -}
 
 testFilter = id
+
+
 
 preParseRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                        -> PathConfig
