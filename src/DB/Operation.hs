@@ -23,6 +23,7 @@ import           Model.Opaleye.ShowConstant                 (constant,safeCoerce
 import           Model.Opaleye.To
 import qualified DB.Schema.RSS.Analysis         as An
 import qualified DB.Schema.RSS.Article          as A
+import qualified DB.Schema.RSS.ErrorArticle     as EA
 --
 import           DB.Type
 
@@ -40,6 +41,23 @@ uploadRSSArticleIfMissing conn x = do
   case as' of
     []  -> uploadRSSArticle conn a
     _as -> putStrLn "Already exists"
+
+uploadRSSErrorArticle :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
+uploadRSSErrorArticle conn x = do
+  let a = toRSSErrorArticle x
+  runInsert conn EA.table $
+    EA.newRSSErrorArticle (a ^. rss_error_article_hash) (a ^. rss_error_article_source) (a ^. rss_error_article_errormsg) (a ^. rss_error_article_created)
+  return ()
+
+uploadRSSErrorArticleIfMissing :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
+uploadRSSErrorArticleIfMissing conn x = do
+  let a = toRSSErrorArticle x
+  as' <- getRSSErrorArticleByHash conn (a ^. rss_article_hash)
+  case as' of
+    []  -> uploadRSSErrorArticle conn a
+    _as -> putStrLn "Already exists"
+
+
 
 uploadRSSAnalysis :: (ToRSSAnalysis a) => Connection -> a -> IO ()
 uploadRSSAnalysis conn x = do
@@ -184,6 +202,9 @@ getRSSArticleBySourceAndTime conn src time = runQuery conn (queryRSSArticleBySou
 
 getRSSArticleByHash :: Connection -> ByteString -> IO [A.RSSArticleH]
 getRSSArticleByHash conn hsh = (runQuery conn (queryRSSArticleByHash hsh) :: IO [A.RSSArticleH])
+
+getRSSErrorArticleByHash :: Connection -> ByteString -> IO [EA.RSSErrorArticleH]
+getRSSErrorArticleByHash conn hsh = (runQuery conn (queryRSSErrorArticleByHash hsh) :: IO [EA.RSSErrorArticleH])
 
 getCountRSSAnalysisAll conn = do
   [n] <- liftIO $ (runQuery conn countRSSAnalysisAll :: IO [Int64])

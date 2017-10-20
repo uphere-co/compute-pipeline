@@ -16,38 +16,38 @@ import Model.Opaleye.ShowConstant (constant)
 import Prelude
 
 $(makeTypes [d|
-    data ErrorArticle = ErrorArticle { _hash     :: ByteString
-                                     , _source   :: Text
-                                     , _errormsg :: Text
-                                     , _created  :: UTCTime
-                                     }
-                      deriving Show |])
+    data RSSErrorArticle = RSSErrorArticle { _hash     :: ByteString
+                                           , _source   :: Text
+                                           , _errormsg :: Text
+                                           , _created  :: UTCTime
+                                           }
+                         deriving Show |])
 
-$(makeAdaptorAndInstance "pErrorArticle" ''ErrorArticleP)
+$(makeAdaptorAndInstance "pRSSErrorArticle" ''RSSErrorArticleP)
 
-$(makeTable "errorrssarticle" 'pErrorArticle ''ErrorArticleP)
+$(makeTable "rsserrorarticle" 'pRSSErrorArticle ''RSSErrorArticleP)
 
-queryAll :: Query (To Column ErrorArticle)
+queryAll :: Query (To Column RSSErrorArticle)
 queryAll = queryTable table 
 
 -- smart constructor for inserting a new value.
-newErrorArticle :: ByteString
-                -> Text
-                -> Text
-                -> UTCTime
-                -> To Maybe (To Column ErrorArticle)
-newErrorArticle hsh src err ctm
-  = ErrorArticle (Just (constant hsh))
+newRSSErrorArticle :: ByteString
+                   -> Text
+                   -> Text
+                   -> UTCTime
+                   -> To Maybe (To Column RSSErrorArticle)
+newRSSErrorArticle hsh src err ctm
+  = RSSErrorArticle (Just (constant hsh))
                  (Just (constant src))
                  (Just (constant err))
                  (Just (constant ctm))
 
 -- The PostgreSQL table was created as follows.
 
--- create table errorrssarticle (
+-- create table rsserrorarticle (
 --   hash bytea NOT NULL,
 --   source text NOT NULL,
 --   errormsg text NOT NULL,
 --   created timestamp with time zone,
---   constraint unique_sha256_errorarticle UNIQUE (hash)
+--   constraint unique_rsserrorarticle_hash UNIQUE (hash)
 -- );
