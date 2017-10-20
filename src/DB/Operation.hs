@@ -52,12 +52,10 @@ uploadRSSErrorArticle conn x = do
 uploadRSSErrorArticleIfMissing :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
 uploadRSSErrorArticleIfMissing conn x = do
   let a = toRSSErrorArticle x
-  as' <- getRSSErrorArticleByHash conn (a ^. rss_article_hash)
+  as' <- getRSSErrorArticleByHash conn (a ^. rss_error_article_hash)
   case as' of
     []  -> uploadRSSErrorArticle conn a
     _as -> putStrLn "Already exists"
-
-
 
 uploadRSSAnalysis :: (ToRSSAnalysis a) => Connection -> a -> IO ()
 uploadRSSAnalysis conn x = do
@@ -123,6 +121,12 @@ queryRSSArticleByHash :: ByteString -> Query (To Column (A.RSSArticle))
 queryRSSArticleByHash hsh = proc () -> do
   r <- A.queryAll -< ()
   restrict -< A._hash r .== (constant hsh)
+  returnA -< r
+
+queryRSSErrorArticleByHash :: ByteString -> Query (To Column (EA.RSSErrorArticle))
+queryRSSErrorArticleByHash hsh = proc () -> do
+  r <- EA.queryAll -< ()
+  restrict -< EA._hash r .== (constant hsh)
   returnA -< r
 
 countRSSAnalysisAll :: Query (Column PGInt8)
