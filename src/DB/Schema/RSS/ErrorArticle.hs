@@ -16,35 +16,38 @@ import Model.Opaleye.ShowConstant (constant)
 import Prelude
 
 $(makeTypes [d|
-    data ErrorArticle = ErrorArticle { _sha256 :: ByteString
-                                     , _source :: Text
-                                     , _created :: UTCTime
+    data ErrorArticle = ErrorArticle { _hash     :: ByteString
+                                     , _source   :: Text
+                                     , _errormsg :: Text
+                                     , _created  :: UTCTime
                                      }
-                 deriving Show |])
+                      deriving Show |])
 
-$(makeAdaptorAndInstance "pArticleError" ''ArticleErrorP)
+$(makeAdaptorAndInstance "pErrorArticle" ''ErrorArticleP)
 
-$(makeTable "articleerror" 'pArticleError ''ArticleErrorP)
+$(makeTable "errorrssarticle" 'pErrorArticle ''ErrorArticleP)
 
-queryAll :: Query (To Column ArticleError)
+queryAll :: Query (To Column ErrorArticle)
 queryAll = queryTable table 
 
 -- smart constructor for inserting a new value.
-newArticleError :: ByteString
+newErrorArticle :: ByteString
+                -> Text
                 -> Text
                 -> UTCTime
-                -> To Maybe (To Column ArticleError)
-newArticleError s sn ct
-  = ArticleError (Just (constant s))
-                 (Just (constant sn))
-                 (Just (constant ct))
+                -> To Maybe (To Column ErrorArticle)
+newErrorArticle hsh src err ctm
+  = ErrorArticle (Just (constant hsh))
+                 (Just (constant src))
+                 (Just (constant err))
+                 (Just (constant ctm))
 
 -- The PostgreSQL table was created as follows.
 
--- create table articleerror (
---   sha256 bytea NOT NULL,
+-- create table errorrssarticle (
+--   hash bytea NOT NULL,
 --   source text NOT NULL,
+--   errormsg text NOT NULL,
 --   created timestamp with time zone,
-
---   constraint unique_sha256_error UNIQUE (sha256)
+--   constraint unique_sha256_errorarticle UNIQUE (hash)
 -- );

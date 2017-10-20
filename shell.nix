@@ -28,6 +28,7 @@ let hsconfig = self: super:
               http-client
               http-client-tls
               http-conduit
+              lens
               monad-loops
               opaleye
               optparse-applicative
