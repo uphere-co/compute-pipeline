@@ -4,7 +4,7 @@ import           Control.Lens                      ((^.))
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Lazy.Char8 as BL8  
 import           Data.Time.Clock                   (UTCTime)
-import           System.FilePath                   ((</>))
+import           System.FilePath                   ((</>),takeBaseName)
 --
 -- import           RSS.DB
 import           DB.Operation
@@ -24,7 +24,10 @@ getRSSAnalysisFilePathBySource :: PathConfig -> String -> IO [(FilePath,UTCTime)
 getRSSAnalysisFilePathBySource cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   as <- getRSSAnalysisBySource conn src
-  return $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
+  return  $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
+
+-- (filter (\(h,_) -> takeBaseName h == "8b638633ec8ead0aeae84bff9dce786ccaee1bd0d22ad940dde532d8e86d922c"))
+
 
 ranHshB16 :: RAn.RSSAnalysisH -> FilePath
 ranHshB16 a = (BL8.unpack . BL8.fromStrict . B16.encode . RAn._hash) a
