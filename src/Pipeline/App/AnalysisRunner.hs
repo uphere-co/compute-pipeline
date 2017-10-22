@@ -4,6 +4,7 @@
 
 module Pipeline.App.AnalysisRunner where
 
+import           Control.Exception                      (SomeException,handle)
 import           Control.Lens
 import           Control.Monad                          (forM_,when)
 import           Data.Char                              (isSpace)
@@ -111,6 +112,7 @@ runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text])
                     -> AnalyzePredata -> PathConfig -> [(FilePath,UTCTime,DocAnalysisInput)] -> IO ()
 runAnalysisByChunks conn netagger apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,tm,artl) -> do
-    mkMGs conn apredata netagger cfg fp tm artl
+    handle (\(e :: SomeException) -> print e) $  
+      mkMGs conn apredata netagger cfg fp tm artl
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
