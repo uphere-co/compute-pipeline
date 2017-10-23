@@ -52,7 +52,7 @@ uploadRSSErrorArticle conn x = do
 uploadRSSErrorArticleIfMissing :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
 uploadRSSErrorArticleIfMissing conn x = do
   let a = toRSSErrorArticle x
-  as' <- getRSSErrorArticleByHash conn (a ^. rss_error_article_hash)
+  (as' :: [EA.RSSErrorArticleH]) <- runQuery conn (queryRSSErrorArticleByHash (a ^. rss_error_article_hash))
   case as' of
     []  -> uploadRSSErrorArticle conn a
     _as -> putStrLn "Already exists"
@@ -213,9 +213,6 @@ getRSSArticleBySourceAndTime conn src time = runQuery conn (queryRSSArticleBySou
 
 getRSSArticleByHash :: Connection -> ByteString -> IO [A.RSSArticleH]
 getRSSArticleByHash conn hsh = (runQuery conn (queryRSSArticleByHash hsh) :: IO [A.RSSArticleH])
-
-getRSSErrorArticleByHash :: Connection -> ByteString -> IO [EA.RSSErrorArticleH]
-getRSSErrorArticleByHash conn hsh = (runQuery conn (queryRSSErrorArticleByHash hsh) :: IO [EA.RSSErrorArticleH])
 
 getCountRSSAnalysisAll conn = do
   [n] <- liftIO $ (runQuery conn countRSSAnalysisAll :: IO [Int64])
