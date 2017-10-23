@@ -23,6 +23,7 @@ import           Model.Opaleye.ShowConstant                 (constant,safeCoerce
 import           Model.Opaleye.To
 import qualified DB.Schema.RSS.Analysis         as An
 import qualified DB.Schema.RSS.Article          as A
+import qualified DB.Schema.RSS.ErrorArticle     as EA
 --
 import           DB.Type
 
@@ -41,11 +42,33 @@ uploadRSSArticleIfMissing conn x = do
     []  -> uploadRSSArticle conn a
     _as -> putStrLn "Already exists"
 
+uploadRSSErrorArticle :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
+uploadRSSErrorArticle conn x = do
+  let a = toRSSErrorArticle x
+  runInsert conn EA.table $
+    EA.newRSSErrorArticle (a ^. rss_error_article_hash) (a ^. rss_error_article_source) (a ^. rss_error_article_errormsg) (a ^. rss_error_article_created)
+  return ()
+
+uploadRSSErrorArticleIfMissing :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
+uploadRSSErrorArticleIfMissing conn x = do
+  let a = toRSSErrorArticle x
+  (as' :: [EA.RSSErrorArticleH]) <- runQuery conn (queryRSSErrorArticleByHash (a ^. rss_error_article_hash))
+  case as' of
+    []  -> uploadRSSErrorArticle conn a
+    _as -> putStrLn "Already exists"
+
 uploadRSSAnalysis :: (ToRSSAnalysis a) => Connection -> a -> IO ()
 uploadRSSAnalysis conn x = do
   let a = toRSSAnalysis x
   runInsert conn An.table $
     An.newRSSAnalysis (a ^. rss_analysis_hash) (a ^. rss_analysis_source) (a ^. rss_analysis_corenlp) (a ^. rss_analysis_srl) (a ^. rss_analysis_ner) (a ^. rss_analysis_created)
+  return ()
+
+updateRSSAnalysisStatus :: Connection -> ByteString -> (Maybe Bool,Maybe Bool,Maybe Bool) -> IO ()
+updateRSSAnalysisStatus conn hsh (mb1,mb2,mb3) = do
+  let f ov mb = if (isNothing mb) then (Just ov) else (if (fromJust mb) then ((toNullable . constant) <$> Just True) else ((toNullable . constant) <$> Nothing))                 
+  runUpdate conn An.table (\(An.RSSAnalysis i hsh src mcore msrl mner ctm) -> An.RSSAnalysis (Just i) (Just hsh) (Just src) (f mcore mb1) (f msrl mb2) (f mner mb3) (Just ctm))
+    (\x -> (An._hash x) .== (constant hsh))
   return ()
 
 uploadRSSAnalysisIfMissing :: (ToRSSAnalysis a) => Connection -> a -> IO ()
@@ -105,6 +128,12 @@ queryRSSArticleByHash :: ByteString -> Query (To Column (A.RSSArticle))
 queryRSSArticleByHash hsh = proc () -> do
   r <- A.queryAll -< ()
   restrict -< A._hash r .== (constant hsh)
+  returnA -< r
+
+queryRSSErrorArticleByHash :: ByteString -> Query (To Column (EA.RSSErrorArticle))
+queryRSSErrorArticleByHash hsh = proc () -> do
+  r <- EA.queryAll -< ()
+  restrict -< EA._hash r .== (constant hsh)
   returnA -< r
 
 countRSSAnalysisAll :: Query (Column PGInt8)

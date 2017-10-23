@@ -20,6 +20,15 @@ data RSSArticleDB = RSSArticleDB
 
 makeLenses ''RSSArticleDB
 
+data RSSErrorArticleDB = RSSErrorArticleDB
+  { _rss_error_article_hash :: ByteString
+  , _rss_error_article_source :: Text
+  , _rss_error_article_errormsg :: Text
+  , _rss_error_article_created :: UTCTime
+  } deriving (Show)
+
+makeLenses ''RSSErrorArticleDB
+
 data RSSAnalysisDB = RSSAnalysisDB
   { _rss_analysis_hash    :: ByteString
   , _rss_analysis_source  :: Text
@@ -30,8 +39,6 @@ data RSSAnalysisDB = RSSAnalysisDB
   } deriving (Show)
 
 makeLenses ''RSSAnalysisDB
--- data ArticleErrorDB = ArticleErrorDB { }
-
 
 class ToRSSArticle a where
   toRSSArticle :: a -> RSSArticleDB
@@ -45,7 +52,8 @@ class ToRSSAnalysis a where
 instance ToRSSAnalysis RSSAnalysisDB where
   toRSSAnalysis = id
 
+class ToRSSErrorArticle a where
+  toRSSErrorArticle :: a -> RSSErrorArticleDB
 
--- class ArticleError a where
---  toArticleError :: a -> ArticleErrorDB
-
+instance ToRSSErrorArticle RSSErrorArticleDB where
+  toRSSErrorArticle = id

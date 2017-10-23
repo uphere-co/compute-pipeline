@@ -22,6 +22,7 @@ library
                        DB.Schema.NewsAPI.ArticleError
                        DB.Schema.RSS.Analysis
                        DB.Schema.RSS.Article
+                       DB.Schema.RSS.ErrorArticle
                        DB.Type
                        DB.Util
   -- other-modules:
