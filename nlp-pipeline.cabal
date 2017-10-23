@@ -74,6 +74,7 @@ library
                   unordered-containers,
                   uphere-db,
                   uphere-network-util,
+                  uphere-opaleye,
                   wiki-ner,
                   -- yaml,
                   yayaml

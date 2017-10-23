@@ -112,7 +112,8 @@ runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text])
                     -> AnalyzePredata -> PathConfig -> [(FilePath,UTCTime,DocAnalysisInput)] -> IO ()
 runAnalysisByChunks conn netagger apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,tm,artl) -> do
-    handle (\(e :: SomeException) -> print e) $  
+    handle (\(e :: SomeException) -> print e) $ do
       mkMGs conn apredata netagger cfg fp tm artl
+      
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)
