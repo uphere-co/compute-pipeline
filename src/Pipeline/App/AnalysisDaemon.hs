@@ -26,7 +26,7 @@ import           Lexicon.Data                      (loadLexDataConfig)
 import           NLP.Shared.Type                   (PathConfig,corenlpstore,dbstring,lexconfigpath,mgstore)
 import           NLP.Type.CoreNLP
 import           RSS.Data                          (rssList)
-import           WikiEL.EntityLinking
+import           WikiEL.Type                       (EntityMention)
 --
 import           Pipeline.App.AnalysisRunner
 import           Pipeline.Load

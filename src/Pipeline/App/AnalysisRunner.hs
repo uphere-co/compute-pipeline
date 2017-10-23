@@ -34,7 +34,7 @@ import           SRL.Analyze.SentenceStructure          (docStructure,mkWikiList
 import           SRL.Analyze.Type
 -- import qualified SRL.Analyze.WikiEL         as SRLWiki
 import           SRL.Statistics
-import           WikiEL.EntityLinking                   (EntityMention)
+import           WikiEL.Type                            (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Run
