@@ -73,7 +73,7 @@ runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Te
 runSRL conn apredata netagger cfg src = do
   -- as1a <- getAnalysisFilePathBySource cfg src
   -- as1b <- getRSSAnalysisFilePathBySource cfg src
-  as1b <- getNewItemForSRL cfg src
+  as1b <- getNewItemsForSRL cfg src
   let as1 = as1b -- as1a ++ as1b
   -- mapM_ print as1
    

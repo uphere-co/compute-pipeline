@@ -13,11 +13,13 @@ import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
 import           Database.PostgreSQL.Simple             (Connection)
-import           System.FilePath                        ((</>),takeFileName)
+import           System.FilePath                        ((</>),takeFileName,takeBaseName)
 --
 import           Data.Range                             (Range)
 import           Data.Time.Clock                        (UTCTime,getCurrentTime)
 import           Data.Graph.Algorithm.Basic             (maxConnectedNodes,numberOfIsland)
+import           DB.Operation                           (updateRSSAnalysisStatus)
+import           DB.Util                                (b16ToBstrHash)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
@@ -38,7 +40,6 @@ import           WikiEL.EntityLinking                   (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Run
--- import           Pipeline.Source.NewsAPI.Analysis
 import           Pipeline.Type
 import           Pipeline.Util
 
@@ -114,6 +115,6 @@ runAnalysisByChunks conn netagger apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,tm,artl) -> do
     handle (\(e :: SomeException) -> print e) $ do
       mkMGs conn apredata netagger cfg fp tm artl
-      
+      updateRSSAnalysisStatus conn (b16ToBstrHash (takeBaseName fp)) (Nothing,Just True,Nothing)
     -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
     -- print $ wikiEL emTagger (x ^. dainput_sents)

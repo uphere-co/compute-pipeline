@@ -38,17 +38,13 @@ getRSSAnalysisFilePathBySource cfg src = do
 
 -- (filter (\(h,_) -> takeBaseName h == "8b638633ec8ead0aeae84bff9dce786ccaee1bd0d22ad940dde532d8e86d922c"))
 
-getNewItemForSRL :: PathConfig -> String -> IO [(FilePath,UTCTime)]
-getNewItemForSRL cfg src = do
+getNewItemsForSRL :: PathConfig -> String -> IO [(FilePath,UTCTime)]
+getNewItemsForSRL cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   as <- runQuery conn $ proc () -> do
     r <- An.queryAll -< ()
     restrict -< (An._source r .== constant (T.pack src)) .&& (isNull (An._srl r)  .|| (An._srl r .== toNullable (constant False)))
     returnA -< r
-  {- 
-
-
-    do (queryRSSAnalysisBySource src) -- getRSSAnalysisBySource conn src -}
   return  $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
 
 
