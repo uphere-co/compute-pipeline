@@ -15,7 +15,7 @@ import           System.Directory.Tree
 --
 import           NLP.Shared.Type                (PathConfig)
 import           SRL.Analyze.Type
-import           WikiEL.EntityLinking           (EntityMention)
+import           WikiEL.Type                    (EntityMention)
 --
 import           Pipeline.Type
 
