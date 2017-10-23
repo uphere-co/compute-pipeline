@@ -72,9 +72,13 @@ coreN = 15 :: Int
 runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Text]) -> PathConfig -> String  -> IO ()
 runSRL conn apredata netagger cfg src = do
   -- as1a <- getAnalysisFilePathBySource cfg src
-  as1b <- getRSSAnalysisFilePathBySource cfg src
+  -- as1b <- getRSSAnalysisFilePathBySource cfg src
+  as1b <- getNewItemsForSRL cfg src
   let as1 = as1b -- as1a ++ as1b
-  as2 <- filterM (\(fp,tm) -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> fp) "mgs")) as1
+  -- mapM_ print as1
+   
+  -- as2 <- filterM (\(fp,tm) -> fmap not $ doesFileExist (addExtension ((cfg ^. mgstore) </> fp) "mgs")) as1
+ 
   loaded1 <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as1
   let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded1)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
@@ -83,7 +87,8 @@ runSRL conn apredata netagger cfg src = do
 
   waitForChildren
   refreshChildren
-
+  
+  
 {- 
 mkBloombergMGFig :: PathConfig ->  IO ()
 mkBloombergMGFig cfg = do
