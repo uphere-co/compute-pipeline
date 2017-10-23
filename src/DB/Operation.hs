@@ -64,6 +64,13 @@ uploadRSSAnalysis conn x = do
     An.newRSSAnalysis (a ^. rss_analysis_hash) (a ^. rss_analysis_source) (a ^. rss_analysis_corenlp) (a ^. rss_analysis_srl) (a ^. rss_analysis_ner) (a ^. rss_analysis_created)
   return ()
 
+updateRSSAnalysisStatus :: Connection -> ByteString -> (Maybe Bool,Maybe Bool,Maybe Bool) -> IO ()
+updateRSSAnalysisStatus conn hsh (mb1,mb2,mb3) = do
+  let f ov mb = if (isNothing mb) then (Just ov) else (if (fromJust mb) then ((toNullable . constant) <$> Just True) else ((toNullable . constant) <$> Nothing))                 
+  runUpdate conn An.table (\(An.RSSAnalysis i hsh src mcore msrl mner ctm) -> An.RSSAnalysis (Just i) (Just hsh) (Just src) (f mcore mb1) (f msrl mb2) (f mner mb3) (Just ctm))
+    (\x -> (An._hash x) .== (constant hsh))
+  return ()
+
 uploadRSSAnalysisIfMissing :: (ToRSSAnalysis a) => Connection -> a -> IO ()
 uploadRSSAnalysisIfMissing conn x = do
   let a = toRSSAnalysis x
