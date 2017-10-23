@@ -40,12 +40,12 @@ import           System.IO
 import qualified DB.Schema.RSS.Analysis        as An
 import qualified DB.Schema.RSS.Article         as Ar
 import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..)
-                                                   ,PathConfig(..)
+                                                   ,PathConfig(..),ItemRSS,link
                                                    ,arbstore,mgdotfigstore
                                                    ,objectB,predicateR,subjectA,po_main)
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
 import           RSS.Data                          (rssList)
-import           RSS.Type                          (ItemRSS,link)
+-- import           RSS.Type                          (ItemRSS,link)
 import           WikiEL.EntityLinking              (EntityMention)
 --
 import           Pipeline.Load
@@ -127,7 +127,7 @@ getNDayAnalyses conn txt n = do
   return anList
 
 type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
-         :<|> "rssarticle" :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe Text)
+         :<|> "rssarticle" :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
          :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
@@ -173,7 +173,7 @@ getArticlesBySrc conn cfg src sec hsh = do
       let mitem = (A.decode . BL.fromStrict) bstr
       return mitem
 
-getRSSArticle :: Connection -> PathConfig -> T.Text -> Handler (Maybe Text)
+getRSSArticle :: Connection -> PathConfig -> T.Text -> Handler (Maybe ItemRSS)
 getRSSArticle conn cfg hsh = do
   let fps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssList
   (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\fp -> try $ B8.readFile (T.unpack fp)) fps
@@ -182,7 +182,7 @@ getRSSArticle conn cfg hsh = do
     []   -> return Nothing
     x:xs -> let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) x in case mitem of
       Nothing   -> return Nothing
-      Just item -> return (Just (item ^. link))
+      Just item -> return (Just item) --  (item ^. link)
 
 getAnalysesBySrc :: Connection -> T.Text -> Handler [RecentAnalysis]
 getAnalysesBySrc conn txt = do
