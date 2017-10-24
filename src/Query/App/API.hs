@@ -46,7 +46,6 @@ import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAna
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
 import           RSS.Data                          (rssList)
 import           WikiEL.Type                       (EntityMention)
-import           WikiEL.EntityLinking              (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Type
