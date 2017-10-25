@@ -10,7 +10,8 @@ import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Char                              (isSpace)
-import qualified Data.Text as T
+import qualified Data.Text                  as T
+import qualified Data.Text.Encoding         as T.E
 import           System.Directory                       (getCurrentDirectory,setCurrentDirectory)
 import           System.FilePath                        ((</>),(<.>),addExtension,takeBaseName,takeFileName)
 import           System.Process                         (readProcess)
@@ -55,10 +56,10 @@ showTextMG cfg mg filename (_i,_sstr,mtks,_mg') = do
 mkMGDotFigs :: (Show a) => FilePath -> a -> FilePath -> [Maybe Token] -> MeaningGraph -> IO ()
 mkMGDotFigs savedir i filename mtks mg = do
   let title = mkTextFromToken mtks
-      dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
+      dottxt = dotMeaningGraph (mkLabelText title) mg
       filepath = (savedir </> filename) ++ "_" ++ (show i) ++ ".dot"
 
-  saveHashNameBSFileInPrefixSubDirs filepath (B.pack dotstr) -- (BL8.toStrict $ A.encode json)
+  saveHashNameBSFileInPrefixSubDirs filepath (T.E.encodeUtf8 dottxt) -- (BL8.toStrict $ A.encode json)
   -- writeFile (filepath ++ "_" ++ (show i) ++ ".dot") dotstr
   let fname = takeBaseName filepath
   let (hsh,storepath,prefix) = splitPrefixSubDirs filepath
