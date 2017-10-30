@@ -25,6 +25,7 @@ import           NLP.Shared.Type                              (PathConfig,corenl
 
 import           DB.Operation
 import qualified DB.Schema.RSS.Article                 as RAr
+import           DB.Type                                      (RSSErrorArticleDB(..))
 import           DB.Util                                      (b16ToBstrHash)
 import           SRL.Analyze.CoreNLP                          (runParser)
 --
@@ -79,9 +80,10 @@ testFilter = id
 
 preParseRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                        -> PathConfig
+                       -> String
                        -> [Maybe (RAr.RSSArticleH,RSS.RSSArticleContent)]
                        -> IO ()
-preParseRSSArticles pp cfg articles = do
+preParseRSSArticles pp cfg src articles = do
   conn <- getConnection (cfg ^. dbstring)
   forM_ (testFilter (mapMaybe (join . fmap preprocessRSSArticle) articles)) $ \(article,(hsh,_,_,txt)) -> do
     fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh))
@@ -92,10 +94,10 @@ preParseRSSArticles pp cfg articles = do
       case eresult of
         Left  (_e :: SomeException) -> do
           saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
+          uploadRSSErrorArticleIfMissing conn (RSSErrorArticleDB (b16ToBstrHash (T.unpack hsh)) (T.pack src) "" (RAr._created article))
         Right result                -> do
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
           updateRSSAnalysisStatus conn (b16ToBstrHash (T.unpack hsh)) (Just True,Nothing,Nothing)
-          -- uploadRSSAnalysisIfMissing conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
 
 
@@ -103,6 +105,6 @@ preParseRSSArticles pp cfg articles = do
 runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
 runCoreNLPforRSS pp cfg src = do
   articles <- RSS.getTimeTitleDescFromSrcWithHash cfg src
-  preParseRSSArticles pp cfg articles
+  preParseRSSArticles pp cfg src articles
 
 
