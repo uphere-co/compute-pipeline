@@ -43,7 +43,7 @@ getNewItemsForSRL cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   as <- runQuery conn $ proc () -> do
     r <- An.queryAll -< ()
-    restrict -< (An._source r .== constant (T.pack src)) .&& (isNull (An._srl r)  .|| (An._srl r .== toNullable (constant False)))
+    restrict -< (An._source r .== constant (T.pack src)) .&& (An._corenlp r .== toNullable (constant True)) .&& (isNull (An._srl r)  .|| (An._srl r .== toNullable (constant False)))
     returnA -< r
   return  $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
 
