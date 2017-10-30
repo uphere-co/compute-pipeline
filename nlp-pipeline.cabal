@@ -109,12 +109,8 @@ executable corenlp-daemon
   -- other-modules:
   build-depends:       base,
                        --
-                       bytestring,
-                       data-default,
-                       jvm,
                        lens,
-                       --
-                       HCoreNLP,
+                       optparse-applicative,
                        --
                        nlp-pipeline
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2

@@ -1,31 +1,16 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Main where
 
-import           Control.Lens
-import qualified Data.ByteString.Char8 as B
-import           Data.Default
-import           Language.Java         as J
-import           System.Environment         (getArgs,getEnv)
+import           Control.Lens               ((^.))
+import qualified Options.Applicative as O
 --
-import           CoreNLP.Simple
-import           CoreNLP.Simple.Type
---
-import           Pipeline.Load
-import           Pipeline.Run.CoreNLP
-import           Pipeline.Type
+import           Pipeline.App.CoreNLPDaemon (runDaemon)
+import           Pipeline.Load              (loadConfigFile)
+import           Pipeline.Type              (configpath,progOption)
 
 main :: IO ()
 main = do
-  [src] <- getArgs
-  cfg <- (\ec -> case ec of {Left err -> error err;Right c -> return c;}) =<< loadConfigFile "config/config.json"
-  clspath <- getEnv "CLASSPATH"
-  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    pp <- prepare (def & (tokenizer .~ True)
-                       . (words2sentences .~ True)
-                       . (postagger .~ True)
-                       . (lemma .~ True)
-                       . (sutime .~ True)
-                       . (constituency .~ True)
-                       . (ner .~ True)
-                  )
-
-    runCoreNLPforNewsAPISource pp cfg src
+  acfg <- O.execParser progOption
+  cfg <- (\case {Left err -> error err;Right c -> return c;}) =<< loadConfigFile (acfg ^. configpath)
+  runDaemon cfg

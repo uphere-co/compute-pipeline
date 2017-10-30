@@ -16,8 +16,9 @@ import           RSS.Data                          (rssList)
 import           Pipeline.Operation.DB             (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP              (runCoreNLPforRSS)
 
-runDaemon :: PathConfig -> String -> String -> IO ()
-runDaemon cfg src sec = do
+
+runDaemon :: PathConfig -> IO ()
+runDaemon cfg = do
   clspath <- getEnv "CLASSPATH"
   conn <- getConnection (cfg ^. dbstring)
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
