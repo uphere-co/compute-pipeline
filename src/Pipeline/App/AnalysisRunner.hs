@@ -84,7 +84,6 @@ mkMGs conn apredata netagger cfg fp tm article = do
       saveARB (cfg ^. arbstore) filename i (tm,(arb,netags))
       putStrLn $ filename ++ ": saving DOT"                  
       genMGFigs cfg filename i sstr mtks mg wikilst
-  -- updateAnalysisStatus conn (unB16 filename) (Nothing, Just True, Nothing)
 
 genMGFigs :: PathConfig -> FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
 genMGFigs cfg filename i sstr mtks mg wikilst = do
@@ -95,26 +94,10 @@ genMGFigs cfg filename i sstr mtks mg wikilst = do
       let mg' = tagMG mg wikilst
       mkMGDotFigs (cfg ^. mgdotfigstore) i filename mtks mg'
 
-{-
-runAnalysisAll :: PathConfig -> Connection -> IO ()
-runAnalysisAll cfg conn = do
-  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger) <- loadConfig False cfgG
-  as <- getAllAnalysisFilePath cfg
-  loaded' <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as
-  let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded')
-  flip mapM_ loaded $ \(fp,tm,x) -> do
-    mkMGs conn apredata netagger cfg fp tm x
-    -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
-    -- print $ wikiEL emTagger (x ^. dainput_sents)
--}
-
 runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text])
                     -> AnalyzePredata -> PathConfig -> [(FilePath,UTCTime,DocAnalysisInput)] -> IO ()
 runAnalysisByChunks conn netagger apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,tm,artl) -> do
     handle (\(e :: SomeException) -> print e) $ do
-      mkMGs conn apredata netagger cfg fp tm artl
       updateRSSAnalysisStatus conn (b16ToBstrHash (takeBaseName fp)) (Nothing,Just True,Nothing)
-    -- saveWikiEL fp (wikiEL emTagger (x ^. dainput_sents))
-    -- print $ wikiEL emTagger (x ^. dainput_sents)
+      mkMGs conn apredata netagger cfg fp tm artl

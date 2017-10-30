@@ -25,6 +25,7 @@ import           NLP.Shared.Type                              (PathConfig,corenl
 
 import           DB.Operation
 import qualified DB.Schema.RSS.Article                 as RAr
+import           DB.Util                                      (b16ToBstrHash)
 import           SRL.Analyze.CoreNLP                          (runParser)
 --
 import qualified Pipeline.Source.RSS.Article           as RSS
@@ -93,7 +94,8 @@ preParseRSSArticles pp cfg articles = do
           saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
         Right result                -> do
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
-          uploadRSSAnalysisIfMissing conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
+          updateRSSAnalysisStatus conn (b16ToBstrHash (T.unpack hsh)) (Just True,Nothing,Nothing)
+          -- uploadRSSAnalysisIfMissing conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
   closeConnection conn
 
 
