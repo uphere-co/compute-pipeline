@@ -11,7 +11,7 @@ import           System.Environment                (getEnv)
 import           CoreNLP.Simple                    (prepare)
 import           CoreNLP.Simple.Type               (constituency,lemma,ner,postagger,sutime,tokenizer,words2sentences)
 import           NLP.Shared.Type                   (PathConfig,dbstring)
-import           RSS.Data                          (rssList)
+import           RSS.Data                          (rssAnalysisList)
 --
 import           Pipeline.Operation.DB             (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP              (runCoreNLPforRSS)
@@ -31,7 +31,7 @@ runDaemon cfg = do
                        . (ner .~ True)
                   )
     forever $ do
-      forM_ rssList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (src ++ "/" ++ sec)
+      forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (src ++ "/" ++ sec)
       putStrLn "Waiting next run..."
       let sec = 1000000 in threadDelay (60*sec)
 

@@ -25,7 +25,7 @@ import           Lexicon.Data                      (loadLexDataConfig)
 -- import           NewsAPI.Type
 import           NLP.Shared.Type                   (PathConfig,corenlpstore,dbstring,lexconfigpath,mgstore)
 import           NLP.Type.CoreNLP
-import           RSS.Data                          (rssList)
+import           RSS.Data                          (rssAnalysisList)
 import           WikiEL.Type                       (EntityMention)
 --
 import           Pipeline.App.AnalysisRunner
@@ -54,10 +54,10 @@ runDaemon cfg = do
                   )
     forever $ do
       -- forM_ prestigiousNewsSource $ \src -> runCoreNLPforNewsAPISource pp cfg src
-      forM_ rssList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (src ++ "/" ++ sec)
+      forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (src ++ "/" ++ sec)
       -- runCoreNLPforRSS pp cfg ("reuters" ++ "/" ++ "Archive")
       -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
-      forM_ rssList $ \(src,sec,url) -> runSRL conn apredata netagger cfg (src ++ "/" ++ sec)
+      forM_ rssAnalysisList $ \(src,sec,url) -> runSRL conn apredata netagger cfg (src ++ "/" ++ sec)
       putStrLn "Waiting next run..."
       let sec = 1000000 in threadDelay (60*sec)
 
