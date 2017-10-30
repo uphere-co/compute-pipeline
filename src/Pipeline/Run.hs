@@ -55,10 +55,10 @@ showTextMG cfg mg filename (_i,_sstr,mtks,_mg') = do
 mkMGDotFigs :: (Show a) => FilePath -> a -> FilePath -> [Maybe Token] -> MeaningGraph -> IO ()
 mkMGDotFigs savedir i filename mtks mg = do
   let title = mkTextFromToken mtks
-      dotstr = dotMeaningGraph (T.unpack $ mkLabelText title) mg
+      dotstr = dotMeaningGraph (mkLabelText title) mg
       filepath = (savedir </> filename) ++ "_" ++ (show i) ++ ".dot"
 
-  saveHashNameBSFileInPrefixSubDirs filepath (B.pack dotstr) -- (BL8.toStrict $ A.encode json)
+  saveHashNameBSFileInPrefixSubDirs filepath ((B.pack . T.unpack) dotstr) -- (BL8.toStrict $ A.encode json)
   -- writeFile (filepath ++ "_" ++ (show i) ++ ".dot") dotstr
   let fname = takeBaseName filepath
   let (hsh,storepath,prefix) = splitPrefixSubDirs filepath
