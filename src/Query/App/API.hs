@@ -44,7 +44,7 @@ import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAna
                                                    ,arbstore,mgdotfigstore
                                                    ,objectB,predicateR,subjectA,po_main)
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
-import           RSS.Data                          (rssList)
+import           RSS.Data                          (rssAnalysisList)
 import           WikiEL.Type                       (EntityMention)
 --
 import           Pipeline.Load
@@ -174,7 +174,7 @@ getArticlesBySrc conn cfg src sec hsh = do
 
 getRSSArticle :: Connection -> PathConfig -> T.Text -> Handler (Maybe ItemRSS)
 getRSSArticle conn cfg hsh = do
-  let fps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssList
+  let fps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssAnalysisList
   (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\fp -> try $ B8.readFile (T.unpack fp)) fps
   let bstrs = rights ebstrs
   case bstrs of
