@@ -16,6 +16,7 @@ import qualified Data.Aeson                            as A
 import qualified Data.ByteString.Lazy.Char8            as BL
 import           Data.List                                    (foldl')
 import           Data.Maybe
+import           Data.Text                                    (Text)
 import qualified Data.Text                             as T
 import           Language.Java                         as J
 import           System.FilePath                              ((</>))
@@ -23,7 +24,9 @@ import           System.FilePath                              ((</>))
 import           NLP.Shared.Type                              (PathConfig,corenlpstore,dbstring,errstore)
 
 import           DB.Operation
-import qualified DB.Schema.RSS.Article                        as RAr
+import qualified DB.Schema.RSS.Article                 as RAr
+import           DB.Type                                      (RSSErrorArticleDB(..))
+import           DB.Util                                      (b16ToBstrHash)
 import           SRL.Analyze.CoreNLP                          (runParser)
 --
 import qualified Pipeline.Source.RSS.Article           as RSS
@@ -36,11 +39,19 @@ noisyTextClips =
   [ "Market Pulse Stories are Rapid-fire, short news bursts on stocks and markets as they move. Visit MarketWatch.com for more information on this news." 
   ]
 
-cleanNoiseText txt0 = foldl' (\(!txt) clip -> T.replace clip "" txt) txt0 noisyTextClips 
+tameDescription :: Text -> Text
+tameDescription txt = snd $ T.breakOnEnd "(Reuters) - " $ txt
+
+cleanNoiseText :: Text -> Text
+cleanNoiseText txt0 = let txt1 = tameDescription txt0
+                          txt2 = foldl' (\(!txt) clip -> T.replace clip "" txt) txt1 noisyTextClips 
+                      in T.strip txt2
+
+-- filterArticle :: * -> *
 
 
 preprocessRSSArticle (article,(hsh,x,y,txt0)) =
-  let txt1 = T.strip (cleanNoiseText txt0)
+  let txt1 = cleanNoiseText txt0
   in if | T.null txt1        -> Nothing
         | T.head txt1 == '*' -> Nothing
         | otherwise          -> let -- this is real extreme ad hoc 
@@ -69,9 +80,10 @@ testFilter = id
 
 preParseRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                        -> PathConfig
+                       -> String
                        -> [Maybe (RAr.RSSArticleH,RSS.RSSArticleContent)]
                        -> IO ()
-preParseRSSArticles pp cfg articles = do
+preParseRSSArticles pp cfg src articles = do
   conn <- getConnection (cfg ^. dbstring)
   forM_ (testFilter (mapMaybe (join . fmap preprocessRSSArticle) articles)) $ \(article,(hsh,_,_,txt)) -> do
     fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh))
@@ -82,9 +94,10 @@ preParseRSSArticles pp cfg articles = do
       case eresult of
         Left  (_e :: SomeException) -> do
           saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> (T.unpack hsh)) txt
+          uploadRSSErrorArticleIfMissing conn (RSSErrorArticleDB (b16ToBstrHash (T.unpack hsh)) (T.pack src) "" (RAr._created article))
         Right result                -> do
           saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> (T.unpack hsh)) (BL.toStrict $ A.encode result)
-          uploadRSSAnalysisIfMissing conn (mkRSSAnalysisDBInfo (DoneAnalysis (Just True) Nothing Nothing) article)
+          updateRSSAnalysisStatus conn (b16ToBstrHash (T.unpack hsh)) (Just True,Nothing,Nothing)
   closeConnection conn
 
 
@@ -92,6 +105,6 @@ preParseRSSArticles pp cfg articles = do
 runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
 runCoreNLPforRSS pp cfg src = do
   articles <- RSS.getTimeTitleDescFromSrcWithHash cfg src
-  preParseRSSArticles pp cfg articles
+  preParseRSSArticles pp cfg src articles
 
 
