@@ -11,6 +11,7 @@ import           Data.Text                         (Text)
 import qualified Data.Text                  as T   
 import           Data.Time.Clock                   (UTCTime)
 import qualified Database.PostgreSQL.Simple as PGS 
+import           Opaleye                           (runQuery)
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
@@ -31,12 +32,31 @@ getHashByTime cfg time = do
   PGS.close conn
   return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x)) articles)
 
-getRSSArticleBy :: PathConfig -> String -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
-getRSSArticleBy cfg src = do
+getRSSArticleBySrc :: PathConfig -> String -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
+getRSSArticleBySrc cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- getRSSArticleBySource conn src
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
+        fileprefix = (cfg ^. rssstore) </> src
+        filepath = fileprefix </> rssItemDirectory </> hsh
+    fchk <- doesFileExist filepath
+    case fchk of
+      True -> do
+        bstr <- B.readFile filepath
+        content <- loadItemRSS bstr
+        return ((,) <$> Just x <*> content)
+      False -> putStrLn ("Following article exists in DB, but does not exist on disk : " ++ hsh) >> return Nothing -- error "error"
+  PGS.close conn
+  return result
+
+getRSSArticleBtwnTime :: PathConfig -> UTCTime -> UTCTime -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
+getRSSArticleBtwnTime cfg time1 time2 = do
+  conn <- getConnection (cfg ^. dbstring)
+  articles <- runQuery conn (queryRSSArticleBetweenTime time1 time2)
+  result <- flip mapM articles $ \x -> do
+    let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
+        src = T.unpack $ Ar._source x
         fileprefix = (cfg ^. rssstore) </> src
         filepath = fileprefix </> rssItemDirectory </> hsh
     fchk <- doesFileExist filepath

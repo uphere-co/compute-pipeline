@@ -106,5 +106,5 @@ preParseRSSArticles pp cfg src articles = do
 
 runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
 runCoreNLPforRSS pp cfg src = do
-  articles <- RSS.getRSSArticleBy cfg src
+  articles <- RSS.getRSSArticleBySrc cfg src
   preParseRSSArticles pp cfg src articles
