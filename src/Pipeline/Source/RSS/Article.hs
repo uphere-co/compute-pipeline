@@ -24,8 +24,6 @@ import           Pipeline.Type
 
 rssItemDirectory = "RSSItem"
 
-type RSSArticleContent = (Text, UTCTime, Text, Text)
-
 getHashByTime :: PathConfig -> UTCTime -> IO [(Text,Text)]
 getHashByTime cfg time = do
   conn <- getConnection (cfg ^. dbstring)
@@ -33,8 +31,8 @@ getHashByTime cfg time = do
   PGS.close conn
   return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x)) articles)
 
-getTimeTitleDescFromSrcWithHash :: PathConfig -> String -> IO [Maybe (Ar.RSSArticleH,RSSArticleContent)]
-getTimeTitleDescFromSrcWithHash cfg src = do
+getRSSArticleBy :: PathConfig -> String -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
+getRSSArticleBy cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- getRSSArticleBySource conn src
   result <- flip mapM articles $ \x -> do
@@ -45,15 +43,15 @@ getTimeTitleDescFromSrcWithHash cfg src = do
     case fchk of
       True -> do
         bstr <- B.readFile filepath
-        content <- getTimeTitleDescFromByteStringWithHash bstr hsh
+        content <- loadItemRSS bstr
         return ((,) <$> Just x <*> content)
       False -> putStrLn ("Following article exists in DB, but does not exist on disk : " ++ hsh) >> return Nothing -- error "error"
   PGS.close conn
   return result
 
-getTimeTitleDescFromByteStringWithHash :: Monad m => B.ByteString -> String -> m (Maybe RSSArticleContent)
-getTimeTitleDescFromByteStringWithHash bstr str = do
+loadItemRSS :: B.ByteString -> IO (Maybe ItemRSS)
+loadItemRSS bstr = do
   let esrc = eitherDecodeStrict bstr :: Either String ItemRSS
   case esrc of
     Left  _   -> return Nothing
-    Right src -> return ((,,,) <$> Just (T.pack str) <*> Just (_pubDate src) <*> Just (_title src) <*> Just (_description src))
+    Right src -> return (Just src)

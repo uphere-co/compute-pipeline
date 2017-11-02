@@ -21,7 +21,7 @@ import qualified Data.Text                             as T
 import           Language.Java                         as J
 import           System.FilePath                              ((</>))
 --
-import           NLP.Shared.Type                              (PathConfig,corenlpstore,dbstring,errstore)
+import           NLP.Shared.Type                              (ItemRSS,PathConfig,corenlpstore,dbstring,errstore)
 
 import           DB.Operation
 import qualified DB.Schema.RSS.Article                 as RAr
@@ -81,7 +81,7 @@ testFilter = id
 preParseRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                        -> PathConfig
                        -> String
-                       -> [Maybe (RAr.RSSArticleH,RSS.RSSArticleContent)]
+                       -> [Maybe (RAr.RSSArticleH,ItemRSS)]
                        -> IO ()
 preParseRSSArticles pp cfg src articles = do
   conn <- getConnection (cfg ^. dbstring)
@@ -104,7 +104,5 @@ preParseRSSArticles pp cfg src articles = do
 
 runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> String -> IO ()
 runCoreNLPforRSS pp cfg src = do
-  articles <- RSS.getTimeTitleDescFromSrcWithHash cfg src
+  articles <- RSS.getRSSArticleBy cfg src
   preParseRSSArticles pp cfg src articles
-
-
