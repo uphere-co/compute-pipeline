@@ -77,8 +77,5 @@ doesHashNameFileExistInPrefixSubDirs fp = do
   b <- doesFileExist (storepath </> prefix </> hsh)
   return b
 
-bstrHashToB16 :: ByteString -> String
-bstrHashToB16 bstr = (BL8.unpack . BL8.fromStrict . B16.encode) bstr
-
 unB16 :: String -> ByteString
 unB16 = fst . B16.decode . BL8.toStrict . BL8.pack
