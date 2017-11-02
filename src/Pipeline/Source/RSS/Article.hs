@@ -15,15 +15,14 @@ import           Opaleye                           (runQuery)
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
-import           NLP.Shared.Type
 import           DB.Operation
 import qualified DB.Schema.RSS.Article      as Ar
+import           NLP.Shared.Type
+import           RSS.Type                          (itempath)
 --
 import           Pipeline.Operation.DB
 import           Pipeline.Type
 
-
-rssItemDirectory = "RSSItem"
 
 getHashByTime :: PathConfig -> UTCTime -> IO [(Text,Text)]
 getHashByTime cfg time = do
@@ -35,11 +34,12 @@ getHashByTime cfg time = do
 getRSSArticleBySrc :: PathConfig -> String -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
 getRSSArticleBySrc cfg src = do
   conn <- getConnection (cfg ^. dbstring)
-  articles <- getRSSArticleBySource conn src
+  articles' <- getRSSArticleBySource conn src
+  let articles = articles' -- filter (\x -> ) articles'
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         fileprefix = (cfg ^. rssstore) </> src
-        filepath = fileprefix </> rssItemDirectory </> hsh
+        filepath = fileprefix </> itempath </> hsh
     fchk <- doesFileExist filepath
     case fchk of
       True -> do
@@ -58,7 +58,7 @@ getRSSArticleBtwnTime cfg time1 time2 = do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         src = T.unpack $ Ar._source x
         fileprefix = (cfg ^. rssstore) </> src
-        filepath = fileprefix </> rssItemDirectory </> hsh
+        filepath = fileprefix </> itempath </> hsh
     fchk <- doesFileExist filepath
     case fchk of
       True -> do
