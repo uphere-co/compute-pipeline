@@ -77,3 +77,8 @@ mkRSSAnalysisDBInfo das article =
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
+data SourceConstraint = SourceConstraint
+  { _source :: Maybe Text
+  , _bTime  :: Maybe UTCTime
+  , _eTime  :: Maybe UTCTime
+  } deriving (Show)
