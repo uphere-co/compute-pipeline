@@ -80,13 +80,13 @@ testFilter = id
 
 preParseRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                        -> PathConfig
-                       -> String
                        -> [Maybe (RAr.RSSArticleH,ItemRSS)]
                        -> IO ()
-preParseRSSArticles pp cfg src articles = do
+preParseRSSArticles pp cfg articles = do
   conn <- getConnection (cfg ^. dbstring)
   forM_ (testFilter (mapMaybe (join . fmap preprocessRSSArticle) articles)) $ \(article,item) -> do
     let hsh = bstrHashToB16 $ RAr._hash article
+        src = T.unpack $ RAr._source article
         txt = item^.description
     fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> hsh)
     echk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. errstore) </> hsh)
@@ -106,5 +106,5 @@ preParseRSSArticles pp cfg src articles = do
 
 runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> SourceConstraint -> IO ()
 runCoreNLPforRSS pp cfg sc = do
-  articles <- RSS.getRSSArticleBySrc cfg sc
-  preParseRSSArticles pp cfg src articles
+  articles <- RSS.getRSSArticleBy cfg sc
+  preParseRSSArticles pp cfg articles

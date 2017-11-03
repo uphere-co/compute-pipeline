@@ -5,6 +5,7 @@ import           Control.Lens                      ((&),(^.),(.~))
 import           Control.Monad                     (forever,forM_)
 import qualified Data.ByteString.Char8 as B
 import           Data.Default                      (def)
+import qualified Data.Text             as T
 import           Language.Java         as J
 import           System.Environment                (getEnv)
 --
@@ -15,7 +16,9 @@ import           RSS.Data                          (rssAnalysisList)
 --
 import           Pipeline.Operation.DB             (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP              (runCoreNLPforRSS)
+import           Pipeline.Type                     (SourceConstraint(..))
 
+srcOnlyConst src sec = SourceConstraint (Just (T.pack $ src ++ "/" ++ sec)) Nothing Nothing
 
 runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
@@ -31,7 +34,7 @@ runDaemon cfg = do
                        . (ner .~ True)
                   )
     forever $ do
-      forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (src ++ "/" ++ sec)
+      forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (srcOnlyConst src sec)
       putStrLn "Waiting next run..."
       let sec = 1000000 in threadDelay (60*sec)
 

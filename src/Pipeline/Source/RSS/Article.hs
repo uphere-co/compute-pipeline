@@ -7,6 +7,7 @@ import           Data.Aeson                        (eitherDecodeStrict)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B   
 import qualified Data.ByteString.Lazy.Char8 as L8  
+import           Data.Maybe                        (fromJust,isJust,isNothing)
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T   
 import           Data.Time.Clock                   (UTCTime)
@@ -31,29 +32,19 @@ getHashByTime cfg time = do
   PGS.close conn
   return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x)) articles)
 
-getRSSArticleBySrc :: PathConfig -> String -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
-getRSSArticleBySrc cfg src = do
-  conn <- getConnection (cfg ^. dbstring)
-  articles' <- getRSSArticleBySource conn src
-  let articles = articles' -- filter (\x -> ) articles'
-  result <- flip mapM articles $ \x -> do
-    let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
-        fileprefix = (cfg ^. rssstore) </> src
-        filepath = fileprefix </> itempath </> hsh
-    fchk <- doesFileExist filepath
-    case fchk of
-      True -> do
-        bstr <- B.readFile filepath
-        content <- loadItemRSS bstr
-        return ((,) <$> Just x <*> content)
-      False -> putStrLn ("Following article exists in DB, but does not exist on disk : " ++ hsh) >> return Nothing -- error "error"
-  PGS.close conn
-  return result
+whatConst :: SourceConstraint -> String
+whatConst sc
+  | (isNothing (_source sc)) && (isJust (_bTime sc)) && (isJust (_eTime sc))    = "BetweenTime"
+  | (isJust (_source sc)) && (isNothing (_bTime sc)) && (isNothing (_eTime sc)) = "Source"
+  | otherwise                                                                   = "Not Supported"
 
-getRSSArticleBtwnTime :: PathConfig -> UTCTime -> UTCTime -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
-getRSSArticleBtwnTime cfg time1 time2 = do
+getRSSArticleBy :: PathConfig -> SourceConstraint -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
+getRSSArticleBy cfg sc = do
   conn <- getConnection (cfg ^. dbstring)
-  articles <- runQuery conn (queryRSSArticleBetweenTime time1 time2)
+  articles <- case (whatConst sc) of
+                "BetweenTime" -> runQuery conn (queryRSSArticleBetweenTime (fromJust $ _bTime sc) (fromJust $ _eTime sc))
+                "Source"      -> getRSSArticleBySource conn (T.unpack $ fromJust $ _source sc)
+                otherwise     -> return []
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         src = T.unpack $ Ar._source x
