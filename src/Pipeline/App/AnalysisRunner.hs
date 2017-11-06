@@ -52,7 +52,7 @@ isSRLFiltered sstr mg =
      (c,d) = case mgraph of
                Nothing -> (-1,-1)
                Just gr -> (maxConnectedNodes gr, numberOfIsland gr)
- in ((a == b) && (c >=4) && (d < 3))
+ in ({- (a == b) &&  -}(c >=4) && (d < 3))
 
 
 mkMGs :: Connection
