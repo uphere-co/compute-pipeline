@@ -51,14 +51,14 @@ getRSSArticleBy cfg sc = do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         src = T.unpack $ Ar._source x
         fileprefix = (cfg ^. rssstore) </> src
-        filepath = fileprefix </> itempath </> hsh
+        filepath = fileprefix </> itempath </> (take 2 hsh) </> hsh
     fchk <- doesFileExist filepath
     case fchk of
       True -> do
         bstr <- B.readFile filepath
         content <- loadItemRSS bstr
         return ((,) <$> Just x <*> content)
-      False -> putStrLn ("Following article exists in DB, but does not exist on disk : " ++ hsh) >> return Nothing -- error "error"
+      False -> return Nothing -- putStrLn ("Following article exists in DB, but does not exist on disk : " ++ hsh) >> return Nothing -- error "error"
   PGS.close conn
   return result
 

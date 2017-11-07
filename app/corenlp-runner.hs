@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import           Control.Lens                      ((^.))
@@ -14,6 +16,6 @@ main = do
   [t1,t2] <- getArgs
   let mbtime = digitsToUTC t1
       metime = digitsToUTC t2
-      defaultSC = SourceConstraint Nothing mbtime metime
+      defaultSC = SourceConstraint (Just "reuters/Archive") mbtime metime
 
   runCoreNLP tempPC defaultSC
