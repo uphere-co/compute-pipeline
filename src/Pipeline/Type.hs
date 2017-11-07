@@ -20,6 +20,7 @@ import qualified DB.Schema.NewsAPI.Article             as Ar
 import qualified DB.Schema.RSS.Article                 as RAr
 import           DB.Type
 import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
+import           NLP.Shared.Type
 --
 
 
@@ -82,3 +83,16 @@ data SourceConstraint = SourceConstraint
   , _bTime  :: Maybe UTCTime
   , _eTime  :: Maybe UTCTime
   } deriving (Show)
+
+tempPC = PathConfig
+  { _corenlpstore  = "/home/modori/data/production/corenlp"
+  , _mgstore       = "/home/modori/data/production/mgs"
+  , _mgdotfigstore = "/home/modori/data/production/mgdotgraphs"
+  , _lexconfigpath = "/home/modori/repo/src/lexicon-builder/config_global.json"
+  , _arbstore      = "/home/modori/data/production/arbs"
+  , _errstore      = "/home/modori/data/production/errs"
+  , _dbstring      = "dbname=mydb2 host=localhost port=65432 user=modori"
+  , _newsapistore  = "/data/groups/uphere/repo/fetchfin/newsapi/Articles"
+  , _nytstore      = "/data/groups/uphere/news-archive/fetchfin/nyt/NYTArticles"
+  , _rssstore      = "/home/modori/temp/RSS"
+  }

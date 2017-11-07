@@ -16,8 +16,7 @@ import           NewsAPI.Type
 
 batchCoreNLP :: IO ()
 batchCoreNLP = do
-  forM_ (chunksOf (length prestigiousNewsSource) prestigiousNewsSource) $ \ns -> do
-    phs <- forM ns $ \n -> do
-      spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n]
-    forM_ phs $ \ph -> waitForProcess ph
+  phs <- forM [("20140101","20141231"),("20150101","20151231"),("20160101","20161231")] $ \(n1,n2) -> do
+    spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n1,n2]
+  forM_ phs $ \ph -> waitForProcess ph
   

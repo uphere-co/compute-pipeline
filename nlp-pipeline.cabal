@@ -82,6 +82,7 @@ library
                    Pipeline.App.AnalysisRunner
                    Pipeline.App.CoreNLPBatch
                    Pipeline.App.CoreNLPDaemon
+                   Pipeline.App.CoreNLPRunner
                    Pipeline.Load
                    Pipeline.Operation.Concurrent
                    Pipeline.Operation.DB

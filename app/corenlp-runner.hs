@@ -4,11 +4,16 @@ import           Control.Lens                      ((^.))
 import qualified Options.Applicative          as O
 import           System.Environment                (getArgs)
 --
+import           Pipeline.App.CoreNLPRunner        (runCoreNLP)
 import           Pipeline.Load
+import           Pipeline.Type                     (SourceConstraint(..),tempPC)
 import           Pipeline.Util                     (digitsToUTC)
 
 main :: IO ()
 main = do
   [t1,t2] <- getArgs
-  print ((digitsToUTC t1),(digitsToUTC t2))
-  putStrLn "CoreNLP Runner"
+  let mbtime = digitsToUTC t1
+      metime = digitsToUTC t2
+      defaultSC = SourceConstraint Nothing mbtime metime
+
+  runCoreNLP tempPC defaultSC
