@@ -34,6 +34,7 @@ getHashByTime cfg time = do
 
 whatConst :: SourceConstraint -> String
 whatConst sc
+  | (isJust (_source sc)) && (isJust (_bTime sc)) && (isJust (_eTime sc))       = "SrcAndBetTime"
   | (isNothing (_source sc)) && (isJust (_bTime sc)) && (isJust (_eTime sc))    = "BetweenTime"
   | (isJust (_source sc)) && (isNothing (_bTime sc)) && (isNothing (_eTime sc)) = "Source"
   | otherwise                                                                   = "Not Supported"
@@ -42,9 +43,10 @@ getRSSArticleBy :: PathConfig -> SourceConstraint -> IO [Maybe (Ar.RSSArticleH,I
 getRSSArticleBy cfg sc = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- case (whatConst sc) of
-                "BetweenTime" -> runQuery conn (queryRSSArticleBetweenTime (fromJust $ _bTime sc) (fromJust $ _eTime sc))
-                "Source"      -> getRSSArticleBySource conn (T.unpack $ fromJust $ _source sc)
-                otherwise     -> return []
+                "SrcAndBetTime" -> runQuery conn (queryRSSArticleBySourceAndBetTime (T.unpack $ fromJust $ _source sc) (fromJust $ _bTime sc) (fromJust $ _eTime sc))
+                "BetweenTime"   -> runQuery conn (queryRSSArticleBetweenTime (fromJust $ _bTime sc) (fromJust $ _eTime sc))
+                "Source"        -> getRSSArticleBySource conn (T.unpack $ fromJust $ _source sc)
+                otherwise       -> return []
   result <- flip mapM articles $ \x -> do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         src = T.unpack $ Ar._source x

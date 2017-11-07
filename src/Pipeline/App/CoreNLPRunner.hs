@@ -31,9 +31,5 @@ runCoreNLP cfg sc = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    forever $ do
-      forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg sc
-      putStrLn "Waiting next run..."
-      let sec = 1000000 in threadDelay (60*sec)
-
+    runCoreNLPforRSS pp cfg sc
   closeConnection conn
