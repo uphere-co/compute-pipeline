@@ -124,6 +124,13 @@ queryRSSArticleBySourceAndTime src time = proc () -> do
   restrict -< pgUTCTime time .<= (safeCoerceToRep $ A._created r)
   returnA -< r
 
+queryRSSArticleBySourceAndBetTime :: String -> UTCTime -> UTCTime -> Query (To Column (A.RSSArticle))
+queryRSSArticleBySourceAndBetTime src time1 time2 = proc () -> do
+  r <- A.queryAll -< ()
+  restrict -< A._source r .== (constant (T.pack src))
+  restrict -< ((pgUTCTime time1 .<= (safeCoerceToRep $ A._created r)) .&& ((safeCoerceToRep $ A._created r) .<= pgUTCTime time2))
+  returnA -< r
+  
 queryRSSArticleByHash :: ByteString -> Query (To Column (A.RSSArticle))
 queryRSSArticleByHash hsh = proc () -> do
   r <- A.queryAll -< ()
