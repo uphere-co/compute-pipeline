@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Main where
 
 import           Control.Lens               ((^.))
@@ -12,5 +10,5 @@ import           Pipeline.Type              (configpath,progOption)
 main :: IO ()
 main = do
   acfg <- O.execParser progOption
-  cfg <- (\case {Left err -> error err;Right c -> return c;}) =<< loadConfigFile (acfg ^. configpath)
+  cfg <- loadConfigFile (acfg ^. configpath)
   runDaemon cfg

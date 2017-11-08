@@ -1,4 +1,4 @@
-module Pipeline.App.CoreNLPDaemon where
+module Pipeline.App.CoreNLPRunner where
 
 import           Control.Concurrent                (threadDelay)
 import           Control.Lens                      ((&),(^.),(.~))
@@ -18,10 +18,8 @@ import           Pipeline.Operation.DB             (closeConnection,getConnectio
 import           Pipeline.Run.CoreNLP              (runCoreNLPforRSS)
 import           Pipeline.Type                     (SourceConstraint(..))
 
-srcOnlyConst src sec = SourceConstraint (Just (T.pack $ src ++ "/" ++ sec)) Nothing Nothing
-
-runDaemon :: PathConfig -> IO ()
-runDaemon cfg = do
+runCoreNLP :: PathConfig -> SourceConstraint -> IO ()
+runCoreNLP cfg sc = do
   clspath <- getEnv "CLASSPATH"
   conn <- getConnection (cfg ^. dbstring)
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
@@ -33,9 +31,5 @@ runDaemon cfg = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    forever $ do
-      forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (srcOnlyConst src sec)
-      putStrLn "Waiting next run..."
-      let sec = 1000000 in threadDelay (60*sec)
-
+    runCoreNLPforRSS pp cfg sc
   closeConnection conn

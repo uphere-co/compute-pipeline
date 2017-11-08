@@ -26,7 +26,8 @@ import           Data.Text                        (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
 import           Data.Time.Calendar               (Day)
-import           Data.Time.Format                 (defaultTimeLocale, formatTime)
+import           Data.Time.Clock                  (UTCTime)
+import           Data.Time.Format                 (defaultTimeLocale, formatTime, parseTimeM)
 import           Data.Tree
 import           Language.Java         as J
 import           Options.Applicative
@@ -77,8 +78,10 @@ doesHashNameFileExistInPrefixSubDirs fp = do
   b <- doesFileExist (storepath </> prefix </> hsh)
   return b
 
-bstrHashToB16 :: ByteString -> String
-bstrHashToB16 bstr = (BL8.unpack . BL8.fromStrict . B16.encode) bstr
-
 unB16 :: String -> ByteString
 unB16 = fst . B16.decode . BL8.toStrict . BL8.pack
+
+
+digitsToUTC :: String -> Maybe UTCTime
+digitsToUTC str = parseTimeM True defaultTimeLocale "%Y%m%d" str
+  

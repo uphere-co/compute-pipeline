@@ -20,6 +20,7 @@ import qualified DB.Schema.NewsAPI.Article             as Ar
 import qualified DB.Schema.RSS.Article                 as RAr
 import           DB.Type
 import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
+import           NLP.Shared.Type
 --
 
 
@@ -28,11 +29,27 @@ data ProgOption = ProgOption { _configpath :: FilePath
 
 makeLenses ''ProgOption
 
+data CoreNLPRunOption = CoreNLPRunOption
+  { _configpath' :: FilePath
+  , _btime       :: String
+  , _etime       :: String
+  } deriving Show
+
+makeLenses ''CoreNLPRunOption
+
 pOptions :: Parser ProgOption
 pOptions = ProgOption <$> strOption (long "config" <> short 'c' <> help "Config JSON path")
 
+cOptions :: Parser CoreNLPRunOption
+cOptions = CoreNLPRunOption <$> strOption (long "config" <> short 'c' <> help "Config JSON path")
+                            <*> strOption (long "btime" <> short 'b' <> help "Begin time")
+                            <*> strOption (long "etime" <> short 'e' <> help "End time")
+
 progOption :: ParserInfo ProgOption 
 progOption = info pOptions (fullDesc <> progDesc "NLP Pipeline")
+
+corenlpRunOption :: ParserInfo CoreNLPRunOption
+corenlpRunOption = info cOptions (fullDesc <> progDesc "CoreNLP Run")
 
 data TaggedResult = TaggedResult { resultSUTime :: T.ListTimex
                                  , resultNER :: [(Int,Int,String)]
@@ -77,3 +94,8 @@ mkRSSAnalysisDBInfo das article =
 nominalDay :: NominalDiffTime
 nominalDay = 86400
 
+data SourceConstraint = SourceConstraint
+  { _source :: Maybe Text
+  , _bTime  :: Maybe UTCTime
+  , _eTime  :: Maybe UTCTime
+  } deriving (Show)

@@ -41,5 +41,9 @@ getFileListRecursively fp = do
   let filelist = sort . toList $ dirTree list'
   return filelist
 
-loadConfigFile :: FilePath -> IO (Either String PathConfig)
-loadConfigFile fp = A.eitherDecode' <$> BL.readFile fp
+loadConfigFile :: FilePath -> IO (PathConfig)
+loadConfigFile fp = do
+  epc <- A.eitherDecode' <$> BL.readFile fp
+  case epc of
+    Left err -> error err;
+    Right pc -> return pc;
