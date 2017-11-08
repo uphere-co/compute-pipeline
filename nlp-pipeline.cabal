@@ -127,6 +127,7 @@ executable corenlp-batch
                        data-default,
                        jvm,
                        lens,
+                       optparse-applicative,
                        --
                        HCoreNLP,
                        --

@@ -4,18 +4,18 @@ module Main where
 
 import           Control.Lens                      ((^.))
 import qualified Options.Applicative          as O
-import           System.Environment                (getArgs)
 --
 import           Pipeline.App.CoreNLPRunner        (runCoreNLP)
 import           Pipeline.Load
-import           Pipeline.Type                     (SourceConstraint(..),tempPC)
+import           Pipeline.Type                     (SourceConstraint(..),btime,configpath',etime,corenlpRunOption)
 import           Pipeline.Util                     (digitsToUTC)
 
 main :: IO ()
 main = do
-  [t1,t2] <- getArgs
-  let mbtime = digitsToUTC t1
-      metime = digitsToUTC t2
+  acfg <- O.execParser corenlpRunOption
+  cfg <- loadConfigFile (acfg ^. configpath')
+  let mbtime = digitsToUTC (acfg ^. btime)
+      metime = digitsToUTC (acfg ^. etime)
       defaultSC = SourceConstraint (Just "reuters/Archive") mbtime metime
 
-  runCoreNLP tempPC defaultSC
+  runCoreNLP cfg defaultSC
