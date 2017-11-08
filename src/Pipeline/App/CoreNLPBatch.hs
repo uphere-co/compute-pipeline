@@ -1,9 +1,4 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell     #-}
-{-# LANGUAGE TupleSections       #-}
 
 module Pipeline.App.CoreNLPBatch where
 
@@ -14,9 +9,13 @@ import           System.Process                               (spawnProcess,wait
 import           NewsAPI.Type
 --
 
+
+dateRanges = [ [(y++"0101",y++"0430"),(y++"0501",y++"0831"),(y++"0901",y++"1231")] |
+               y <- ["2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017"] ]
+
 batchCoreNLP :: IO ()
 batchCoreNLP = do
-  phs <- forM [("20160101","20160430"),("20160501","20160831"),("20160901","20161231")] $ \(n1,n2) -> do
-    spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n1,n2]
-  forM_ phs $ \ph -> waitForProcess ph
-  
+  forM_ dateRanges $ \dateRange -> do
+    phs <- forM dateRange $ \(n1,n2) -> do
+      spawnProcess "./dist/build/corenlp-runner/corenlp-runner" [n1,n2]
+    forM_ phs $ \ph -> waitForProcess ph
