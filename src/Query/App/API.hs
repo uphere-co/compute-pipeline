@@ -138,7 +138,7 @@ getNDayAnalyses conn txt n = do
 type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "rssarticle" :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
-         :<|> "recentarb" :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+         :<|> "recentarb" :> Capture "n" Int :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
@@ -254,11 +254,12 @@ filterARB n arbs =
 
 
 getARB :: TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
+       -> Int
        -> Handler [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
-getARB arbs = do
+getARB arbs i = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
-  let n = 1000
-      result = take n arbs1
+  let n = 100
+      result = take n (drop (n*i) arbs1)
   liftIO $ mapM_ print (take 3 result)
   return result
