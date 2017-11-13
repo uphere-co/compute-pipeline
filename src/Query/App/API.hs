@@ -30,6 +30,7 @@ import qualified Data.Text                  as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
 import           Database.PostgreSQL.Simple        (Connection)
 import           DB.Operation                      (getRSSAnalysisBySourceAndTime,getRSSArticleBySourceAndTime)
+import           DB.Util                           (bstrHashToB16)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.Cors
@@ -49,7 +50,6 @@ import           WikiEL.Type                       (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Type
-import           Pipeline.Util                     (bstrHashToB16)
 
 
 --

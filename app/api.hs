@@ -17,7 +17,7 @@ import           Query.Type
 main :: IO ()
 main = do
   acfg <- O.execParser progOption
-  cfg <- (\case {Left err -> error err;Right c -> return c;}) =<< loadConfigFile (acfg ^. configpath)
+  cfg <- loadConfigFile (acfg ^. configpath)
   conn <- getConnection (cfg ^. dbstring)
   let prt = acfg ^. port
   run conn cfg prt
