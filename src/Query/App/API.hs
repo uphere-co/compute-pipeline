@@ -23,7 +23,7 @@ import           Data.Function                     (on)
 import           Data.Hashable
 -- import           Data.HashSet                      (HashSet)
 -- import qualified Data.HashSet               as HS
-import           Data.List                         (groupBy,sortBy,sortOn)
+import           Data.List                         (groupBy,notElem,sortBy,sortOn)
 import           Data.Maybe                        (catMaybes)
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T
@@ -62,25 +62,35 @@ instance Hashable ARB
 instance Hashable (PrepOr ARB)
 
 
-updateARB :: PathConfig -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))] -> IO ()
-updateARB cfg arbs = do
+updateARB :: PathConfig
+          -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+          -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+          -> IO ()
+updateARB cfg arbs arbsfiltered = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
   forever $ do
     arbs' <- readTVarIO arbs
-    let cfps = map fst arbs'
+    arbsfiltered' <- readTVarIO arbsfiltered
+    let cfps = map fst (arbs' ++ arbsfiltered')
     fps_arb <- getFileListRecursively arbpath
     fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath
     let newarbs' = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot) && (not (x `elem` cfps))) fps_arb
 
     newarbs'' <- forM newarbs' $ \fp -> do
       bstr <- B8.readFile fp
-      return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
+      return $ (,) <$> Just fp <*> A.decode' (BL.fromStrict bstr)
     let newarbs = catMaybes newarbs''
+        newarbs_filter_pass = filterARB maxN newarbs
+        newarbs_filter_fail = filter (\a -> a `notElem` newarbs_filter_pass) newarbs
     putStrLn ("number of new A-R-Bs is " ++ show (length newarbs))
     if (not $ null newarbs)
-      then atomically (writeTVar arbs (arbs' ++ newarbs))
-      else atomically (writeTVar arbs arbs')
+      then do
+      atomically (writeTVar arbs (newarbs_filter_pass ++ arbs'))
+      atomically (writeTVar arbsfiltered (newarbs_filter_fail ++ arbsfiltered'))
+      else do
+      atomically (writeTVar arbs arbs')
+      atomically (writeTVar arbsfiltered arbsfiltered')
     let sec = 1000000 in threadDelay (10*sec)
 
 
@@ -93,7 +103,7 @@ loadExistingARB cfg  = do
   let fps = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot)) fps_arb
   forM fps $ \fp -> do
     bstr <- B8.readFile fp
-    return $ (,) <$> Just fp <*> A.decode (BL.fromStrict bstr)
+    return $ (,) <$> Just fp <*> A.decode' (BL.fromStrict bstr)
 
 
 oneDayArticles :: Connection -> Text -> IO [Ar.RSSArticleH]
@@ -133,6 +143,8 @@ type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Tex
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
 
+maxN = 10000
+
 run :: Connection -> PathConfig -> Int -> IO ()
 run conn cfg port = do
   let settings =
@@ -141,10 +153,16 @@ run conn cfg port = do
         defaultSettings
   let arbstore = (_arbstore cfg)
   arbs <- newTVarIO []
-  exstarbs <- loadExistingARB cfg -- arbstore
+  arbsfiltered <- newTVarIO []
+  mexstarbs <- loadExistingARB cfg -- arbstore
+  let exstarbs = catMaybes mexstarbs
+      exstarbs_filter_pass = filterARB maxN exstarbs
+      exstarbs_filter_fail = filter (\a -> a `notElem` exstarbs_filter_pass) exstarbs
   putStrLn ("number of existing A-R-Bs is " ++ show (length exstarbs))
-  atomically (writeTVar arbs (catMaybes exstarbs))
-  void $ forkIO $ updateARB cfg {- arbstore  -} arbs
+  atomically (writeTVar arbs exstarbs_filter_pass)
+  atomically (writeTVar arbsfiltered exstarbs_filter_fail)
+  putStrLn "Loading is completed."
+  void $ forkIO $ updateARB cfg {- arbstore  -} arbs arbsfiltered
   runSettings settings =<< (mkApp conn cfg arbs)
 
 
@@ -241,6 +259,6 @@ getARB arbs = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
   let n = 1000
-      result = filterARB n arbs1
+      result = take n arbs1
   liftIO $ mapM_ print (take 3 result)
   return result
