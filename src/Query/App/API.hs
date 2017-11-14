@@ -63,8 +63,8 @@ instance Hashable (PrepOr ARB)
 
 
 updateARB :: PathConfig
-          -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
-          -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+          -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+          -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
           -> IO ()
 updateARB cfg arbs arbsfiltered = do
   let arbpath = cfg^.arbstore
@@ -72,14 +72,21 @@ updateARB cfg arbs arbsfiltered = do
   forever $ do
     arbs' <- readTVarIO arbs
     arbsfiltered' <- readTVarIO arbsfiltered
-    let cfps = map fst (arbs' ++ arbsfiltered')
+    let cfps = map (^._1) (arbs' ++ arbsfiltered')
     fps_arb <- getFileListRecursively arbpath
     fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath
     let newarbs' = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot) && (not (x `elem` cfps))) fps_arb
 
     newarbs'' <- forM newarbs' $ \fp -> do
       bstr <- B8.readFile fp
-      return $ (,) <$> Just fp <*> A.decode' (BL.fromStrict bstr)
+      let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
+      let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssAnalysisList
+      (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\sfp -> try $ B8.readFile (T.unpack sfp)) sfps
+      let sbstrs = rights ebstrs
+      mitem <- case sbstrs of
+                 []   -> return Nothing
+                 x:xs -> let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) x in return mitem
+      return $ (,,) <$> Just fp <*> A.decode' (BL.fromStrict bstr) <*> (Just mitem)
     let newarbs = catMaybes newarbs''
         newarbs_filter_pass = filterARB maxN newarbs
         newarbs_filter_fail = filter (\a -> a `notElem` newarbs_filter_pass) newarbs
@@ -94,7 +101,7 @@ updateARB cfg arbs arbsfiltered = do
     let sec = 1000000 in threadDelay (10*sec)
 
 
-loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
 loadExistingARB cfg  = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
@@ -103,7 +110,14 @@ loadExistingARB cfg  = do
   let fps = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot)) fps_arb
   forM fps $ \fp -> do
     bstr <- B8.readFile fp
-    return $ (,) <$> Just fp <*> A.decode' (BL.fromStrict bstr)
+    let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
+    let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssAnalysisList
+    (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\sfp -> try $ B8.readFile (T.unpack sfp)) sfps
+    let sbstrs = rights ebstrs
+    mitem <- case sbstrs of
+               []   -> return Nothing
+               x:xs -> let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) x in return mitem
+    return $ (,,) <$> Just fp <*> A.decode' (BL.fromStrict bstr) <*> (Just mitem)
 
 
 oneDayArticles :: Connection -> Text -> IO [Ar.RSSArticleH]
@@ -138,7 +152,7 @@ getNDayAnalyses conn txt n = do
 type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "rssarticle" :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
-         :<|> "recentarb" :> Capture "n" Int :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+         :<|> "recentarb" :> Capture "n" Int :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
@@ -168,14 +182,14 @@ run conn cfg port = do
 
 mkApp :: Connection
       -> PathConfig
-      -> TVar [(FilePath, (UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+      -> TVar [(FilePath, (UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
       -> IO Application
 mkApp conn cfg arbs = return $ simpleCors (serve recentarticleAPI (server conn cfg arbs))
 
 
 server :: Connection
        -> PathConfig
-       -> TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
+       -> TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
        -> Server API
 server conn cfg arbs = (getArticlesBySrc conn cfg) :<|> (getRSSArticle conn cfg) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
@@ -235,31 +249,31 @@ isSubjectBlackListed x = x ^.subjectA._2.to T.toLower `elem` blackList
 
 
 filterARB :: Int
-          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
-          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
 filterARB n arbs =
-  let arbs0 = map (\(f,(t,(xs,ner)))-> (f,(t,(filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs,ner)))) arbs
+  let arbs0 = map (\(f,(t,(xs,ner)),mitem)-> (f,(t,(filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs,ner)),mitem)) arbs
       -- we start with two times more sets considering filter-out items.
-      arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs0
-      templst = do (f,(t,(arbs'',ner))) <- arbs1
+      arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_),_) -> ct)) arbs0
+      templst = do (f,(t,(arbs'',ner)),mitem) <- arbs1
                    arb <- arbs''
-                   return (hash arb,f,t,(arb,ner))
-      templst1 = (map (\(_h,t,f,x) -> ((t,f),x)) . map head . groupBy ((==) `on` (^._1)) . sortBy (compare `on` (^._1))) templst
-      grouper lst = let ((t,f),(_,ner)) = head lst
+                   return (f,t,(arb,ner),mitem)
+      templst1 = (map (\(f,t,x,mitem) -> ((f,t),x,mitem)) . map head . groupBy ((==) `on` (^._1)) . sortBy (compare `on` (^._1))) templst
+      grouper lst = let ((f,t),(_,ner),mitem) = head lst
                         rs = map (^._2._1) lst
-                    in (t,(f,(rs,ner)))
+                    in (f,(t,(rs,ner)),mitem)
       arbs2 = (map grouper . groupBy ((==) `on` (^._1)) .  sortBy (compare `on` (^._1))) templst1
-  in take n $ sortBy (flip compare `on` (\(_,(ct,_)) -> ct)) arbs2
+  in take n $ sortBy (flip compare `on` (\(_,(ct,_),_) -> ct)) arbs2
 
 
 
-getARB :: TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])))]
+getARB :: TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
        -> Int
-       -> Handler [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])))]
+       -> Handler [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
 getARB arbs i = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
-  let n = 100
+  let n = 1000
       result = take n (drop (n*i) arbs1)
   liftIO $ mapM_ print (take 3 result)
   return result
