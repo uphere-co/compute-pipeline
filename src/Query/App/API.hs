@@ -41,7 +41,7 @@ import           System.IO
 import qualified DB.Schema.RSS.Analysis        as An
 import qualified DB.Schema.RSS.Article         as Ar
 import           NLP.Shared.Type                   (ARB(..),PrepOr(..),RecentAnalysis(..),RecentArticle(..)
-                                                   ,PathConfig(..),ItemRSS,link
+                                                   ,PathConfig(..),EventClass(..),ItemRSS,link
                                                    ,arbstore,mgdotfigstore
                                                    ,objectB,predicateR,subjectA,po_main)
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
@@ -61,7 +61,7 @@ instance Hashable ARB
 
 instance Hashable (PrepOr ARB)
 
-type EventCard = (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)],Text)), Maybe ItemRSS)
+type EventCard = (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)],[EventClass])), Maybe ItemRSS)
 
 
 updateARB :: PathConfig
