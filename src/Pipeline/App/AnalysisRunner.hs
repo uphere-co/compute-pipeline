@@ -23,7 +23,7 @@ import           DB.Util                                (b16ToBstrHash)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NewsAPI.DB
-import           NLP.Shared.Type                        (PathConfig
+import           NLP.Shared.Type                        (PathConfig,EventClass(..)
                                                         ,arbstore,corenlpstore,lexconfigpath
                                                         ,mgstore,mgdotfigstore)
 import           NLP.Type.CoreNLP
@@ -75,17 +75,17 @@ listOPEC       = [ "OPEC" ]
 listMarketData = ["refinery margin","refinery ultilization","refinery ultilisation","crack spreads","oil crack", "oil rig", "OPEC"
                  ,"reference bascket","oil option","oil future","light crude","sour crude","sweet crude"]
 
-evtClass :: [Text] -> Text
+evtClass :: [Text] -> [EventClass]
 evtClass txts =
   let lowtxt = T.intercalate " " $ map T.toLower txts
-      isOilDemand = if (any (flip T.isInfixOf lowtxt) listOilDemand) then Just "OilDemand" else Nothing
-      isTanker = if (any (flip T.isInfixOf lowtxt) listTanker) then Just "Tanker" else Nothing
-      isStockMov = if (any (flip T.isInfixOf lowtxt) listStockMov) then Just "StockMovement" else Nothing
-      isOilTrade = if (any (flip T.isInfixOf lowtxt) listOilTrade) then Just "OilTrade" else Nothing
-      isShaleOil = if (any (flip T.isInfixOf lowtxt) listShaleOil) then Just "ShaleOil" else Nothing
-      isMarketData = if (any (flip T.isInfixOf lowtxt) listMarketData) then Just "MarketData" else Nothing
-      isOPEC = if (any (flip T.isInfixOf lowtxt) listOPEC) then Just "OPEC" else Nothing
-  in T.intercalate "/" $ catMaybes [isOilDemand,isTanker,isStockMov,isOilTrade,isShaleOil,isMarketData,isOPEC]
+      isOilDemand = if (any (flip T.isInfixOf lowtxt) listOilDemand) then Just (EventClass "Commodities" "Energy" (Just "OilDemand"))     else Nothing
+      isTanker = if (any (flip T.isInfixOf lowtxt) listTanker)       then Just (EventClass "Commodities" "Energy" (Just "Tanker"))        else Nothing
+      isStockMov = if (any (flip T.isInfixOf lowtxt) listStockMov)   then Just (EventClass "Commodities" "Energy" (Just "StockMovement")) else Nothing
+      isOilTrade = if (any (flip T.isInfixOf lowtxt) listOilTrade)   then Just (EventClass "Commodities" "Energy" (Just "OilTrade"))      else Nothing
+      isShaleOil = if (any (flip T.isInfixOf lowtxt) listShaleOil)   then Just (EventClass "Commodities" "Energy" (Just "ShaleOil"))      else Nothing
+      isMarketData = if (any (flip T.isInfixOf lowtxt) listMarketData) then Just (EventClass "Commodities" "Energy" (Just "MarketData"))  else Nothing
+      isOPEC = if (any (flip T.isInfixOf lowtxt) listOPEC)           then Just (EventClass "Commodities" "Energy" (Just "OPEC"))          else Nothing
+  in catMaybes [isOilDemand,isTanker,isStockMov,isOilTrade,isShaleOil,isMarketData,isOPEC]
 
 mkMGs :: Connection
       -> AnalyzePredata
