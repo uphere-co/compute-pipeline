@@ -51,7 +51,7 @@ getRSSArticleBy cfg sc = do
     let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
         src = T.unpack $ Ar._source x
         fileprefix = (cfg ^. rssstore) </> src
-        filepath = fileprefix </> itempath </> (take 2 hsh) </> hsh
+        filepath = fileprefix </> itempath {- </> (take 2 hsh) -} </> hsh
     fchk <- doesFileExist filepath
     case fchk of
       True -> do

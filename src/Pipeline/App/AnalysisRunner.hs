@@ -64,26 +64,28 @@ listAccidentAndTension = ["North Korea","Kim Jung Eun"]
 
 
 
-listOilDemand = [" naphtha"," gasoil"," gasoline"," LNG"," LPG","Fuel Oil"," brent","natural gas","crude oil"]
+listOilDemand = [" naphtha"," gasoil"," gasoline"," LNG"," LPG","Fuel Oil"," brent","natural gas","crude oil" , "oil rig"]
 listTanker = ["tanker spot freight rates","VLCC","suezmax","aframax","vessel availability","clean tanker","dirty tanker"
              ,"spot fixture","OPEC sailings","oil arrivals","tanker market","tanker freight rate","MR tanker","medium-range tanker","VGO"]
 listStockMov = ["oil stock","gas stock","LNG stock","LPG stock","naphtha stock","gasoil stock","gasoline stock","oil inventory"
                ,"gas inventory","LNG inventory","LPG inventory","crude stock","brent stock"]
 listOilTrade = ["oil import","oil export","crude supplier","refinery throughput","lukoil system"]
 listShaleOil = ["shale oil","shale gas"]
-listMarketData = ["refinery margin","refinery ultilization","refinery ultilisation","crack spreads","oil crack"
+listOPEC       = [ "OPEC" ]
+listMarketData = ["refinery margin","refinery ultilization","refinery ultilisation","crack spreads","oil crack", "oil rig", "OPEC"
                  ,"reference bascket","oil option","oil future","light crude","sour crude","sweet crude"]
 
 evtClass :: [Text] -> Text
 evtClass txts =
   let lowtxt = T.intercalate " " $ map T.toLower txts
-      isOilDemand = if (any (flip T.isInfixOf lowtxt) listOilDemand) then Just "Oil Demand" else Nothing
+      isOilDemand = if (any (flip T.isInfixOf lowtxt) listOilDemand) then Just "OilDemand" else Nothing
       isTanker = if (any (flip T.isInfixOf lowtxt) listTanker) then Just "Tanker" else Nothing
-      isStockMov = if (any (flip T.isInfixOf lowtxt) listStockMov) then Just "Stock Movement" else Nothing
-      isOilTrade = if (any (flip T.isInfixOf lowtxt) listOilTrade) then Just "Oil Trade" else Nothing
-      isShaleOil = if (any (flip T.isInfixOf lowtxt) listShaleOil) then Just "Shale Oil" else Nothing
-      isMarketData = if (any (flip T.isInfixOf lowtxt) listMarketData) then Just "Market Data" else Nothing
-  in T.intercalate "/" $ catMaybes [isOilDemand,isTanker,isStockMov,isOilTrade,isShaleOil,isMarketData]
+      isStockMov = if (any (flip T.isInfixOf lowtxt) listStockMov) then Just "StockMovement" else Nothing
+      isOilTrade = if (any (flip T.isInfixOf lowtxt) listOilTrade) then Just "OilTrade" else Nothing
+      isShaleOil = if (any (flip T.isInfixOf lowtxt) listShaleOil) then Just "ShaleOil" else Nothing
+      isMarketData = if (any (flip T.isInfixOf lowtxt) listMarketData) then Just "MarketData" else Nothing
+      isOPEC = if (any (flip T.isInfixOf lowtxt) listOPEC) then Just "OPEC" else Nothing
+  in T.intercalate "/" $ catMaybes [isOilDemand,isTanker,isStockMov,isOilTrade,isShaleOil,isMarketData,isOPEC]
 
 mkMGs :: Connection
       -> AnalyzePredata
