@@ -64,7 +64,7 @@ listAccidentAndTension = ["North Korea","Kim Jung Eun"]
 
 
 
-listOilDemand = [" naphtha"," gasoil"," gasoline"," LNG"," LPG","Fuel Oil"," brent","natural gas","crude oil" , "oil rig"]
+listOilDemand = ["naphtha"," gasoil"," gasoline"," LNG"," LPG","Fuel Oil"," brent","natural gas","crude oil" , "oil rig"]
 listTanker = ["tanker spot freight rates","VLCC","suezmax","aframax","vessel availability","clean tanker","dirty tanker"
              ,"spot fixture","OPEC sailings","oil arrivals","tanker market","tanker freight rate","MR tanker","medium-range tanker","VGO"]
 listStockMov = ["oil stock","gas stock","LNG stock","LPG stock","naphtha stock","gasoil stock","gasoline stock","oil inventory"
