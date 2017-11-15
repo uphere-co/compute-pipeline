@@ -37,8 +37,8 @@ runDaemon cfg = do
                        . (ner .~ True)
                   )
     forever $ do
-      -- forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (srcOnlyConst src sec)
-      runCoreNLPforRSS pp cfg (srcBTConst "reuters" "Archive")
+      forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (srcOnlyConst src sec)
+      -- runCoreNLPforRSS pp cfg (srcBTConst "reuters" "Archive")
       putStrLn "Waiting next run..."
       let sec = 1000000 in threadDelay (60*sec)
 

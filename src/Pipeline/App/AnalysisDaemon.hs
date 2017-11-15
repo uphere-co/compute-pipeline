@@ -51,7 +51,7 @@ coreN = 15 :: Int
 runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Text]) -> PathConfig -> String  -> IO ()
 runSRL conn apredata netagger cfg src = do
   as1b <- getNewItemsForSRL cfg src
-  let as1 = as1b -- as1a ++ as1b
+  let as1 = (take 5000 as1b) -- as1a ++ as1b
  
   loaded1 <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as1
   let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded1)
