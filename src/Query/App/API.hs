@@ -61,10 +61,12 @@ instance Hashable ARB
 
 instance Hashable (PrepOr ARB)
 
+type EventCard = (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)],Text)), Maybe ItemRSS)
+
 
 updateARB :: PathConfig
-          -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
-          -> TVar [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+          -> TVar [EventCard]
+          -> TVar [EventCard]
           -> IO ()
 updateARB cfg arbs arbsfiltered = do
   let arbpath = cfg^.arbstore
@@ -101,7 +103,7 @@ updateARB cfg arbs arbsfiltered = do
     let sec = 1000000 in threadDelay (10*sec)
 
 
-loadExistingARB :: PathConfig -> IO [Maybe (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+loadExistingARB :: PathConfig -> IO [Maybe EventCard]
 loadExistingARB cfg  = do
   let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
@@ -152,12 +154,12 @@ getNDayAnalyses conn txt n = do
 type API =    "recentarticle" :> Capture "ArSrc" T.Text :> Capture "ArSec" T.Text :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "rssarticle" :> Capture "ArHash" T.Text :> Get '[JSON] (Maybe ItemRSS)
          :<|> "recentanalysis" :> Capture "AnSource" T.Text :> Get '[JSON] [RecentAnalysis]
-         :<|> "recentarb" :> Capture "n" Int :> Get '[JSON] [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+         :<|> "recentarb" :> Capture "n" Int :> Get '[JSON] [EventCard]
 
 recentarticleAPI :: Proxy API
 recentarticleAPI = Proxy
 
-maxN = 10000
+maxN = 1000000
 
 run :: Connection -> PathConfig -> Int -> IO ()
 run conn cfg port = do
@@ -182,14 +184,14 @@ run conn cfg port = do
 
 mkApp :: Connection
       -> PathConfig
-      -> TVar [(FilePath, (UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+      -> TVar [EventCard]
       -> IO Application
 mkApp conn cfg arbs = return $ simpleCors (serve recentarticleAPI (server conn cfg arbs))
 
 
 server :: Connection
        -> PathConfig
-       -> TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+       -> TVar [EventCard]
        -> Server API
 server conn cfg arbs = (getArticlesBySrc conn cfg) :<|> (getRSSArticle conn cfg) :<|> (getAnalysesBySrc conn) :<|> (getARB arbs)
 
@@ -249,31 +251,31 @@ isSubjectBlackListed x = x ^.subjectA._2.to T.toLower `elem` blackList
 
 
 filterARB :: Int
-          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
-          -> [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+          -> [EventCard]
+          -> [EventCard]
 filterARB n arbs =
-  let arbs0 = map (\(f,(t,(xs,ner)),mitem)-> (f,(t,(filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs,ner)),mitem)) arbs
+  let arbs0 = map (\(f,(t,(xs,ner,evt)),mitem)-> (f,(t,(filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs,ner,evt)),mitem)) arbs
       -- we start with two times more sets considering filter-out items.
       arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_),_) -> ct)) arbs0
-      templst = do (f,(t,(arbs'',ner)),mitem) <- arbs1
+      templst = do (f,(t,(arbs'',ner,evt)),mitem) <- arbs1
                    arb <- arbs''
-                   return (f,t,(arb,ner),mitem)
+                   return (f,t,(arb,ner,evt),mitem)
       templst1 = (map (\(f,t,x,mitem) -> ((f,t),x,mitem)) . map head . groupBy ((==) `on` (^._1)) . sortBy (compare `on` (^._1))) templst
-      grouper lst = let ((f,t),(_,ner),mitem) = head lst
+      grouper lst = let ((f,t),(_,ner,evt),mitem) = head lst
                         rs = map (^._2._1) lst
-                    in (f,(t,(rs,ner)),mitem)
+                    in (f,(t,(rs,ner,evt)),mitem)
       arbs2 = (map grouper . groupBy ((==) `on` (^._1)) .  sortBy (compare `on` (^._1))) templst1
   in take n $ sortBy (flip compare `on` (\(_,(ct,_),_) -> ct)) arbs2
 
 
 
-getARB :: TVar [(FilePath, (UTCTime, ([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+getARB :: TVar [EventCard]
        -> Int
-       -> Handler [(FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)])), Maybe ItemRSS)]
+       -> Handler [EventCard]
 getARB arbs i = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
-  let n = 1000
+  let n = 100
       result = take n (drop (n*i) arbs1)
   liftIO $ mapM_ print (take 3 result)
   return result
