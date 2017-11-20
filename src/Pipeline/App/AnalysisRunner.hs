@@ -31,8 +31,7 @@ import           NLP.Type.NamedEntity                   (NamedEntityClass)
 import           NLP.Type.TagPos                        (leftTagPos)
 import           SRL.Analyze
 import           SRL.Analyze.ARB                        (mkARB)
-import           SRL.Analyze.Match                      (meaningGraph)
-import           SRL.Analyze.Match.MeaningGraph         (changeMGText,tagMG)
+import           SRL.Analyze.Match.MeaningGraph         (changeMGText,meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure          (docStructure,mkWikiList)
 import           SRL.Analyze.Type
 -- import qualified SRL.Analyze.WikiEL         as SRLWiki
