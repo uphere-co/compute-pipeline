@@ -82,7 +82,7 @@ updateARB cfg arbs arbsfiltered = do
     newarbs'' <- forM newarbs' $ \fp -> do
       bstr <- B8.readFile fp
       let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
-      let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssAnalysisList
+      let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",(take 2 hsh),hsh]) rssAnalysisList
       (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\sfp -> try $ B8.readFile (T.unpack sfp)) sfps
       let sbstrs = rights ebstrs
       mitem <- case sbstrs of
@@ -113,7 +113,7 @@ loadExistingARB cfg  = do
   forM fps $ \fp -> do
     bstr <- B8.readFile fp
     let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
-    let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssAnalysisList
+    let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",(take 2 hsh),hsh]) rssAnalysisList
     (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\sfp -> try $ B8.readFile (T.unpack sfp)) sfps
     let sbstrs = rights ebstrs
     mitem <- case sbstrs of
@@ -198,7 +198,7 @@ server conn cfg arbs = (getArticlesBySrc conn cfg) :<|> (getRSSArticle conn cfg)
 
 getArticlesBySrc :: Connection -> PathConfig -> T.Text -> T.Text -> T.Text -> Handler (Maybe ItemRSS)
 getArticlesBySrc conn cfg src sec hsh = do
-  let filepath = (T.intercalate "/" [T.pack (_rssstore cfg),src,sec,"RSSItem",hsh])
+  let filepath = (T.intercalate "/" [T.pack (_rssstore cfg),src,sec,"RSSItem",(take 2 hsh),hsh])
   ebstr <- liftIO $ try $ B8.readFile (T.unpack filepath)
   case ebstr of
     Left (_e :: IOException) -> return Nothing
@@ -208,7 +208,7 @@ getArticlesBySrc conn cfg src sec hsh = do
 
 getRSSArticle :: Connection -> PathConfig -> T.Text -> Handler (Maybe ItemRSS)
 getRSSArticle conn cfg hsh = do
-  let fps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",hsh]) rssAnalysisList
+  let fps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",(take 2 hsh),hsh]) rssAnalysisList
   (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\fp -> try $ B8.readFile (T.unpack fp)) fps
   let bstrs = rights ebstrs
   case bstrs of
