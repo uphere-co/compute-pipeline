@@ -9,6 +9,7 @@ import           Control.Monad.IO.Class     (liftIO)
 import           Control.Monad.State.Lazy
 import           Control.Monad.Trans.Either (EitherT(..))
 import           Data.Either                (isRight)
+import           Data.Maybe                 (catMaybes)
 import           Data.Text                  (Text)
 import qualified Data.Text            as T
 --
@@ -31,11 +32,16 @@ loadForest companies = do
 
 printAll cfg = do
   forest <- loadForest =<< loadCompanies
-  items <- loadAllRSSItems cfg
-  forM_ items $ \item -> do
+  items <- fmap (take 10000) $ loadAllRSSItems cfg
+  mfitems <- forM items $ \item -> do
     let txts = T.words $ (item ^. description)
         s = runState (runEitherT (many $ pTreeAdvG forest)) txts
-    when (isRight (fst s)) $ do
+    if (isRight (fst s))
+      then do
       let Right s' = fst s
-      when (length s' > 0) $ do
-        print s'
+      if (length s' > 0)
+        then return (Just item)
+        else return Nothing
+      else return Nothing
+  print $ length items
+  print $ length (catMaybes mfitems)
