@@ -12,5 +12,3 @@ main = do
   acfg <- O.execParser progOption
   cfg <- loadConfigFile (acfg ^. configpath)
   printAll cfg
-
-
