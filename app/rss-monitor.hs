@@ -11,6 +11,6 @@ main :: IO ()
 main = do
   acfg <- O.execParser progOption
   cfg <- loadConfigFile (acfg ^. configpath)
-  print cfg
---  print "RSS-Monitor"
+  printAll cfg
+
 
