@@ -2,13 +2,14 @@
 
 module Pipeline.App.RSSMonitor where
 
-import           Control.Applicative       (many)
-import           Control.Lens              ((^.))
-import           Control.Monad             (forM_)
-import           Control.Monad.IO.Class    (liftIO)
+import           Control.Applicative        (many)
+import           Control.Lens               ((^.))
+import           Control.Monad              (forM_)
+import           Control.Monad.IO.Class     (liftIO)
 import           Control.Monad.State.Lazy
 import           Control.Monad.Trans.Either (EitherT(..))
-import           Data.Text                 (Text)
+import           Data.Either                (isRight)
+import           Data.Text                  (Text)
 import qualified Data.Text            as T
 --
 import           NER
@@ -32,10 +33,9 @@ printAll cfg = do
   forest <- loadForest =<< loadCompanies
   items <- loadAllRSSItems cfg
   forM_ items $ \item -> do
-    print (item ^. description)
-
-parseTest = do
-  forest <- loadForest =<< loadCompanies
-  let txts = T.words testSen1
-  let s = runState (runEitherT (many $ pTreeAdvG forest)) txts
-  print s
+    let txts = T.words $ (item ^. description)
+        s = runState (runEitherT (many $ pTreeAdvG forest)) txts
+    when (isRight (fst s)) $ do
+      let Right s' = fst s
+      when (length s' > 0) $ do
+        print s'
