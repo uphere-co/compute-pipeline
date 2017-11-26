@@ -275,7 +275,7 @@ getARB :: TVar [EventCard]
 getARB arbs i = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
-  let n = 10000
+  let n = 500
       result = take n (drop (n*i) arbs1)
   liftIO $ mapM_ print (take 3 result)
   return result
