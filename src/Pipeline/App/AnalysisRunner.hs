@@ -46,13 +46,13 @@ import           Pipeline.Util
 
 
 isSRLFiltered sstr mg =
- let a = numberOfPredicate sstr
-     b = numberOfMGVerbPredicate mg
-     mgraph = getGraphFromMG mg
-     (c,d) = case mgraph of
-               Nothing -> (-1,-1)
-               Just gr -> (maxConnectedNodes gr, numberOfIsland gr)
- in ({- (a == b) &&  -}(c >=4) && (d < 3))
+  let a = numberOfPredicate sstr
+      b = numberOfMGVerbPredicate mg
+      mgraph = getGraphFromMG mg
+      (c,d) = case mgraph of
+                Nothing -> (-1,-1)
+                Just gr -> (maxConnectedNodes gr, numberOfIsland gr)
+  in ({- (a == b) &&  -}(c >=4) && (d < 3))
 
 
 
@@ -107,7 +107,7 @@ mkMGs conn apredata netagger cfg fp tm article = do
       mgs = map (meaningGraph apredata) sstrs
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
       wikilsts = map mkWikiList sstrs
-      isNonFilter = False
+      isNonFilter = True -- False
   print evtcls
   putStrLn $ "Analyzing " ++ filename
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
