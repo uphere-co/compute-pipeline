@@ -4,6 +4,7 @@
 , graph-algorithms      ? <graph-algorithms>
 , HCoreNLP              ? <HCoreNLP>
 , HFrameNet             ? <HFrameNet>
+, HUKB                  ? <HUKB>
 , HWordNet              ? <HWordNet>
 , lexicon               ? <lexicon>
 , lexicon-builder       ? <lexicon-builder>
@@ -76,8 +77,14 @@ let
       "VerbNet"               = self.callPackage (import VerbNet) {};
       "wiki-ner"              = self.callPackage (import wiki-ner) {};
     };
+  ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
+  config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
+  config4 =
+    self: super: {
+      "HUKB-driver" = self.callPackage (import (HUKB + "/HUKB-driver")) {};
+    };
   newHaskellPackages = haskellPackages.override {
-    overrides = self: super: config1 self super // config2 self super;
+    overrides = self: super: config1 self super // config2 self super // config3 self super // config4 self super;
   }; 
 
   hsenv = newHaskellPackages.ghcWithPackages (p: with p; [
