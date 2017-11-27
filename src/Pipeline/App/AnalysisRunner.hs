@@ -98,8 +98,8 @@ mkMGs :: Connection
       -> IO ()
 mkMGs conn apredata netagger cfg fp tm article = do
   let filename = takeFileName fp
-      dstr = docStructure apredata netagger article
-      sstrs = catMaybes (dstr ^. ds_sentStructures)
+  dstr <- docStructure apredata netagger article
+  let sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       netags = leftTagPos (dstr^.ds_mergedtags)
       texttoken = map (_token_text) ((catMaybes . concat) mtokss)
