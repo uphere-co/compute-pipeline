@@ -5,6 +5,7 @@
 , HCoreNLP              ? <HCoreNLP>
 , HFrameNet             ? <HFrameNet>
 , HWordNet              ? <HWordNet>
+, HUKB                  ? <HUKB>
 , lexicon               ? <lexicon>
 , lexicon-builder       ? <lexicon-builder>
 , multi-word-tagger     ? <multi-word-tagger>
@@ -78,8 +79,17 @@ let
       "graph-algorithms" = self.callPackage (import graph-algorithms) {};
       "uphere-db" = self.callPackage (import uphere-db) {};
       };
+
+  ukb = import (uphere-nix-overlay + "/nix/cpp-modules/ukb.nix") { inherit stdenv fetchgit fetchurl boost; };
+
+  config3 = import (HUKB + "/HUKB-driver/config.nix") { pkgs = newpkgs; inherit uphere-nix-overlay ukb; };
+  config4 =
+    self: super: {
+      "HUKB-driver" = self.callPackage (import (HUKB + "/HUKB-driver")) {};
+    };
+
   newHaskellpkgs = haskellPackages.override {
-    overrides = self: super: config1 self super // config2 self super;
+    overrides = self: super: config1 self super // config2 self super // config3 self super // config4 self super;
   }; 
 
   hsenv = newHaskellpkgs.ghcWithPackages (p: with p; [
@@ -115,6 +125,7 @@ let
             p.HCoreNLP
             p.HCoreNLP-Proto
             p.HWordNet
+            p.HUKB-driver
             p.predicate-matrix
             p.PropBank
             p.semantic-role-labeler
