@@ -95,8 +95,8 @@ updateARB cfg arbs arbsfiltered = do
     putStrLn ("number of new A-R-Bs is " ++ show (length newarbs))
     if (not $ null newarbs)
       then do
-      atomically (writeTVar arbs (newarbs_filter_pass ++ arbs'))
-      atomically (writeTVar arbsfiltered (newarbs_filter_fail ++ arbsfiltered'))
+      atomically (writeTVar arbs (sortEventCardByTime (newarbs_filter_pass ++ arbs')))
+      atomically (writeTVar arbsfiltered (sortEventCardByTime (newarbs_filter_fail ++ arbsfiltered')))
       else do
       atomically (writeTVar arbs arbs')
       atomically (writeTVar arbsfiltered arbsfiltered')
@@ -265,8 +265,7 @@ filterARB n arbs =
                         rs = map (^._2._1) lst
                     in (f,(t,(rs,ner,evt)),mitem)
       arbs2 = (map grouper . groupBy ((==) `on` (^._1)) .  sortBy (compare `on` (^._1))) templst1
-  in take n $ sortBy (flip compare `on` (\(_,(ct,_),_) -> ct)) arbs2
-
+  in take n $ sortEventCardByTime arbs2
 
 
 getARB :: TVar [EventCard]
@@ -279,3 +278,7 @@ getARB arbs i = do
       result = take n (drop (n*i) arbs1)
   liftIO $ mapM_ print (take 3 result)
   return result
+
+sortEventCardBy f ecs = sortBy (flip compare `on` f) ecs
+
+sortEventCardByTime = sortEventCardBy (\(_,(ct,_),_) -> ct)
