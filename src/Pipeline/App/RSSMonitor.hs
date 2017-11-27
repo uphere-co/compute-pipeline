@@ -1,8 +1,10 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.App.RSSMonitor where
 
 import           Control.Applicative            (many)
+import           Control.Exception              (SomeException,try)
 import           Control.Lens                   ((&),(^.),(.~))
 import           Control.Monad                  (forM_)
 import           Control.Monad.IO.Class         (liftIO)
@@ -20,10 +22,15 @@ import           System.Environment             (getEnv)
 --
 import           CoreNLP.Simple                 (prepare)
 import           CoreNLP.Simple.Type            (constituency,lemma,ner,postagger,sutime,tokenizer,words2sentences)
+import           Lexicon.Data                   (loadLexDataConfig)
 import           NER
 import           NER.Type
-import           NLP.Shared.Type                (ItemRSS(..),PathConfig,dbstring,description,link,pubDate,title)
+import           NLP.Shared.Type                (ItemRSS(..),PathConfig,dbstring,description,lexconfigpath,link,pubDate,title)
 import           RSS.Load
+import           SRL.Analyze                    (loadConfig)
+import           SRL.Analyze.CoreNLP            (runParser)
+import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
+import           SRL.Analyze.Type               (ds_sentStructures)
 import           Text.Search.Generic.SearchTree
 import           Text.Search.ParserCustom
 import           Text.Search.SearchTree
@@ -42,14 +49,18 @@ loadForest companies = do
 
 tokenizeText = T.split (\c -> (isSpace c) || (c == '\8217'))
 
-printAll cfg = do
+printAll cfg pp = do
   companies <- loadCompanies
   let clist = concat $ map (^. alias) companies 
   forest <- loadForest clist
+  cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
+  (apredata,netagger) <- loadConfig False cfgG
   items <- fmap (take 10000) $ loadAllRSSItems cfg
   mfitems <- forM items $ \item -> do
     let txts = tokenizeText $ (item ^. description)
         s = runState (runEitherT (many $ pTreeAdvG forest)) txts
+    eprst <- try $ runParser pp (item ^. description) 
+
     if (isRight (fst s))
       then do
       let Right s' = fst s
@@ -57,11 +68,27 @@ printAll cfg = do
         then do
         print "Matched"
         print (s',item ^. description)
+        case eprst of
+          Left (e :: SomeException) -> do
+            print e
+          Right result -> do
+            dstr <- docStructure apredata netagger result
+      	    let	sstrs = catMaybes (dstr ^. ds_sentStructures)
+               	wikilsts = map mkWikiList sstrs
+            print wikilsts
         _ <- getChar
         return (Just item)
         else do
         print "Not Matched"
         print (item ^. description)
+        case eprst of
+          Left (e :: SomeException) -> do
+            print e
+          Right result -> do
+            dstr <- docStructure apredata netagger	result
+            let sstrs = catMaybes (dstr ^. ds_sentStructures)
+                wikilsts = map mkWikiList sstrs
+            print wikilsts
         _ <- getChar
         return Nothing
       else return Nothing
@@ -82,6 +109,5 @@ runWithCoreNLP cfg = do
                        . (constituency .~ True)
                        . (ner .~ True)
                   )
-    print "Test"
-    -- runCoreNLPforRSS pp cfg sc
+    printAll cfg pp
   closeConnection conn
