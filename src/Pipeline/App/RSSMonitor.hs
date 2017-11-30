@@ -24,6 +24,7 @@ import           CoreNLP.Simple                 (prepare)
 import           CoreNLP.Simple.Type            (constituency,lemma,ner,postagger,sutime,tokenizer,words2sentences)
 import           Lexicon.Data                   (loadLexDataConfig)
 import           NER
+import           NER.Load
 import           NER.Type
 import           NLP.Shared.Type                (ItemRSS(..),PathConfig,dbstring,description,lexconfigpath,link,pubDate,title)
 import           RSS.Load
@@ -38,10 +39,6 @@ import           Text.Search.SearchTree
 import           Pipeline.Operation.DB          (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP           (tameDescription)
 
-loadCompanies = do
-  nt <- loadNameTable 
-  companies <- getCompanyList nt
-  return companies
 
 loadForest companies = do
   let forest = foldr addTreeItem [] (map T.words companies)
@@ -67,7 +64,7 @@ printAll cfg pp = do
       let Right s' = fst s
       wlsts <- case eprst of
         Left (e :: SomeException) -> return []
-        Right prst -> getWikiList apredata netagger prst
+        Right prst -> getWikiList apredata netagger forest prst
       if (((length s') + (length wlsts)) > 0)
         then return (Just "Matched")
         else return Nothing
@@ -116,8 +113,8 @@ runWithCoreNLP cfg = do
     printAll cfg pp
   closeConnection conn
 
-getWikiList apredata netagger prst = do
-  dstr <- docStructure apredata netagger prst
+getWikiList apredata netagger forest prst = do
+  dstr <- docStructure apredata netagger forest prst
   let sstrs = catMaybes (dstr ^. ds_sentStructures)
       wikilsts = map mkWikiList sstrs
   return wikilsts
