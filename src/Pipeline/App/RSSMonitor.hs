@@ -32,26 +32,20 @@ import           SRL.Analyze                    (loadConfig)
 import           SRL.Analyze.CoreNLP            (runParser)
 import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
 import           SRL.Analyze.Type               (ds_sentStructures)
-import           Text.Search.Generic.SearchTree
-import           Text.Search.ParserCustom
-import           Text.Search.SearchTree
+import           Text.Search.ParserCustom       (pTreeAdvG)
 --
 import           Pipeline.Operation.DB          (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP           (tameDescription)
 
 
-loadForest companies = do
-  let forest = foldr addTreeItem [] (map T.words companies)
-  return forest
+
 
 tokenizeText = T.split (\c -> (isSpace c) || (c == '\8217'))
 
+
 printAll cfg pp = do
-  companies <- loadCompanies
-  let clist = concat $ map (^. alias) companies 
-  forest <- loadForest clist
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger) <- loadConfig False cfgG
+  (apredata,netagger,forest) <- loadConfig False cfgG
   items <- fmap (take 10000) $ loadAllRSSItems cfg
   mfitems <- forM (zip [1..] items) $ \(i,item) -> do
     print i

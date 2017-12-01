@@ -41,10 +41,7 @@ runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
   conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger) <- loadConfig False cfgG
-  companies <- loadCompanies
-  let clist = concat $ map (^. alias) companies 
-      forest = foldr addTreeItem [] (map T.words clist)
+  (apredata,netagger,forest) <- loadConfig False cfgG
   forever $ do
     -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
     forM_ rssAnalysisList $ \(src,sec,url) -> runSRL conn apredata netagger forest cfg (src ++ "/" ++ sec)
