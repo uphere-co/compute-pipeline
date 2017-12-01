@@ -12,6 +12,7 @@ import           Data.List                              (zip6)
 import           Data.Maybe
 import           Data.Text                              (Text)
 import qualified Data.Text                  as T
+import           Data.Tree                              (Forest)
 import           Database.PostgreSQL.Simple             (Connection)
 import           System.FilePath                        ((</>),takeFileName,takeBaseName)
 --
@@ -91,14 +92,15 @@ evtClass txts =
 mkMGs :: Connection
       -> AnalyzePredata
       -> ([Sentence] -> [EntityMention Text])
+      -> Forest (Maybe Text)
       -> PathConfig
       -> FilePath
       -> UTCTime
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata netagger cfg fp tm article = do
+mkMGs conn apredata netagger forest cfg fp tm article = do
   let filename = takeFileName fp
-  dstr <- docStructure apredata netagger article
+  dstr <- docStructure apredata netagger forest article
   let sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       netags = leftTagPos (dstr^.ds_mergedtags)
@@ -108,7 +110,6 @@ mkMGs conn apredata netagger cfg fp tm article = do
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
       wikilsts = map mkWikiList sstrs
       isNonFilter = True -- False
-  print evtcls
   putStrLn $ "Analyzing " ++ filename
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
   forM_ (zip6 ([1..] :: [Int]) sstrs mtokss mgs arbs wikilsts) $ \(i,sstr,mtks,mg,arb,wikilst) -> do
@@ -130,10 +131,10 @@ genMGFigs cfg filename i sstr mtks mg wikilst = do
       let mg' = tagMG mg wikilst
       mkMGDotFigs (cfg ^. mgdotfigstore) i filename mtks mg'
 
-runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text])
+runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text]) -> Forest (Maybe Text)
                     -> AnalyzePredata -> PathConfig -> [(FilePath,UTCTime,DocAnalysisInput)] -> IO ()
-runAnalysisByChunks conn netagger apredata cfg loaded = do
+runAnalysisByChunks conn netagger forest apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,tm,artl) -> do
     handle (\(e :: SomeException) -> print e) $ do
       updateRSSAnalysisStatus conn (b16ToBstrHash (takeBaseName fp)) (Nothing,Just True,Nothing)
-      mkMGs conn apredata netagger cfg fp tm artl
+      mkMGs conn apredata netagger forest cfg fp tm artl
