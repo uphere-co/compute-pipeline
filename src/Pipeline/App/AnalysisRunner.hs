@@ -92,7 +92,7 @@ evtClass txts =
 mkMGs :: Connection
       -> AnalyzePredata
       -> ([Sentence] -> [EntityMention Text])
-      -> Forest (Maybe Text)
+      -> Forest (Either Int Text)
       -> PathConfig
       -> FilePath
       -> UTCTime
@@ -131,7 +131,7 @@ genMGFigs cfg filename i sstr mtks mg wikilst = do
       let mg' = tagMG mg wikilst
       mkMGDotFigs (cfg ^. mgdotfigstore) i filename mtks mg'
 
-runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text]) -> Forest (Maybe Text)
+runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text]) -> Forest (Either Int Text)
                     -> AnalyzePredata -> PathConfig -> [(FilePath,UTCTime,DocAnalysisInput)] -> IO ()
 runAnalysisByChunks conn netagger forest apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,tm,artl) -> do
