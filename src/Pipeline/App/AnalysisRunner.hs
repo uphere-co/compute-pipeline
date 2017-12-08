@@ -8,6 +8,7 @@ import           Control.Exception                      (SomeException,handle)
 import           Control.Lens
 import           Control.Monad                          (forM_,when)
 import           Data.Char                              (isSpace)
+import           Data.IntMap                            (IntMap)
 import           Data.List                              (zip6)
 import           Data.Maybe
 import           Data.Text                              (Text)
@@ -23,6 +24,7 @@ import           DB.Operation                           (updateRSSAnalysisStatus
 import           DB.Util                                (b16ToBstrHash)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
+import           NER.Type                               (CompanyInfo(..))
 import           NewsAPI.DB
 import           NLP.Shared.Type                        (PathConfig,EventClass(..)
                                                         ,arbstore,corenlpstore,lexconfigpath
@@ -92,15 +94,15 @@ evtClass txts =
 mkMGs :: Connection
       -> AnalyzePredata
       -> ([Sentence] -> [EntityMention Text])
-      -> Forest (Maybe Text)
+      -> (Forest (Either Int Text),IntMap CompanyInfo)
       -> PathConfig
       -> FilePath
       -> UTCTime
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata netagger forest cfg fp tm article = do
+mkMGs conn apredata netagger (forest,companyMap) cfg fp tm article = do
   let filename = takeFileName fp
-  dstr <- docStructure apredata netagger forest article
+  dstr <- docStructure apredata netagger (forest,companyMap) article
   let sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       netags = leftTagPos (dstr^.ds_mergedtags)
@@ -108,7 +110,7 @@ mkMGs conn apredata netagger forest cfg fp tm article = do
       evtcls = evtClass texttoken
       mgs = map (meaningGraph apredata) sstrs
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
-      wikilsts = map mkWikiList sstrs
+      wikilsts = map (mkWikiList companyMap) sstrs
       isNonFilter = True -- False
   putStrLn $ "Analyzing " ++ filename
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
@@ -131,10 +133,15 @@ genMGFigs cfg filename i sstr mtks mg wikilst = do
       let mg' = tagMG mg wikilst
       mkMGDotFigs (cfg ^. mgdotfigstore) i filename mtks mg'
 
-runAnalysisByChunks :: Connection -> ([Sentence] -> [EntityMention Text]) -> Forest (Maybe Text)
-                    -> AnalyzePredata -> PathConfig -> [(FilePath,UTCTime,DocAnalysisInput)] -> IO ()
-runAnalysisByChunks conn netagger forest apredata cfg loaded = do
+runAnalysisByChunks :: Connection
+                    -> ([Sentence] -> [EntityMention Text])
+                    -> (Forest (Either Int Text),IntMap CompanyInfo)
+                    -> AnalyzePredata
+                    -> PathConfig
+                    -> [(FilePath,UTCTime,DocAnalysisInput)]
+                    -> IO ()
+runAnalysisByChunks conn netagger (forest,companyMap) apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,tm,artl) -> do
     handle (\(e :: SomeException) -> print e) $ do
       updateRSSAnalysisStatus conn (b16ToBstrHash (takeBaseName fp)) (Nothing,Just True,Nothing)
-      mkMGs conn apredata netagger forest cfg fp tm artl
+      mkMGs conn apredata netagger (forest,companyMap) cfg fp tm artl

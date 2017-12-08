@@ -32,7 +32,7 @@ import           SRL.Analyze                    (loadConfig)
 import           SRL.Analyze.CoreNLP            (runParser)
 import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
 import           SRL.Analyze.Type               (ds_sentStructures)
-import           Text.Search.ParserCustom       (pTreeAdvG)
+import           Text.Search.New.ParserCustom       (pTreeAdvG)
 --
 import           Pipeline.Operation.DB          (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP           (tameDescription)
@@ -45,8 +45,8 @@ tokenizeText = T.split (\c -> (isSpace c) || (c == '\8217'))
 
 printAll cfg pp = do
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger,forest) <- loadConfig False cfgG
-  items <- fmap (take 10000) $ loadAllRSSItems cfg
+  (apredata,netagger,forest,companyMap) <- loadConfig False cfgG
+  items <- fmap (take 10000) $ loadAllRSSItems cfg   -- ? what is this 10000?
   mfitems <- forM (zip [1..] items) $ \(i,item) -> do
     print i
     let txts = tokenizeText $ (tameDescription $ item ^. description)
@@ -58,34 +58,10 @@ printAll cfg pp = do
       let Right s' = fst s
       wlsts <- case eprst of
         Left (e :: SomeException) -> return []
-        Right prst -> getWikiList apredata netagger forest prst
+        Right prst -> getWikiList apredata netagger (forest,companyMap) prst
       if (((length s') + (length wlsts)) > 0)
         then return (Just "Matched")
         else return Nothing
-
-{-
-      if (length s' > 0)
-        then do
-        {-
-        print "Matched"
-        print (s',item ^. description)
-        wlsts <- case eprst of
-          Left (e :: SomeException) -> return []
-          Right prst -> getWikiList prst
-        _ <- getChar
-        return (Just item)
-        -}
-        else do
-        {-
-        print "Not Matched"
-        print (item ^. description)
-        wlsts <- case eprst of
-          Left (e :: SomeException) -> return []
-          Right prst -> getWikiList prst
-        _ <- getChar
-        return Nothing
-        -}
--}
       else return Nothing
   print $ length items
   print $ length (catMaybes mfitems)
@@ -107,8 +83,8 @@ runWithCoreNLP cfg = do
     printAll cfg pp
   closeConnection conn
 
-getWikiList apredata netagger forest prst = do
-  dstr <- docStructure apredata netagger forest prst
+getWikiList apredata netagger (forest,companyMap) prst = do
+  dstr <- docStructure apredata netagger (forest,companyMap) prst
   let sstrs = catMaybes (dstr ^. ds_sentStructures)
-      wikilsts = map mkWikiList sstrs
+      wikilsts = map (mkWikiList companyMap) sstrs
   return wikilsts
