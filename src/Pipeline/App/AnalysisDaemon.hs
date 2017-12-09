@@ -42,7 +42,7 @@ runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
   conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger,forest,companyMap) <- loadConfig False cfgG
+  (apredata,netagger,forest,companyMap) <- loadConfig (False,False) cfgG
   forever $ do
     -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
     forM_ rssAnalysisList $ \(src,sec,url) ->
