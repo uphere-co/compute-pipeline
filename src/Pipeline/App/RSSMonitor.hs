@@ -45,7 +45,7 @@ tokenizeText = T.split (\c -> (isSpace c) || (c == '\8217'))
 
 printAll cfg pp = do
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger,forest,companyMap) <- loadConfig False cfgG
+  (apredata,netagger,forest,companyMap) <- loadConfig (False,False) cfgG
   items <- fmap (take 10000) $ loadAllRSSItems cfg   -- ? what is this 10000?
   mfitems <- forM (zip [1..] items) $ \(i,item) -> do
     print i
