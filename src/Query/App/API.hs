@@ -13,7 +13,6 @@ import           Control.Exception                 (IOException,try)
 import           Control.Lens                      ((^.),(^..),_1,_2,_Left,_Right,to,traverse)
 import           Control.Monad                     (forever,forM,void)
 import           Control.Monad.IO.Class            (liftIO)
--- import           Control.Monad.Trans.Except
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as BL
@@ -21,8 +20,6 @@ import           Data.Either                       (rights)
 
 import           Data.Function                     (on)
 import           Data.Hashable
--- import           Data.HashSet                      (HashSet)
--- import qualified Data.HashSet               as HS
 import           Data.List                         (groupBy,notElem,sortBy,sortOn)
 import           Data.Maybe                        (catMaybes)
 import           Data.Text                         (Text)
@@ -254,7 +251,7 @@ filterARB :: Int
           -> [EventCard]
           -> [EventCard]
 filterARB n arbs =
-  let arbs0 = map (\(f,(t,(xs,ner,evt)),mitem)-> (f,(t,(filter (\x -> not (isSubjectBlackListed x) && isWithObjOrWhiteListed x && (not (haveCommaEntity x))) xs,ner,evt)),mitem)) arbs
+  let arbs0 = map (\(f,(t,(xs,ner,evt)),mitem)-> (f,(t,(filter (\x -> {- not (isSubjectBlackListed x) && isWithObjOrWhiteListed x  && -} (not (haveCommaEntity x) ) ) xs,ner,evt)),mitem)) arbs
       -- we start with two times more sets considering filter-out items.
       arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_),_) -> ct)) arbs0
       templst = do (f,(t,(arbs'',ner,evt)),mitem) <- arbs1
@@ -275,6 +272,7 @@ getARB :: TVar [EventCard]
 getARB arbs i = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
+  liftIO $ print (length arbs1)
   let n = 500
       result = take n (drop (n*i) arbs1)
   liftIO $ mapM_ print (take 3 result)
