@@ -55,6 +55,7 @@ library
                   transformers,
                   vector,
                   --
+                  event-analyzer,
                   graph-algorithms,
                   HCoreNLP,
                   HCoreNLP-Proto,
