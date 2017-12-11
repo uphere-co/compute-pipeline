@@ -53,7 +53,7 @@ coreN = 15 :: Int
 
 -- | This does SRL and generates meaning graphs.
 --
-runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Text]) -> Forest (Maybe Text) -> PathConfig -> String  -> IO ()
+runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Text]) -> Forest (Either Int Text) -> PathConfig -> String  -> IO ()
 runSRL conn apredata netagger forest cfg src = do
   as1b <- getNewItemsForSRL cfg src
   let as1 = (take 5000 as1b) -- as1a ++ as1b
