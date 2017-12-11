@@ -7,6 +7,7 @@ import           Control.Concurrent
 import           Control.Lens
 import           Control.Monad                     (filterM,forever,forM_)
 import qualified Data.ByteString.Char8 as B
+import           Data.IntMap                       (IntMap)
 import           Data.List.Split                   (chunksOf)
 import           Data.Maybe                        (catMaybes)
 import           Data.Text                         (Text)
@@ -22,7 +23,7 @@ import           System.FilePath                   ((</>),addExtension)
 import           Lexicon.Data                      (loadLexDataConfig)
 -- import           NewsAPI.Type
 import           NER.Load                          (loadCompanies)
-import           NER.Type                          (alias)
+import           NER.Type                          (CompanyInfo,alias)
 import           NLP.Shared.Type                   (PathConfig,corenlpstore,dbstring,lexconfigpath,mgstore)
 import           NLP.Type.CoreNLP
 import           RSS.Data                          (rssAnalysisList)
@@ -41,10 +42,11 @@ runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
   conn <- getConnection (cfg ^. dbstring)
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
-  (apredata,netagger,forest) <- loadConfig False cfgG
+  (apredata,netagger,forest,companyMap) <- loadConfig (False,False) cfgG
   forever $ do
     -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
-    forM_ rssAnalysisList $ \(src,sec,url) -> runSRL conn apredata netagger forest cfg (src ++ "/" ++ sec)
+    forM_ rssAnalysisList $ \(src,sec,url) ->
+      runSRL conn apredata netagger (forest,companyMap) cfg (src ++ "/" ++ sec)
     putStrLn "Waiting next run..."
     let sec = 1000000 in threadDelay (60*sec)
   closeConnection conn
@@ -53,8 +55,14 @@ coreN = 15 :: Int
 
 -- | This does SRL and generates meaning graphs.
 --
-runSRL :: PGS.Connection -> AnalyzePredata -> ([Sentence] -> [EntityMention T.Text]) -> Forest (Either Int Text) -> PathConfig -> String  -> IO ()
-runSRL conn apredata netagger forest cfg src = do
+runSRL :: PGS.Connection
+       -> AnalyzePredata
+       -> ([Sentence] -> [EntityMention T.Text])
+       -> (Forest (Either Int Text), IntMap CompanyInfo)
+       -> PathConfig
+       -> String
+       -> IO ()
+runSRL conn apredata netagger (forest,companyMap) cfg src = do
   as1b <- getNewItemsForSRL cfg src
   let as1 = (take 5000 as1b) -- as1a ++ as1b
  
@@ -62,7 +70,7 @@ runSRL conn apredata netagger forest cfg src = do
   let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded1)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
-    forkChild (runAnalysisByChunks conn netagger forest apredata cfg ls)
+    forkChild (runAnalysisByChunks conn netagger (forest,companyMap) apredata cfg ls)
 
   waitForChildren
   refreshChildren

@@ -34,7 +34,7 @@ import           SRL.Analyze                    (loadConfig)
 import           SRL.Analyze.CoreNLP            (runParser)
 import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
 import           SRL.Analyze.Type               (ds_sentStructures)
-import           Text.Search.ParserCustom       (pTreeAdvG)
+import           Text.Search.New.ParserCustom       (pTreeAdvG)
 --
 import           Pipeline.Operation.DB          (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP           (tameDescription)
@@ -97,7 +97,6 @@ printAll cfg pp = do
     if (isRight (fst s))
       then do
       let Right s' = fst s
-
       if (length s' > 0)
         then do
         if (["Royal","Dutch","Shell"] `elem` s')
@@ -141,8 +140,8 @@ runWithCoreNLP cfg = do
     printAll cfg pp
   closeConnection conn
 
-getWikiList apredata netagger forest prst = do
-  dstr <- docStructure apredata netagger forest prst
+getWikiList apredata netagger (forest,companyMap) prst = do
+  dstr <- docStructure apredata netagger (forest,companyMap) prst
   let sstrs = catMaybes (dstr ^. ds_sentStructures)
-      wikilsts = map mkWikiList sstrs
+      wikilsts = map (mkWikiList companyMap) sstrs
   return wikilsts
