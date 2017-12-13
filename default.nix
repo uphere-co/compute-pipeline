@@ -1,6 +1,6 @@
 { mkDerivation, aeson, async, attoparsec, base, base16-bytestring
 , binary, bytestring, containers, data-default, directory
-, directory-tree, discrimination, either, filepath, haskeline
+, directory-tree, discrimination, either, event-analyzer, filepath, haskeline
 , HCoreNLP, HCoreNLP-Proto, HWordNet, jni, jvm, lens
 , lexicon-builder, monad-loops, mtl, multi-word-tagger, newsapi
 , nlp-shared-types, nlp-types
@@ -21,7 +21,7 @@ mkDerivation {
   libraryHaskellDepends = [
     aeson async attoparsec base base16-bytestring binary bytestring
     containers data-default directory directory-tree discrimination
-    either filepath haskeline HCoreNLP HCoreNLP-Proto HWordNet jni jvm
+    either event-analyzer filepath haskeline HCoreNLP HCoreNLP-Proto HWordNet jni jvm
     lens lexicon-builder monad-loops mtl multi-word-tagger newsapi
     nlp-shared-types nlp-types
     #nyt-scrapper

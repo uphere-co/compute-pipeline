@@ -1,5 +1,6 @@
 { pkgs                  ? import <nixpkgs> {}
 , uphere-nix-overlay    ? <uphere-nix-overlay>
+, event-analyzer        ? <event-analyzer>
 , fetchfin              ? <fetchfin>
 , graph-algorithms      ? <graph-algorithms>
 , HCoreNLP              ? <HCoreNLP>
@@ -50,6 +51,7 @@ let
   };
   config2 =
     self: super: {
+      "event-analyzer"        = self.callPackage (import event-analyzer) {};
       "fastText"              = self.callPackage fastTextNix { inherit fasttext; };
       "graph-algorithms"      = self.callPackage (import graph-algorithms) {};
       "HCoreNLP"              = self.callPackage (import HCoreNLP) { inherit jdk corenlp corenlp_models; };
@@ -111,6 +113,7 @@ let
             transformers
             yaml
             yayaml
+            p.event-analyzer
             p.newsapi
             p.nlp-types
             p.nlp-shared-types

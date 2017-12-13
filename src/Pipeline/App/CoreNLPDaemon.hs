@@ -21,7 +21,7 @@ import           Pipeline.Util                     (digitsToUTC)
 
 
 srcOnlyConst src sec = SourceConstraint (Just (T.pack $ src ++ "/" ++ sec)) Nothing Nothing
-srcBTConst src sec = SourceConstraint (Just (T.pack $ src ++ "/" ++ sec)) (digitsToUTC "20170501") (digitsToUTC "20171110")
+srcBTConst src sec = SourceConstraint (Just (T.pack $ src ++ "/" ++ sec)) Nothing Nothing -- (digitsToUTC "20170501") (digitsToUTC "20171110")
 
 runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
@@ -37,8 +37,8 @@ runDaemon cfg = do
                        . (ner .~ True)
                   )
     forever $ do
-      forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (srcOnlyConst src sec)
-      -- runCoreNLPforRSS pp cfg (srcBTConst "reuters" "Archive")
+      -- forM_ rssAnalysisList $ \(src,sec,url) -> runCoreNLPforRSS pp cfg (srcOnlyConst src sec)
+      runCoreNLPforRSS pp cfg (srcBTConst "reuters" "Archive")
       putStrLn "Waiting next run..."
       let sec = 1000000 in threadDelay (60*sec)
 
