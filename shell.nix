@@ -1,4 +1,5 @@
 { pkgs                  ? import <nixpkgs> {}
+, event-analyzer        ? <event-analyzer>
 , uphere-nix-overlay    ? <uphere-nix-overlay>
 , fetchfin              ? <fetchfin>
 , graph-algorithms      ? <graph-algorithms>
@@ -51,6 +52,7 @@ let
   };
   config2 =
     self: super: {
+      "event-analyzer" = self.callPackage (import event-analyzer) {};
       "nlp-types" = self.callPackage (import nlp-types) {};
       "textview" = self.callPackage (import textview) {};
       "newsapi" = self.callPackage (import (fetchfin + "/newsapi")) {};
