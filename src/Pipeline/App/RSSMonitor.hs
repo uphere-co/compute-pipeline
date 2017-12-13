@@ -48,9 +48,9 @@ printAll cfg pp = do
   items <- fmap (take 10000) $ loadAllRSSItems cfg
 --  let totaln = length items
 
-  let ecs = map (\x -> identifyCommoditiesEvent (tameDescription $ x ^. description)) items
+--  let ecs = map (\x -> identifyCommoditiesEvent (tameDescription $ x ^. description)) items
 
-  let stat = let n1 = foldl' (\acc x -> if (any (== EventClass "Commodities" "Energy" (Just "OilDemand&Supply")) x) then (acc+1) else acc) 0 ecs
+{-  let stat = let n1 = foldl' (\acc x -> if (any (== EventClass "Commodities" "Energy" (Just "OilDemand&Supply")) x) then (acc+1) else acc) 0 ecs
                  n2 = foldl' (\acc x -> if (any (== EventClass "Commodities" "Energy" (Just "Tanker")          ) x) then (acc+1) else acc) 0 ecs
                  n3 = foldl' (\acc x -> if (any (== EventClass "Commodities" "Energy" (Just "StockMovement")   ) x) then (acc+1) else acc) 0 ecs
                  n4 = foldl' (\acc x -> if (any (== EventClass "Commodities" "Energy" (Just "OilTrade")        ) x) then (acc+1) else acc) 0 ecs
@@ -65,7 +65,9 @@ printAll cfg pp = do
                  n13 = foldl' (\acc x -> if (any (== EventClass "Commodities" "Corn" Nothing                   ) x) then (acc+1) else acc) 0 ecs
              in (n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13)
 
-  print stat
+  print stat -}
+
+  return ()
       {-
                     
   forM_ (zip [1..] items) $ \(i,item) -> do
