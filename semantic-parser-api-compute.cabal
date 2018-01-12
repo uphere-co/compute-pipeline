@@ -56,6 +56,10 @@ library
 
   exposed-modules:
                     SemanticParserAPI.Compute
+                    SemanticParserAPI.Compute.CoreNLP
+                    SemanticParserAPI.Compute.Network                 
+                    SemanticParserAPI.Compute.Worker
+                  
                     -- Query.App.API
                     -- Query.DB.NewsAPI
                     -- Query.Type
