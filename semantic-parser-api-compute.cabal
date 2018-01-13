@@ -45,6 +45,7 @@ library
                     SemanticParserAPI.Compute
                     SemanticParserAPI.Compute.CoreNLP
                     SemanticParserAPI.Compute.Network
+                    SemanticParserAPI.Compute.Type
                     SemanticParserAPI.Compute.Worker
                     SemanticParserAPI.CLI.Client
                     SemanticParserAPI.CLI.Type

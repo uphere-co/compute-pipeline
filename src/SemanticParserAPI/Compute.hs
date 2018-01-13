@@ -5,18 +5,23 @@ module SemanticParserAPI.Compute where
 import           Control.Concurrent                        (threadDelay)
 import           Control.Concurrent.STM                    (TMVar)
 import           Control.Exception                         (bracket)
-import           Control.Distributed.Process.Lifted        (ProcessId,expect,spawnLocal)
+import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
+                                                           ,expect
+                                                           ,newChan,sendChan,receiveChan
+                                                           ,send,spawnLocal)
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import           Control.Monad                             (forever)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
 import           Network.Transport                         (closeTransport)
+import           System.IO                                 (hPutStrLn,stderr)
+--
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 --
 import           CloudHaskell.Util                         (LogProcess,server,tellLog
                                                            ,withHeartBeat,tryCreateTransport)
--- import           SemanticParserAPI.Compute.Worker
+import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 
 
 start :: () -> TMVar (HM.HashMap Text ([Int],[Text])) -> LogProcess ()
@@ -25,19 +30,19 @@ start () _resultref = do
   tellLog ("got client pid : " ++ show them)
 
   withHeartBeat them $ spawnLocal $ do
-    liftIO $ forever $ do
+    {- liftIO $ forever $ do
       threadDelay 10000000
       putStrLn "running"
-    
-    {- 
-    (sc,rc) <- newChan :: LogProcess (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
+    -}
+    (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
     send them sc
     liftIO $ hPutStrLn stderr "connected"
     forever $ do
-      (q,sc') <- receiveChan rc
-      liftIO $ hPutStrLn stderr (show q)
-      -- spawnLocal (queryWorker corenlp_server resultref sc' engine q)
-   -}
+      (CQ_Text txt,sc') <- receiveChan rc
+      -- liftIO $ hPutStrLn stderr (show q)
+      sendChan sc' (CR_Text txt)
+      -- spawnLocal (queryWorker resultref sc' q)
+
 
 
 
