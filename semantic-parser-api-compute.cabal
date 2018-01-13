@@ -19,35 +19,42 @@ library
   hs-source-dirs: src
   build-depends:  base,
                   --
-                  aeson,
+                  -- aeson,
                   binary,
                   bytestring,
-                  containers,
+                  connection,
+                  -- containers,
                   distributed-process,
-                  filepath,
-                  hashable,
-                  jvm,
-                  lens,
-                  network,
+                  distributed-process-lifted,
+                  -- filepath,
+                  -- hashable,
+                  haskeline,
+                  http-client,
+                  http-client-tls,
+                  http-types,
+                  -- jvm,
+                  -- lens,
+                  monad-loops,
+                  -- network,
                   network-simple,
-                  network-transport,
-                  network-transport-tcp,
-                  -- nlp-shared-types,
-                  nlp-types,
+                  -- network-transport,
+                  -- network-transport-tcp,
+                  network-transport-uphere,
+                  -- nlp-types,
                   optparse-applicative,
-                  postgresql-simple,
+                  -- postgresql-simple,
                   -- servant,
                   -- servant-client,
                   -- servant-server,
                   stm,
                   text,
-                  time,
+                  -- time,
                   transformers,
-                  -- unordered-containers,
-                  wai,
-                  wai-cors,
-                  warp,
-                  wiki-ner,
+                  unordered-containers,
+                  -- wai,
+                  -- wai-cors,
+                  -- warp,
+                  -- wiki-ner,
                   --
                   -- newsapi,
                   -- nlp-pipeline,
@@ -55,11 +62,14 @@ library
                   uphere-network-util
 
   exposed-modules:
+                    CloudHaskell.Server
+                    Network.Util
                     SemanticParserAPI.Compute
                     SemanticParserAPI.Compute.CoreNLP
                     SemanticParserAPI.Compute.Network                 
                     SemanticParserAPI.Compute.Worker
-                  
+                    SemanticParserAPI.CLI.Client
+                    SemanticParserAPI.CLI.Type
                     -- Query.App.API
                     -- Query.DB.NewsAPI
                     -- Query.Type

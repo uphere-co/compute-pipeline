@@ -2,7 +2,6 @@
 
 module SemanticParserAPI.Compute.Network where
 
-{- 
 import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Lazy.Char8          as BL
 import qualified Data.Text.Encoding                  as TE
@@ -30,4 +29,4 @@ simpleHttpClient isurlenc mth url mbstr = do
                else newManager defaultManagerSettings
   response <- httpLbs request manager
   return (responseBody response)
--}
+

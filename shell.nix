@@ -115,6 +115,7 @@ let
             monad-loops
             network-simple
             network-transport-tcp
+            network-transport-uphere
             opaleye
             optparse-applicative
             postgresql-simple
