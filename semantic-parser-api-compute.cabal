@@ -41,8 +41,7 @@ library
                   uphere-network-util
 
   exposed-modules:
-                    CloudHaskell.Server
-                    Network.Util
+                    CloudHaskell.Util
                     SemanticParserAPI.Compute
                     SemanticParserAPI.Compute.CoreNLP
                     SemanticParserAPI.Compute.Network

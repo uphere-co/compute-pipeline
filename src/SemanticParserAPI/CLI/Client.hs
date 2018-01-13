@@ -5,29 +5,24 @@ module SemanticParserAPI.CLI.Client where
 
 import           Control.Concurrent                  (threadDelay)
 import           Control.Distributed.Process.Lifted  (Process,ProcessId
-                                                     ,expectTimeout,getSelfPid,kill
-                                                     ,send,spawnLocal)
+                                                     ,getSelfPid,send,spawnLocal)
 import           Control.Distributed.Process.Node
 import           Control.Exception                   (SomeException(..),bracket,try)
 
 import           Control.Monad                       (forever,void,join)
 import           Control.Monad.IO.Class              (liftIO)
--- import           Control.Monad.Loops
--- import           Control.Monad.Trans.Class                (lift)
 import           Control.Monad.Trans.Reader          (runReaderT)
--- import qualified Data.ByteString.Lazy.Char8         as BL
--- import qualified Data.Text                          as T
-import qualified Network.Simple.TCP                 as NS
--- import           System.Console.Haskeline                 (runInputT,getInputLine,defaultSettings)
 import           System.Console.Haskeline.MonadException (MonadException(controlIO),RunIO(..))
 --
 import           Network.Transport                   (closeTransport)
 import           Network.Transport.UpHere            (DualHostPortPair(..))
 --
-import           CloudHaskell.Server
-import           Network.Util                        (LogLock,newLogLock
-                                                     ,atomicLog,recvAndUnpack
-                                                     ,tryCreateTransport)
+import           CloudHaskell.Util                   (LogProcess,newLogLock
+                                                     ,atomicLog,tellLog
+                                                     ,tryCreateTransport
+                                                     ,pingHeartBeat
+                                                     ,retrieveQueryServerPid
+                                                     )
 
 
 
@@ -43,28 +38,6 @@ initProcess them = do
   send them us
   void (mainProcess them)
 
-
-pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
-pingHeartBeat p1 them n = do
-  send them (HB n)
-  liftIO (threadDelay 5000000)
-  mhb <- expectTimeout 10000000
-  case mhb of
-    Just (HB n') -> do
-      tellLog ("ping-pong : " ++ show n')
-      pingHeartBeat p1 them (n+1)
-    Nothing -> do
-      tellLog ("heartbeat failed!")
-      kill p1 "heartbeat dead"
-
-
-retrieveQueryServerPid :: LogLock
-                       -> (String,Int)   -- ^ (serverid,serverport)
-                       -> IO (Maybe ProcessId)
-retrieveQueryServerPid lock (serverip,serverport) = do
-  NS.connect serverip (show serverport) $ \(sock,addr) -> do
-    atomicLog lock ("connection established to " ++ show addr)
-    recvAndUnpack sock
 
 
 {-

@@ -14,10 +14,8 @@ import           Data.Text                                 (Text)
 import           Network.Transport                         (closeTransport)
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 --
-import           CloudHaskell.Server                       (LogProcess,server,tellLog
-                                                           ,withHeartBeat
-                                                           )
-import           Network.Util                              (tryCreateTransport)
+import           CloudHaskell.Util                         (LogProcess,server,tellLog
+                                                           ,withHeartBeat,tryCreateTransport)
 -- import           SemanticParserAPI.Compute.Worker
 
 
