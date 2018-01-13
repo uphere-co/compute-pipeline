@@ -11,14 +11,14 @@ import           Control.Monad                            (void,join)
 -- import           Control.Monad.Trans.Class                (lift)
 -- import qualified Data.ByteString.Lazy.Char8         as BL
 -- import qualified Data.Text                          as T
--- import qualified Network.Simple.TCP                 as NS
+import qualified Network.Simple.TCP                 as NS
 -- import           System.Console.Haskeline                 (runInputT,getInputLine,defaultSettings)
 import           System.Console.Haskeline.MonadException
 --
 import           CloudHaskell.Server
--- import           Network.Util
+import           Network.Util                                (LogLock,atomicLog,recvAndUnpack)
 --
--- import           SemanticParserAPI.CLI.Type
+import           SemanticParserAPI.CLI.Type                  (ClientOption,serverip,serverport)
 
 instance MonadException Process where
   controlIO f = join . liftIO $ f (RunIO return)
@@ -44,6 +44,14 @@ pingHeartBeat p1 them n = do
     Nothing -> do
       tellLog ("heartbeat failed!")
       kill p1 "heartbeat dead"
+
+
+retrieveQueryServerPid :: LogLock -> ClientOption -> IO (Maybe ProcessId)
+retrieveQueryServerPid lock opt = do
+  NS.connect (serverip opt) (show (serverport opt)) $ \(sock,addr) -> do
+    atomicLog lock ("connection established to " ++ show addr)
+    recvAndUnpack sock
+
 
 {-
 consoleClient :: SendPort (Query, SendPort BL.ByteString) -> LogProcess ()
@@ -75,10 +83,5 @@ queryProcess sc q f = do
   sendChan sc (q,sc')
   f =<< receiveChan rc'
 
-retrieveQueryServerPid :: LogLock -> ClientOption -> IO (Maybe ProcessId)
-retrieveQueryServerPid lock opt = do
-  NS.connect (serverip opt) (show (serverport opt)) $ \(sock,addr) -> do
-    atomicLog lock ("connection established to " ++ show addr)
-    recvAndUnpack sock
 
 -}

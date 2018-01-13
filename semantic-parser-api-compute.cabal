@@ -30,6 +30,7 @@ library
                   http-types,
                   monad-loops,
                   network-simple,
+                  network-transport,
                   network-transport-uphere,
                   optparse-applicative,
                   stm,
@@ -44,7 +45,7 @@ library
                     Network.Util
                     SemanticParserAPI.Compute
                     SemanticParserAPI.Compute.CoreNLP
-                    SemanticParserAPI.Compute.Network                 
+                    SemanticParserAPI.Compute.Network
                     SemanticParserAPI.Compute.Worker
                     SemanticParserAPI.CLI.Client
                     SemanticParserAPI.CLI.Type
@@ -69,13 +70,14 @@ executable cmdclient
                        bytestring,
                        distributed-process,
                        distributed-process-lifted,
+                       network-transport,
                        optparse-applicative,
                        text,
                        transformers,
                        --
                        network-transport-uphere,
                        --
-                       semantic-parser-api-compute  
+                       semantic-parser-api-compute
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
@@ -92,8 +94,7 @@ executable stresstest
                        --
                        network-transport-uphere,
                        --
-                       semantic-parser-api-compute  
+                       semantic-parser-api-compute
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
-    
