@@ -4,21 +4,31 @@
 module SemanticParserAPI.CLI.Client where
 
 import           Control.Concurrent                       (threadDelay)
-import           Control.Distributed.Process.Lifted
+import           Control.Distributed.Process.Lifted  (Process,ProcessId
+                                                     ,expectTimeout,getSelfPid,kill,send,)
+import           Control.Distributed.Process.Node
+import           Control.Exception                   (SomeException(..),bracket,try)
 
-import           Control.Monad                            (void,join)
+import           Control.Monad                       (void,join)
+import           Control.Monad.IO.Class              (liftIO)
 -- import           Control.Monad.Loops
 -- import           Control.Monad.Trans.Class                (lift)
+import           Control.Monad.Trans.Reader          (runReaderT)
 -- import qualified Data.ByteString.Lazy.Char8         as BL
 -- import qualified Data.Text                          as T
 import qualified Network.Simple.TCP                 as NS
 -- import           System.Console.Haskeline                 (runInputT,getInputLine,defaultSettings)
-import           System.Console.Haskeline.MonadException
+import           System.Console.Haskeline.MonadException (MonadException(controlIO),RunIO(..))
+--
+import           Network.Transport                   (closeTransport)
+import           Network.Transport.UpHere            (DualHostPortPair(..))
 --
 import           CloudHaskell.Server
-import           Network.Util                                (LogLock,atomicLog,recvAndUnpack)
---
-import           SemanticParserAPI.CLI.Type                  (ClientOption,serverip,serverport)
+import           Network.Util                        (LogLock,newLogLock
+                                                     ,atomicLog,recvAndUnpack
+                                                     ,tryCreateTransport)
+
+
 
 instance MonadException Process where
   controlIO f = join . liftIO $ f (RunIO return)
@@ -46,9 +56,11 @@ pingHeartBeat p1 them n = do
       kill p1 "heartbeat dead"
 
 
-retrieveQueryServerPid :: LogLock -> ClientOption -> IO (Maybe ProcessId)
-retrieveQueryServerPid lock opt = do
-  NS.connect (serverip opt) (show (serverport opt)) $ \(sock,addr) -> do
+retrieveQueryServerPid :: LogLock
+                       -> (String,Int)   -- ^ (serverid,serverport)
+                       -> IO (Maybe ProcessId)
+retrieveQueryServerPid lock (serverip,serverport) = do
+  NS.connect serverip (show serverport) $ \(sock,addr) -> do
     atomicLog lock ("connection established to " ++ show addr)
     recvAndUnpack sock
 
@@ -85,3 +97,25 @@ queryProcess sc q f = do
 
 
 -}
+
+
+clientMain :: (Int,String,String,String,Int) -> IO ()
+clientMain (portnum,hostg,hostl,serverip,serverport) = do
+  let dhpp = DHPP (hostg,show portnum) (hostl,show portnum)
+  bracket (tryCreateTransport dhpp)
+          closeTransport
+          (\transport -> do
+               node <- newLocalNode transport initRemoteTable
+               lock <- newLogLock 0
+               emthem <- try (retrieveQueryServerPid lock (serverip,serverport))
+               case emthem of
+                 Left (e :: SomeException) -> do
+                   atomicLog lock "exception caught"
+                   atomicLog lock (show e)
+                 Right mthem ->
+                   case mthem of
+                     Nothing -> atomicLog lock "no pid"
+                     Just them -> do
+                       atomicLog lock (show them)
+                       runProcess node (flip runReaderT lock (initProcess them)))
+
