@@ -1,14 +1,22 @@
 module Network.Util where
 
+import           Control.Concurrent                (threadDelay)
 import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar,newTMVarIO,putTMVar,takeTMVar)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
+import           Control.Monad.Loops               (untilJust)
 import qualified Data.Binary                 as Bi
 import qualified Data.ByteString             as B
 import qualified Data.ByteString.Char8       as BC
 import qualified Data.ByteString.Lazy        as BL
 import qualified Network.Simple.TCP          as NS
-import           System.IO                         (hFlush, stderr)
+import           Network.Transport                 (Transport)
+import           System.IO                         (hFlush,hPutStrLn,stderr)
+--
+import           Network.Transport.UpHere          (createTransport
+                                                   ,defaultTCPParameters
+                                                   ,DualHostPortPair(..))
+
 
 recvAndUnpack :: Bi.Binary a => NS.Socket -> IO (Maybe a)
 recvAndUnpack sock = do
@@ -56,3 +64,12 @@ getClientNum (_l,n) = n
 
 incClientNum :: LogLock -> LogLock
 incClientNum (l,n) = (l,n+1)
+
+tryCreateTransport :: DualHostPortPair -> IO Transport
+tryCreateTransport dhpp =
+  untilJust $ do etransport <- createTransport dhpp defaultTCPParameters
+                 case etransport of
+                   Left err -> do hPutStrLn stderr (show err)
+                                  threadDelay 5000000
+                                  return Nothing
+                   Right transport -> return (Just transport)

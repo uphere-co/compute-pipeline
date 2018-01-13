@@ -3,22 +3,17 @@
 module SemanticParserAPI.Compute where
 
 import           Control.Concurrent.STM                    (TMVar)
--- import           Control.Monad.IO.Class
--- import           Control.Monad.Loops                       (whileJust_)
+import           Control.Exception                         (bracket)
 import           Control.Distributed.Process               (ProcessId)
 import           Control.Distributed.Process.Lifted        (expect)
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import qualified Data.HashMap.Strict                 as HM
--- import           Data.Monoid                               ((<>))
 import           Data.Text                                 (Text)
-import           Network.Transport.UpHere                  (createTransport,defaultTCPParameters
-                                                           ,DualHostPortPair(..))
--- import           Options.Applicative
--- import           System.Environment
-import           System.IO                                 (hPutStrLn, stderr)
+import           Network.Transport                         (closeTransport)
+import           Network.Transport.UpHere                  (DualHostPortPair(..))
 --
 import           CloudHaskell.Server                       (LogProcess,server,tellLog)
--- import           Network.Util
+import           Network.Util                              (tryCreateTransport)
 -- import           SemanticParserAPI.Compute.Worker
 
 
@@ -38,6 +33,7 @@ start () _resultref = do
 -}
 
 
+
 computeMain :: (Int,String,String) -> IO ()
 computeMain (portnum,hostg,hostl) = do
   let -- portnum = _port opt
@@ -48,13 +44,9 @@ computeMain (portnum,hostg,hostl) = do
       -- config = _config opt
       -- corenlp_server = _corenlp opt
       dhpp = DHPP (hostg,port') (hostl,port')
-
-  etransport <- createTransport dhpp defaultTCPParameters
-  case etransport of
-    Left err -> hPutStrLn stderr (show err)
-    Right transport -> do
-      node <- newLocalNode transport initRemoteTable
-      runProcess node (server port start ())
+  bracket (tryCreateTransport dhpp)
+          closeTransport
+          (\transport -> newLocalNode transport initRemoteTable >>= \node -> runProcess node (server port start ()))
 
       -- withCString config $ \_configfile -> do
         -- engine <- newEngineWrapper configfile
