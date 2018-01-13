@@ -3,13 +3,14 @@
 
 module SemanticParserAPI.CLI.Client where
 
-import           Control.Concurrent                       (threadDelay)
+import           Control.Concurrent                  (threadDelay)
 import           Control.Distributed.Process.Lifted  (Process,ProcessId
-                                                     ,expectTimeout,getSelfPid,kill,send,)
+                                                     ,expectTimeout,getSelfPid,kill
+                                                     ,send,spawnLocal)
 import           Control.Distributed.Process.Node
 import           Control.Exception                   (SomeException(..),bracket,try)
 
-import           Control.Monad                       (void,join)
+import           Control.Monad                       (forever,void,join)
 import           Control.Monad.IO.Class              (liftIO)
 -- import           Control.Monad.Loops
 -- import           Control.Monad.Trans.Class                (lift)
@@ -41,6 +42,7 @@ initProcess them = do
   tellLog ("we are " ++ show us)
   send them us
   void (mainProcess them)
+
 
 pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat p1 them n = do
@@ -75,8 +77,17 @@ consoleClient sc = do
 -}
 
 mainProcess :: ProcessId -> LogProcess ()
-mainProcess _them = do
+mainProcess them = do
   tellLog "mainProcess started"
+  p1 <- spawnLocal $ do
+          liftIO $ forever $ do
+            threadDelay 9000000
+            putStrLn "mainProcess"
+
+    --    (consoleClient sc)
+  
+  void $ pingHeartBeat p1 them 0
+  
   {-
   msc :: Maybe (SendPort (Query,SendPort BL.ByteString)) <- expectTimeout 5000000
   case msc of

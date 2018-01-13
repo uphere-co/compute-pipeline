@@ -2,17 +2,21 @@
 
 module SemanticParserAPI.Compute where
 
+import           Control.Concurrent                        (threadDelay)
 import           Control.Concurrent.STM                    (TMVar)
 import           Control.Exception                         (bracket)
-import           Control.Distributed.Process               (ProcessId)
-import           Control.Distributed.Process.Lifted        (expect)
+import           Control.Distributed.Process.Lifted        (ProcessId,expect,spawnLocal)
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
+import           Control.Monad                             (forever)
+import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
 import           Network.Transport                         (closeTransport)
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 --
-import           CloudHaskell.Server                       (LogProcess,server,tellLog)
+import           CloudHaskell.Server                       (LogProcess,server,tellLog
+                                                           ,withHeartBeat
+                                                           )
 import           Network.Util                              (tryCreateTransport)
 -- import           SemanticParserAPI.Compute.Worker
 
@@ -21,8 +25,13 @@ start :: () -> TMVar (HM.HashMap Text ([Int],[Text])) -> LogProcess ()
 start () _resultref = do
   them :: ProcessId <- expect
   tellLog ("got client pid : " ++ show them)
-{-
+
   withHeartBeat them $ spawnLocal $ do
+    liftIO $ forever $ do
+      threadDelay 10000000
+      putStrLn "running"
+    
+    {- 
     (sc,rc) <- newChan :: LogProcess (SendPort (Query, SendPort ResultBstr), ReceivePort (Query, SendPort ResultBstr))
     send them sc
     liftIO $ hPutStrLn stderr "connected"
@@ -30,7 +39,7 @@ start () _resultref = do
       (q,sc') <- receiveChan rc
       liftIO $ hPutStrLn stderr (show q)
       -- spawnLocal (queryWorker corenlp_server resultref sc' engine q)
--}
+   -}
 
 
 
