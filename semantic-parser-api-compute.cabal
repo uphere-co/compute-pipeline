@@ -51,7 +51,7 @@ library
                     SemanticParserAPI.CLI.Type
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
-  ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
 
 executable query
   main-is:             query.hs
@@ -61,7 +61,7 @@ executable query
                        semantic-parser-api-compute
   hs-source-dirs:      app
   default-language:    Haskell2010
-  ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+  ghc-options: -threaded -Wall-fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
 
 
 executable cmdclient
@@ -80,7 +80,7 @@ executable cmdclient
                        semantic-parser-api-compute
   hs-source-dirs:      app
   default-language:    Haskell2010
-  ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
 
 executable stresstest
   main-is:             stresstest.hs
@@ -97,4 +97,4 @@ executable stresstest
                        semantic-parser-api-compute
   hs-source-dirs:      app
   default-language:    Haskell2010
-  ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
