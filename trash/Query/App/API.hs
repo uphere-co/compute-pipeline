@@ -11,7 +11,7 @@ import           Control.Concurrent
 import           Control.Concurrent.STM
 import           Control.Exception                 (IOException,try)
 import           Control.Lens                      ((^.),(^..),_1,_2,_Left,_Right,to,traverse)
-import           Control.Monad                     (forever,forM,void)
+import           Control.Monad                     (forever,forM,void,when)
 import           Control.Monad.IO.Class            (liftIO)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
@@ -107,7 +107,10 @@ loadExistingARB cfg  = do
   fps_arb <- getFileListRecursively arbpath
   fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath
   let fps = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot)) fps_arb
-  forM fps $ \fp -> do
+  forM (zip [1..] fps) $ \(i,fp) -> do
+    when (i `mod` 1000 == 0) $ do
+      putStrLn (show i ++ "th file")
+      
     bstr <- B8.readFile fp
     let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
     let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",(T.take 2 hsh),hsh]) rssAnalysisList
@@ -246,12 +249,14 @@ haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left.po_main)
 
 isSubjectBlackListed x = x ^.subjectA._2.to T.toLower `elem` blackList
 
+isSubjectEmpty x = T.null (x^.subjectA._2)
+
 
 filterARB :: Int
           -> [EventCard]
           -> [EventCard]
 filterARB n arbs =
-  let arbs0 = map (\(f,(t,(xs,ner,evt)),mitem)-> (f,(t,(filter (\x -> {- not (isSubjectBlackListed x) && isWithObjOrWhiteListed x  && -} (not (haveCommaEntity x) ) ) xs,ner,evt)),mitem)) arbs
+  let arbs0 = map (\(f,(t,(xs,ner,evt)),mitem)-> (f,(t,(filter (\x -> not (isSubjectEmpty x) &&  {- not (isSubjectBlackListed x) && isWithObjOrWhiteListed x  && -} (not (haveCommaEntity x) ) ) xs,ner,evt)),mitem)) arbs
       -- we start with two times more sets considering filter-out items.
       arbs1 = take (2*n) $ sortBy (flip compare `on` (\(_,(ct,_),_) -> ct)) arbs0
       templst = do (f,(t,(arbs'',ner,evt)),mitem) <- arbs1
@@ -272,7 +277,7 @@ getARB arbs i = do
   liftIO $ putStrLn "getARB called"
   arbs1 <- liftIO $ readTVarIO arbs
   liftIO $ print (length arbs1)
-  let n = 500
+  let n = 1000
       result = take n (drop (n*i) arbs1)
   liftIO $ mapM_ print (take 3 result)
   return result
