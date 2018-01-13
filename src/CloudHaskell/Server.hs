@@ -6,8 +6,7 @@ import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO
 import           Control.Distributed.Process.Lifted                  
 import           Control.Monad                     (void)
 import           Control.Monad.Loops               (whileJust_)
-import           Control.Monad.IO.Class            (liftIO)
-import           Control.Monad.Trans.Class
+import           Control.Monad.IO.Class            (MonadIO(liftIO))
 import           Control.Monad.Trans.Reader
 import qualified Data.Binary                 as Bi
 import qualified Data.HashMap.Strict         as HM
@@ -23,10 +22,13 @@ instance Bi.Binary HeartBeat where
 
 type LogProcess = ReaderT LogLock Process
 
+
+tellLog :: MonadIO m => String -> ReaderT LogLock m ()
 tellLog msg = do
   lock <- ask
   atomicLog lock msg
-                  
+
+
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
   pid <- action                                            -- main process launch

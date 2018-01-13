@@ -19,46 +19,24 @@ library
   hs-source-dirs: src
   build-depends:  base,
                   --
-                  -- aeson,
                   binary,
                   bytestring,
                   connection,
-                  -- containers,
                   distributed-process,
                   distributed-process-lifted,
-                  -- filepath,
-                  -- hashable,
                   haskeline,
                   http-client,
                   http-client-tls,
                   http-types,
-                  -- jvm,
-                  -- lens,
                   monad-loops,
-                  -- network,
                   network-simple,
-                  -- network-transport,
-                  -- network-transport-tcp,
                   network-transport-uphere,
-                  -- nlp-types,
                   optparse-applicative,
-                  -- postgresql-simple,
-                  -- servant,
-                  -- servant-client,
-                  -- servant-server,
                   stm,
                   text,
-                  -- time,
                   transformers,
                   unordered-containers,
-                  -- wai,
-                  -- wai-cors,
-                  -- warp,
-                  -- wiki-ner,
                   --
-                  -- newsapi,
-                  -- nlp-pipeline,
-                  -- uphere-db,
                   uphere-network-util
 
   exposed-modules:
@@ -70,23 +48,51 @@ library
                     SemanticParserAPI.Compute.Worker
                     SemanticParserAPI.CLI.Client
                     SemanticParserAPI.CLI.Type
-                    -- Query.App.API
-                    -- Query.DB.NewsAPI
-                    -- Query.Type
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
-  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+  ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
 
--- executable api
---   main-is:             api.hs
---   build-depends:       base,
---                        --
---                        lens,
---                        optparse-applicative,
---                        --
---                        nlp-pipeline,
---                        nlp-shared-types,
---                        --
---                        nlp-query
---   hs-source-dirs:      app
---   default-language:    Haskell2010
+executable query
+  main-is:             query.hs
+  build-depends:       base,
+                       --
+                       semantic-parser-api-compute
+  hs-source-dirs:      app
+  default-language:    Haskell2010
+  ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+
+
+executable cmdclient
+  main-is:             cmdclient.hs
+  build-depends:       base,
+                       bytestring,
+                       distributed-process,
+                       distributed-process-lifted,
+                       optparse-applicative,
+                       text,
+                       transformers,
+                       --
+                       network-transport-uphere,
+                       --
+                       semantic-parser-api-compute  
+  hs-source-dirs:      app
+  default-language:    Haskell2010
+  ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+
+executable stresstest
+  main-is:             stresstest.hs
+  build-depends:       base,
+                       bytestring,
+                       distributed-process,
+                       distributed-process-lifted,
+                       optparse-applicative,
+                       text,
+                       transformers,
+                       --
+                       network-transport-uphere,
+                       --
+                       semantic-parser-api-compute  
+  hs-source-dirs:      app
+  default-language:    Haskell2010
+  ghc-options: -threaded -Wall -Werror -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+    

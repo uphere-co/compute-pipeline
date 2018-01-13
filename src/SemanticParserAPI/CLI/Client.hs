@@ -7,20 +7,18 @@ import           Control.Concurrent                       (threadDelay)
 import           Control.Distributed.Process.Lifted
 
 import           Control.Monad                            (void,join)
-import           Control.Monad.Loops
-import           Control.Monad.Trans.Class                (lift)
-import qualified Data.ByteString.Lazy.Char8         as BL
-import qualified Data.Text                          as T
-import qualified Network.Simple.TCP                 as NS
--- import           Options.Applicative
-import           System.Console.Haskeline                 (runInputT,getInputLine,defaultSettings)
+-- import           Control.Monad.Loops
+-- import           Control.Monad.Trans.Class                (lift)
+-- import qualified Data.ByteString.Lazy.Char8         as BL
+-- import qualified Data.Text                          as T
+-- import qualified Network.Simple.TCP                 as NS
+-- import           System.Console.Haskeline                 (runInputT,getInputLine,defaultSettings)
 import           System.Console.Haskeline.MonadException
 --
 import           CloudHaskell.Server
-import           Network.Util
-import           QueryServer.Type
+-- import           Network.Util
 --
-import           SemanticParserAPI.CLI.Type
+-- import           SemanticParserAPI.CLI.Type
 
 instance MonadException Process where
   controlIO f = join . liftIO $ f (RunIO return)
@@ -57,7 +55,7 @@ consoleClient sc = do
 -}
 
 mainProcess :: ProcessId -> LogProcess ()
-mainProcess them = do
+mainProcess _them = do
   tellLog "mainProcess started"
   {-
   msc :: Maybe (SendPort (Query,SendPort BL.ByteString)) <- expectTimeout 5000000
