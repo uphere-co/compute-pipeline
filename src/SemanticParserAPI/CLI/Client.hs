@@ -4,30 +4,36 @@
 module SemanticParserAPI.CLI.Client where
 
 import           Control.Concurrent                  (threadDelay)
-import           Control.Distributed.Process.Lifted  (Process,ProcessId
-                                                     ,expectTimeout,getSelfPid,kill
+import           Control.Distributed.Process.Lifted  (Process,ProcessId,SendPort,ReceivePort
+                                                     ,expectTimeout
+                                                     ,getSelfPid
+                                                     ,newChan,receiveChan,sendChan
                                                      ,send,spawnLocal)
 import           Control.Distributed.Process.Node
 import           Control.Exception                   (SomeException(..),bracket,try)
 
 import           Control.Monad                       (forever,void,join)
 import           Control.Monad.IO.Class              (liftIO)
--- import           Control.Monad.Loops
--- import           Control.Monad.Trans.Class                (lift)
+import           Control.Monad.Loops                 (whileJust_)
+import           Control.Monad.Trans.Class           (lift)
 import           Control.Monad.Trans.Reader          (runReaderT)
--- import qualified Data.ByteString.Lazy.Char8         as BL
--- import qualified Data.Text                          as T
-import qualified Network.Simple.TCP                 as NS
--- import           System.Console.Haskeline                 (runInputT,getInputLine,defaultSettings)
+import           Data.Binary                         (Binary)
+import qualified Data.ByteString.Lazy          as BL
+import qualified Data.Text                     as T
+import           Data.Typeable                       (Typeable)
+import           System.Console.Haskeline            (runInputT,getInputLine,defaultSettings)
 import           System.Console.Haskeline.MonadException (MonadException(controlIO),RunIO(..))
 --
 import           Network.Transport                   (closeTransport)
 import           Network.Transport.UpHere            (DualHostPortPair(..))
 --
-import           CloudHaskell.Server
-import           Network.Util                        (LogLock,newLogLock
-                                                     ,atomicLog,recvAndUnpack
-                                                     ,tryCreateTransport)
+import           CloudHaskell.Util                   (LogProcess,newLogLock
+                                                     ,atomicLog,tellLog
+                                                     ,tryCreateTransport
+                                                     ,pingHeartBeat
+                                                     ,retrieveQueryServerPid
+                                                     )
+import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
 
 
 
@@ -36,78 +42,50 @@ instance MonadException Process where
 
 
 
+
+
+
+queryProcess :: forall query result a.
+                (Binary query,Binary result,Typeable query,Typeable result) =>
+                SendPort (query, SendPort result)
+             -> query
+             -> (result -> LogProcess a)
+             -> LogProcess a
+queryProcess sc q f = do
+  (sc',rc') <- newChan :: LogProcess (SendPort result, ReceivePort result)
+  sendChan sc (q,sc')
+  f =<< receiveChan rc'
+
+
+
+
+consoleClient :: SendPort (ComputeQuery, SendPort ComputeResult) -> LogProcess ()
+consoleClient sc = do
+  runInputT defaultSettings $
+    whileJust_ (getInputLine "% ") $ \input' -> do
+      -- liftIO $ print input'
+      lift $ queryProcess sc (CQ_Text (T.pack input')) (liftIO . print)
+
+
+
+mainProcess :: ProcessId -> LogProcess ()
+mainProcess them = do
+  tellLog "mainProcess started"
+  msc :: Maybe (SendPort (ComputeQuery,SendPort ComputeResult)) <- expectTimeout 5000000
+  case msc of
+    Nothing -> tellLog "cannot receive query port"
+    Just sc -> do
+      tellLog "connection stablished to query server"
+      p1 <- spawnLocal (consoleClient sc)
+      void $ pingHeartBeat p1 them 0
+
+
 initProcess :: ProcessId -> LogProcess ()
 initProcess them = do
   us <- getSelfPid
   tellLog ("we are " ++ show us)
   send them us
   void (mainProcess them)
-
-
-pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
-pingHeartBeat p1 them n = do
-  send them (HB n)
-  liftIO (threadDelay 5000000)
-  mhb <- expectTimeout 10000000
-  case mhb of
-    Just (HB n') -> do
-      tellLog ("ping-pong : " ++ show n')
-      pingHeartBeat p1 them (n+1)
-    Nothing -> do
-      tellLog ("heartbeat failed!")
-      kill p1 "heartbeat dead"
-
-
-retrieveQueryServerPid :: LogLock
-                       -> (String,Int)   -- ^ (serverid,serverport)
-                       -> IO (Maybe ProcessId)
-retrieveQueryServerPid lock (serverip,serverport) = do
-  NS.connect serverip (show serverport) $ \(sock,addr) -> do
-    atomicLog lock ("connection established to " ++ show addr)
-    recvAndUnpack sock
-
-
-{-
-consoleClient :: SendPort (Query, SendPort BL.ByteString) -> LogProcess ()
-consoleClient sc = do
-  runInputT defaultSettings $
-    whileJust_ (getInputLine "% ") $ \input' -> do
-      lift $ queryProcess sc (QueryText (T.pack input') []) (liftIO . BL.putStrLn)
-
--}
-
-mainProcess :: ProcessId -> LogProcess ()
-mainProcess them = do
-  tellLog "mainProcess started"
-  p1 <- spawnLocal $ do
-          liftIO $ forever $ do
-            threadDelay 9000000
-            putStrLn "mainProcess"
-
-    --    (consoleClient sc)
-  
-  void $ pingHeartBeat p1 them 0
-  
-  {-
-  msc :: Maybe (SendPort (Query,SendPort BL.ByteString)) <- expectTimeout 5000000
-  case msc of
-    Nothing -> tellLog "cannot receive query port"
-    Just sc -> do
-      tellLog "connection stablished to query server"
-      -- lock <- ask
-      p1 <- spawnLocal (consoleClient sc)
-      void $ pingHeartBeat p1 them 0
-  -}
-
-{-
-queryProcess :: SendPort (Query, SendPort BL.ByteString) -> Query -> (BL.ByteString -> LogProcess a) -> LogProcess a
-queryProcess sc q f = do
-  (sc',rc') <- newChan :: LogProcess (SendPort BL.ByteString, ReceivePort BL.ByteString)
-  sendChan sc (q,sc')
-  f =<< receiveChan rc'
-
-
--}
 
 
 clientMain :: (Int,String,String,String,Int) -> IO ()
