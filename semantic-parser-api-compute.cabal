@@ -55,6 +55,7 @@ library
 executable query
   main-is:             query.hs
   build-depends:       base,
+                       optparse-applicative,
                        --
                        semantic-parser-api-compute
   hs-source-dirs:      app
