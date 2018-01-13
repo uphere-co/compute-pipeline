@@ -52,8 +52,8 @@ library
   ghc-prof-options: -fprof-auto
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
 
-executable query
-  main-is:             query.hs
+executable compute-server
+  main-is:             compute-server.hs
   build-depends:       base,
                        optparse-applicative,
                        --
@@ -63,8 +63,8 @@ executable query
   ghc-options: -threaded -Wall-fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
 
 
-executable cmdclient
-  main-is:             cmdclient.hs
+executable compute-client
+  main-is:             compute-client.hs
   build-depends:       base,
                        bytestring,
                        distributed-process,

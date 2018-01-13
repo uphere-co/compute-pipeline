@@ -4,6 +4,8 @@
 
 module Main where
 
+import           Control.Applicative       (optional)
+import           Data.Maybe                (fromMaybe)
 import           Data.Monoid               ((<>))
 import           Options.Applicative
 --
@@ -11,8 +13,8 @@ import           SemanticParserAPI.Compute (computeMain)
 
 
 data ComputeServerOption = ComputeServerOption { _port :: Int
-                                               , _hostg :: String
-                                               , _hostl :: String
+                                               , _hostg :: Maybe String
+                                               , _hostl :: Maybe String
                                                -- , _config :: String
                                                -- , _corenlp :: String
                                                }
@@ -21,11 +23,10 @@ data ComputeServerOption = ComputeServerOption { _port :: Int
 pOptions :: Parser ComputeServerOption
 pOptions = ComputeServerOption
            <$> option auto (long "port" <> short 'p' <> help "Port number")
-           <*> strOption (long "global-ip" <> short 'g' <> help "Global IP address")
-           <*> strOption (long "local-ip"  <> short 'l' <> help "Local IP address")
+           <*> optional (strOption (long "global-ip" <> short 'g' <> help "Global IP address"))
+           <*> optional (strOption (long "local-ip"  <> short 'l' <> help "Local IP address"))
            --  <*> strOption (long "config-file" <> short 'c' <> help "Config file")
            --  <*> strOption (long "corenlp" <> short 'n' <> help "CoreNLP server address")
-
 
 computeServerOption :: ParserInfo ComputeServerOption
 computeServerOption = info pOptions ( fullDesc <>
@@ -36,5 +37,5 @@ computeServerOption = info pOptions ( fullDesc <>
 main :: IO ()
 main = do
   opt <- execParser computeServerOption
-  computeMain (_port opt,_hostg opt,_hostl opt)
+  computeMain (_port opt,fromMaybe "127.0.0.1" (_hostg opt),fromMaybe "127.0.0.1" (_hostl opt))
 

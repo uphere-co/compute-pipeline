@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Data.Maybe                   (fromMaybe)
 import           Options.Applicative
 --
 import           SemanticParserAPI.CLI.Client (clientMain)
@@ -13,4 +14,8 @@ main = do
   opt <- execParser clientOption
   putStrLn "client"
   print opt
-  clientMain (port opt,hostg opt,hostl opt,serverip opt,serverport opt)
+  clientMain (port opt
+             ,fromMaybe "127.0.0.1" (hostg opt)
+             ,fromMaybe "127.0.0.1" (hostl opt)
+             ,fromMaybe "127.0.0.1" (serverip opt)
+             ,serverport opt)

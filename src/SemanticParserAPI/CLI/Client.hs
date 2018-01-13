@@ -40,23 +40,20 @@ initProcess them = do
 
 
 
-{-
-consoleClient :: SendPort (Query, SendPort BL.ByteString) -> LogProcess ()
-consoleClient sc = do
+{- 
+consoleClient :: {- SendPort (Query, SendPort BL.ByteString) -> -} LogProcess ()
+consoleClient = do
   runInputT defaultSettings $
     whileJust_ (getInputLine "% ") $ \input' -> do
-      lift $ queryProcess sc (QueryText (T.pack input') []) (liftIO . BL.putStrLn)
-
+      liftIO $ print input'
+      -- lift $ queryProcess sc (QueryText (T.pack input') []) (liftIO . BL.putStrLn)
 -}
+
 
 mainProcess :: ProcessId -> LogProcess ()
 mainProcess them = do
   tellLog "mainProcess started"
-  p1 <- spawnLocal $ do
-          liftIO $ forever $ do
-            threadDelay 9000000
-            putStrLn "mainProcess"
-
+  p1 <- spawnLocal $ liftIO $ do threadDelay 100000000 >> return () -- consoleClient
     --    (consoleClient sc)
   
   void $ pingHeartBeat p1 them 0
