@@ -5,7 +5,7 @@ module CloudHaskell.Util where
 import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO, newEmptyTMVarIO, putTMVar)
-import           Control.Distributed.Process.Lifted                  
+import           Control.Distributed.Process.Lifted
 import           Control.Monad                     (void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
@@ -83,11 +83,15 @@ tryCreateTransport dhpp =
                    Right transport -> return (Just transport)
 
 
+onesecond :: Int
+onesecond = 1000000
+
 pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat p1 them n = do
   send them (HB n)
-  liftIO (threadDelay 5000000)
-  mhb <- expectTimeout 10000000
+
+  liftIO (threadDelay (5*onesecond))
+  mhb <- expectTimeout (100*onesecond)
   case mhb of
     Just (HB n') -> do
       tellLog ("ping-pong : " ++ show n')
@@ -125,10 +129,10 @@ tellLog msg = do
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
   pid <- action                                            -- main process launch
-  whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
+  whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails.
     tellLog ("heartbeat: " ++ show n)
     send them (HB n)
-  tellLog "heartbeat failed: reload"                       -- when fail, it prints messages  
+  tellLog "heartbeat failed: reload"                       -- when fail, it prints messages
   kill pid "connection closed"                             -- and start over the whole process.
 
 
@@ -136,7 +140,7 @@ broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
 broadcastProcessId lock pidref port = do
   NS.serve NS.HostAny port $ \(sock,addr) -> do
     atomicLog lock ("TCP connection established from " ++ show addr)
-    pid <- atomically (takeTMVar pidref) 
+    pid <- atomically (takeTMVar pidref)
     packAndSend sock pid
 
 
@@ -157,10 +161,10 @@ server port action p = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   resultref <- liftIO $ newTMVarIO HM.empty
-  lock <- newLogLock 0 
-  
+  lock <- newLogLock 0
+
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
-  flip runReaderT lock $ 
+  flip runReaderT lock $
     local incClientNum $ serve pidref (action p resultref)
 
 
