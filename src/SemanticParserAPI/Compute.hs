@@ -43,27 +43,19 @@ start sdat resultref = do
   tellLog ("got client pid : " ++ show them)
 
   withHeartBeat them $ spawnLocal $ do
-    {- liftIO $ forever $ do
-      threadDelay 10000000
-      putStrLn "running"
-    -}
     (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
     send them sc
     liftIO $ hPutStrLn stderr "connected"
     forever $ do
       (q,sc') <- receiveChan rc
-      -- liftIO $ hPutStrLn stderr (show q)
-      -- sendChan sc' (CR_Text txt)
       spawnLocal (queryWorker sdat resultref sc' q)
-
-
 
 
 computeMain :: (Int,String,String) -> IO ()
 computeMain (portnum,hostg,hostl) = do
   let acfg  = Analyze.Config False False bypassNER bypassTEXTNER "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
-      bypassNER = True -- False
-      bypassTEXTNER = True -- False
+      bypassNER = False
+      bypassTEXTNER = False
   cfg  <- loadLexDataConfig (acfg^. Analyze.configFile) >>= \case Left err -> error err
                                                                   Right x  -> return x
   (apdat,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg
