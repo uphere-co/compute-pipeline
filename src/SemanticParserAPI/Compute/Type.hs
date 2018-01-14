@@ -2,6 +2,7 @@
 
 module SemanticParserAPI.Compute.Type where
 
+import           Data.Aeson
 import           Data.Binary                    (Binary)
 import           Data.Text                      (Text)
 import           GHC.Generics                   (Generic)
@@ -13,9 +14,12 @@ data ComputeQuery = CQ_Text Text
                   deriving (Generic,Show)
 
 instance Binary ComputeQuery
-
+instance ToJSON ComputeQuery
+instance FromJSON ComputeQuery
 
 data ComputeResult = CR_TokenMeaningGraph [[(Int,Text)]] [MeaningGraph]
                    deriving (Generic,Show)
 
 instance Binary ComputeResult
+instance ToJSON ComputeResult
+instance FromJSON ComputeResult

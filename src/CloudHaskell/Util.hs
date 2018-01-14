@@ -6,6 +6,8 @@ import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO, newEmptyTMVarIO, putTMVar)
 import           Control.Distributed.Process.Lifted
+import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
+import           Control.Exception                 (SomeException)
 import           Control.Monad                     (void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
@@ -17,7 +19,7 @@ import qualified Data.ByteString.Lazy        as BL
 import qualified Data.HashMap.Strict         as HM
 import           Data.Typeable                     (Typeable)
 import qualified Network.Simple.TCP          as NS
-import           Network.Transport                 (Transport)
+import           Network.Transport                 (Transport,closeTransport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
 --
 import           Network.Transport.UpHere          (createTransport
@@ -178,3 +180,50 @@ queryProcess sc q f = do
   (sc',rc') <- newChan :: LogProcess (SendPort result, ReceivePort result)
   sendChan sc (q,sc')
   f =<< receiveChan rc'
+
+
+
+
+mainP :: forall query result.
+         (Binary query, Binary result, Typeable query, Typeable result) =>
+         (SendPort (query, SendPort result) -> LogProcess ())
+      -> ProcessId
+      -> LogProcess ()
+mainP process them = do
+  tellLog "mainProcess started"
+  msc :: Maybe (SendPort (query,SendPort result)) <- expectTimeout 5000000
+  case msc of
+    Nothing -> tellLog "cannot receive query port"
+    Just sc -> do
+      tellLog "connection established to query server"
+      p1 <- spawnLocal (process sc)
+      void $ pingHeartBeat p1 them 0
+
+
+initP :: (ProcessId -> LogProcess ()) -> ProcessId -> LogProcess ()
+initP process them = do
+  us <- getSelfPid
+  tellLog ("we are " ++ show us)
+  send them us
+  process them
+
+
+client :: (Int,String,String,String,Int) -> (ProcessId -> LogProcess ()) -> IO ()
+client (portnum,hostg,hostl,serverip,serverport) process = do
+  let dhpp = DHPP (hostg,show portnum) (hostl,show portnum)
+  bracket (tryCreateTransport dhpp)
+          closeTransport
+          (\transport -> do
+               node <- newLocalNode transport initRemoteTable
+               lock <- newLogLock 0
+               emthem <- try (retrieveQueryServerPid lock (serverip,serverport))
+               case emthem of
+                 Left (e :: SomeException) -> do
+                   atomicLog lock "exception caught"
+                   atomicLog lock (show e)
+                 Right mthem ->
+                   case mthem of
+                     Nothing -> atomicLog lock "no pid"
+                     Just them -> do
+                       atomicLog lock ("server id =" ++ show them)
+                       runProcess node (flip runReaderT lock (process them)))
