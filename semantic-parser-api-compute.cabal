@@ -19,6 +19,7 @@ library
   hs-source-dirs: src
   build-depends:  base,
                   --
+                  aeson,
                   binary,
                   bytestring,
                   connection,

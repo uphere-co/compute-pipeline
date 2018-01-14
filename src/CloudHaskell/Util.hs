@@ -195,7 +195,7 @@ mainP process them = do
   case msc of
     Nothing -> tellLog "cannot receive query port"
     Just sc -> do
-      tellLog "connection stablished to query server"
+      tellLog "connection established to query server"
       p1 <- spawnLocal (process sc)
       void $ pingHeartBeat p1 them 0
 
@@ -225,5 +225,5 @@ client (portnum,hostg,hostl,serverip,serverport) process = do
                    case mthem of
                      Nothing -> atomicLog lock "no pid"
                      Just them -> do
-                       atomicLog lock (show them)
+                       atomicLog lock ("server id =" ++ show them)
                        runProcess node (flip runReaderT lock (process them)))
