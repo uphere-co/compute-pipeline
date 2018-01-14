@@ -56,6 +56,7 @@ library
                   wiki-ner
 
   exposed-modules:
+                    CloudHaskell.QueryQueue
                     CloudHaskell.Util
                     SemanticParserAPI.Compute
                     SemanticParserAPI.Compute.CoreNLP

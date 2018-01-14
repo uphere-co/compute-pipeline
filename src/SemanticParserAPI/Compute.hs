@@ -31,33 +31,34 @@ import           Network.Transport.UpHere                  (DualHostPortPair(..)
 import           SRL.Analyze                               (loadConfig)
 import qualified SRL.Analyze.Config                  as Analyze
 --
+import           CloudHaskell.QueryQueue                   (QQVar)
 import           CloudHaskell.Util                         (LogProcess,server,tellLog
                                                            ,withHeartBeat,tryCreateTransport)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker          (SRLData(..),queryWorker)
 
 
-start :: SRLData -> TMVar (HM.HashMap Text ([Int],[Text])) -> LogProcess ()
-start sdat resultref = do
+start :: SRLData -> QQVar ComputeQuery ComputeResult -> LogProcess ()
+start sdat qqvar = do
   them :: ProcessId <- expect
   tellLog ("got client pid : " ++ show them)
 
   withHeartBeat them $ spawnLocal $ do
-    (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
+    (sc,rc) <- newChan --  :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
     send them sc
     liftIO $ hPutStrLn stderr "connected"
     forever $ do
       (q,sc') <- receiveChan rc
-      spawnLocal (queryWorker sdat resultref sc' q)
+      spawnLocal (queryWorker sdat qqvar sc' q)
 
 
 computeMain :: (Int,String,String) -> IO ()
 computeMain (portnum,hostg,hostl) = do
   let acfg  = Analyze.Config False False bypassNER bypassTEXTNER "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
-      bypassNER = False
-      bypassTEXTNER = False
-  cfg  <- loadLexDataConfig (acfg^. Analyze.configFile) >>= \case Left err -> error err
-                                                                  Right x  -> return x
+      bypassNER = True -- False
+      bypassTEXTNER = True -- False
+  cfg <- loadLexDataConfig (acfg^. Analyze.configFile) >>= \case Left err -> error err
+                                                                 Right x  -> return x
   (apdat,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
@@ -77,18 +78,9 @@ computeMain (portnum,hostg,hostl) = do
                           , _forest = frst
                           , _companyMap = cmap
                           }
-    let -- portnum = _port opt
-        port = show portnum
+    let port = show portnum
         port' = show (portnum+1)
-        -- hostg = _hostg opt
-        -- hostl = _hostl opt
-        -- config = _config opt
-        -- corenlp_server = _corenlp opt
         dhpp = DHPP (hostg,port') (hostl,port')
     bracket (tryCreateTransport dhpp)
             closeTransport
             (\transport -> newLocalNode transport initRemoteTable >>= \node -> runProcess node (server port start srldata))
-
-        -- withCString config $ \_configfile -> do
-          -- engine <- newEngineWrapper configfile
-          -- deleteEngineWrapper engine

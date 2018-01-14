@@ -7,6 +7,7 @@
 
 module SemanticParserAPI.Compute.Worker where
 
+import           Control.Concurrent             (threadDelay)
 import           Control.Concurrent.STM         (TMVar)
 import           Control.Distributed.Process.Lifted  (SendPort,sendChan)
 import           Control.Lens                   ((^.),(^..),_Just,makeLenses)
@@ -40,8 +41,9 @@ import           SRL.Analyze.Type               (AnalyzePredata,DocStructure,Mea
                                                 )
 import           WikiEL.Type                    (EntityMention)
 --
-import           CloudHaskell.Util                   (LogProcess)
-import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
+import           CloudHaskell.QueryQueue        (QQVar)
+import           CloudHaskell.Util              (LogProcess)
+import           SemanticParserAPI.Compute.Type (ComputeQuery(..),ComputeResult(..))
 
 
 data SRLData = SRLData { _aconfig :: Analyze.Config
@@ -75,21 +77,17 @@ runSRL sdat sent = do
   return (tokenss,mgs) --  ,dotgraphs)
 
 
-
-
-
-
-
-
-
 queryWorker :: SRLData
-            -> TMVar (HM.HashMap Text ([Int],[Text]))
+            -> QQVar ComputeQuery ComputeResult -- TMVar (HM.HashMap Text ([Int],[Text]))
             -> SendPort ComputeResult
             -> ComputeQuery
             -> LogProcess ()
-queryWorker sdat _resultref sc (CQ_Text txt) = do
+queryWorker sdat qqvar sc (CQ_Text txt) = do
   -- m <- liftIO $ atomically $ takeTMVar resultref
+  -- liftIO $ threadDelay (100*1000000)
   (tokenss,mgs) <- liftIO (runSRL sdat txt)
+  -- let tokenss = []
+  --     mgs = []
   sendChan sc (CR_TokenMeaningGraph tokenss mgs)
 
 
