@@ -1,27 +1,32 @@
-{ mkDerivation, aeson, base, binary, bytestring, containers
-, distributed-process, filepath, hashable, jvm, lens, network
-, network-simple, network-transport, network-transport-tcp, newsapi
-, nlp-pipeline, nlp-shared-types, nlp-types, optparse-applicative
-, postgresql-simple, servant, servant-client, servant-server
-, stdenv, stm, text, time, transformers, uphere-db
-, uphere-network-util, wai, wai-cors, warp, wiki-ner
+{ mkDerivation, base, binary, bytestring, connection, containers
+, data-default, directory, distributed-process
+, distributed-process-lifted, haskeline, HCoreNLP, HFrameNet
+, http-client, http-client-tls, http-types, jvm, lens
+, lexicon-builder, monad-loops, network-simple, network-transport
+, network-transport-uphere, nlp-types, optparse-applicative
+, process, semantic-role-labeler, semantic-types, stdenv, stm
+, syntactic-analysis, text, transformers, unordered-containers
+, uphere-network-util, wiki-ner
 }:
 mkDerivation {
-  pname = "nlp-query";
+  pname = "semantic-parser-api-compute";
   version = "0.1.0.0";
   src = ./.;
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    aeson base binary bytestring containers distributed-process
-    filepath hashable jvm lens network network-simple network-transport
-    network-transport-tcp newsapi nlp-pipeline nlp-shared-types
-    nlp-types postgresql-simple servant servant-client servant-server
-    stm text time transformers uphere-db uphere-network-util wai
-    wai-cors warp wiki-ner
+    base binary bytestring connection containers data-default directory
+    distributed-process distributed-process-lifted haskeline HCoreNLP
+    HFrameNet http-client http-client-tls http-types jvm lens
+    lexicon-builder monad-loops network-simple network-transport
+    network-transport-uphere nlp-types optparse-applicative process
+    semantic-role-labeler semantic-types stm syntactic-analysis text
+    transformers unordered-containers uphere-network-util wiki-ner
   ];
   executableHaskellDepends = [
-    base lens nlp-pipeline nlp-shared-types optparse-applicative
+    base bytestring distributed-process distributed-process-lifted
+    network-transport network-transport-uphere optparse-applicative
+    text transformers
   ];
   license = stdenv.lib.licenses.unfree;
 }
