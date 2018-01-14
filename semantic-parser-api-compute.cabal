@@ -32,6 +32,7 @@ library
                   http-client,
                   http-client-tls,
                   http-types,
+                  jni,
                   jvm,
                   lens,
                   monad-loops,
@@ -56,6 +57,7 @@ library
                   wiki-ner
 
   exposed-modules:
+                    CloudHaskell.QueryQueue
                     CloudHaskell.Util
                     SemanticParserAPI.Compute
                     SemanticParserAPI.Compute.CoreNLP

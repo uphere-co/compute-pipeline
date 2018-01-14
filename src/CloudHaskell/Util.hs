@@ -3,8 +3,8 @@
 module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkIO,threadDelay)
-import           Control.Concurrent.STM            (atomically)
-import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO, newEmptyTMVarIO, putTMVar)
+import           Control.Concurrent.STM            (atomically,newTVarIO)
+import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar,newTMVarIO, newEmptyTMVarIO, putTMVar)
 import           Control.Distributed.Process.Lifted
 import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
 import           Control.Exception                 (SomeException)
@@ -25,7 +25,8 @@ import           System.IO                         (hFlush,hPutStrLn,stderr)
 import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
-
+--
+import           CloudHaskell.QueryQueue           (QQVar,emptyQQ)
 
 
 recvAndUnpack :: Binary a => NS.Socket -> IO (Maybe a)
@@ -90,16 +91,17 @@ onesecond = 1000000
 
 pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat p1 them n = do
+  tellLog ("heart-beat send: " ++ show n)
   send them (HB n)
-
-  liftIO (threadDelay (5*onesecond))
   mhb <- expectTimeout (100*onesecond)
   case mhb of
     Just (HB n') -> do
-      tellLog ("ping-pong : " ++ show n')
+      tellLog ("ping-pong received: " ++ show n')
+      liftIO (threadDelay (5*onesecond))
       pingHeartBeat p1 them (n+1)
     Nothing -> do
       tellLog ("heartbeat failed!")
+      liftIO (threadDelay (5*onesecond))
       kill p1 "heartbeat dead"
 
 
@@ -131,8 +133,8 @@ tellLog msg = do
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
   pid <- action                                            -- main process launch
-  whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails.
-    tellLog ("heartbeat: " ++ show n)
+  whileJust_ (expectTimeout (10*onesecond)) $ \(HB n) -> do      -- heartbeating until it fails.
+    tellLog ("heartbeat received: " ++ show n)
     send them (HB n)
   tellLog "heartbeat failed: reload"                       -- when fail, it prints messages
   kill pid "connection closed"                             -- and start over the whole process.
@@ -150,24 +152,22 @@ serve :: TMVar ProcessId -> LogProcess () -> LogProcess ()
 serve pidref action = do
   pid <-  spawnLocal $ action >> tellLog "action finished"
 
-  tellLog "prepartion mode"
+  tellLog "preparation mode"
   tellLog (show pid)
   liftIO (atomically (putTMVar pidref pid))
   tellLog "wait mode"
-
   local incClientNum $ serve pidref action
 
 
-server :: String -> (p -> TMVar (HM.HashMap k v)  -> LogProcess ()) -> p -> Process ()
-server port action p = do
+server :: QQVar k v -> String -> (p -> QQVar k v -> LogProcess ()) -> p -> Process ()
+server qqvar port action p = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
-  resultref <- liftIO $ newTMVarIO HM.empty
   lock <- newLogLock 0
 
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
   flip runReaderT lock $
-    local incClientNum $ serve pidref (action p resultref)
+    local incClientNum $ serve pidref (action p qqvar)
 
 
 queryProcess :: forall query result a.

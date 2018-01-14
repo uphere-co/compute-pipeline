@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds                #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE LambdaCase               #-}
 {-# LANGUAGE OverloadedStrings        #-}
 {-# LANGUAGE RecordWildCards          #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
@@ -7,23 +8,34 @@
 
 module SemanticParserAPI.Compute.Worker where
 
-import           Control.Concurrent.STM         (TMVar)
+import           Control.Concurrent             (threadDelay)
+import           Control.Concurrent.STM         (TMVar,atomically,retry,modifyTVar',readTVar,writeTVar)
 import           Control.Distributed.Process.Lifted  (SendPort,sendChan)
-import           Control.Lens                   ((^.),(^..),_Just,makeLenses)
+import           Control.Lens                   ((&),(^.),(^..),(.~),_Just,makeLenses)
+import           Control.Monad                  (forever)
 import           Control.Monad.IO.Class         (liftIO)
+import qualified Data.ByteString.Char8  as B
+import           Data.Default                   (def)
 import qualified Data.HashMap.Strict    as HM
 import           Data.IntMap                    (IntMap)
+import qualified Data.IntMap            as IM
 import           Data.Maybe                     (catMaybes)
 import           Data.Text                      (Text)
 import           Data.Tree                      (Forest)
+import qualified Foreign.JNI            as JNI
 import qualified Language.Java          as J
 import           System.Directory               (getCurrentDirectory,setCurrentDirectory
                                                 ,getTemporaryDirectory)
+import           System.Environment             (getEnv)
 import           System.Process                 (readProcess)
 --
+import           CoreNLP.Simple                 (prepare)
+import           CoreNLP.Simple.Type            (tokenizer,words2sentences,postagger
+                                                ,lemma,sutime,constituency,ner)
 import           FrameNet.Query.Frame           (FrameDB,frameDB)
 import qualified FrameNet.Type.Definition as F
 import           FrameNet.Type.Frame            (frame_definition)
+import           Lexicon.Data                   (loadLexDataConfig)
 import           NLP.Semantics.Type             (MeaningRoleContent(..),MeaningTree(..)
                                                 ,mt_frame,mt_arguments,mt_subordinates
                                                 ,mr_content,po_main
@@ -31,6 +43,7 @@ import           NLP.Semantics.Type             (MeaningRoleContent(..),MeaningT
 import           NLP.Syntax.Type.XBar           (lemmaList)
 import           NER.Type                       (CompanyInfo)
 import           NLP.Type.CoreNLP               (Sentence)
+import           SRL.Analyze                    (loadConfig)
 import qualified SRL.Analyze.Config as Analyze
 import           SRL.Analyze.CoreNLP            (runParser)
 import           SRL.Analyze.Match.MeaningGraph (meaningGraph,tagMG)
@@ -40,8 +53,9 @@ import           SRL.Analyze.Type               (AnalyzePredata,DocStructure,Mea
                                                 )
 import           WikiEL.Type                    (EntityMention)
 --
-import           CloudHaskell.Util                   (LogProcess)
-import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
+import           CloudHaskell.QueryQueue        (QQVar,QueryStatus(..),next)
+import           CloudHaskell.Util              (LogProcess,tellLog)
+import           SemanticParserAPI.Compute.Type (ComputeQuery(..),ComputeResult(..))
 
 
 data SRLData = SRLData { _aconfig :: Analyze.Config
@@ -75,143 +89,47 @@ runSRL sdat sent = do
   return (tokenss,mgs) --  ,dotgraphs)
 
 
+queryWorker :: QQVar ComputeQuery ComputeResult -- TMVar (HM.HashMap Text ([Int],[Text]))
+            -> IO ()
+queryWorker qqvar = do
+  let acfg  = Analyze.Config False False bypassNER bypassTEXTNER "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
+      bypassNER = False
+      bypassTEXTNER = False
+  cfg <- loadLexDataConfig (acfg^. Analyze.configFile) >>= \case Left err -> error err
+                                                                 Right x  -> return x
+  (apdat,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg
+  clspath <- getEnv "CLASSPATH"
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    pp <- prepare (def & (tokenizer .~ True)
+                       . (words2sentences .~ True)
+                       . (postagger .~ True)
+                       . (lemma .~ True)
+                       . (sutime .~ True)
+                       . (constituency .~ True)
+                       . (ner .~ True)
+                  )
 
-
-
-
-
-
-
-queryWorker :: SRLData
-            -> TMVar (HM.HashMap Text ([Int],[Text]))
-            -> SendPort ComputeResult
-            -> ComputeQuery
-            -> LogProcess ()
-queryWorker sdat _resultref sc (CQ_Text txt) = do
-  -- m <- liftIO $ atomically $ takeTMVar resultref
-  (tokenss,mgs) <- liftIO (runSRL sdat txt)
-  sendChan sc (CR_TokenMeaningGraph tokenss mgs)
-
-
-{-
-createDotGraph :: MeaningGraph -> IO PNGData
-createDotGraph mg = do
-  let dotstr = dotMeaningGraph Nothing mg
-  cdir <- getCurrentDirectory
-  tdir <- getTemporaryDirectory
-  setCurrentDirectory tdir
-  T.IO.writeFile "test.dot" dotstr
-  void (readProcess "/nix/store/hxwdxsg6w79cnj2slkhk3bs8fx6nvdyk-graphviz-2.40.1/bin/dot" ["-Tpng","test.dot","-otest.png"] "")
-  bstr <- B.readFile "test.png"
-  setCurrentDirectory cdir
-  let pngdata = PNGData (T.E.decodeUtf8 ("data:image/png;base64," <> B64.encode bstr))
-  return pngdata
--}
-
-{-
-allFrames :: MeaningTree -> [Text]
-allFrames mt = let frm0 = mt^.mt_frame
-               in frm0 : (ys ++ zs)
-  where
-    xs = mt^..mt_arguments.traverse.mr_content
-    ys = concatMap (f . (^.po_main)) xs
-    zs = concatMap allFrames (mt^.mt_subordinates)
-    --
-    f (SubFrame x) = allFrames x
-    f (Modifier _ subs) = concatMap allFrames subs
-    f _ = []
--}
-
-{-
-convertDefRoot :: F.DefRoot -> DefRoot
-convertDefRoot (F.DefRoot lst) = DefRoot (map convertCContent lst)
-  where
-    convertCContent (F.CTEXT txt) = CTEXT txt
-    convertCContent (F.CFEN txt)  = CFEN txt
-    convertCContent (F.CEX xs)    = CEX (map convertEContent xs)
-    convertCContent F.CRET        = CRET ()
-    --
-    convertEContent (F.ETEXT txt) = ETEXT txt
-    convertEContent F.ERET        = ERET ()
-    convertEContent (F.EM txt)    = EM txt
-    convertEContent (F.EFEX txt)  = EFEX txt
--}
-
--- deriving instance Show F.DefRoot
-
-{-
-mkFrameNetData :: FrameDB -> Text -> (Text,DefRoot)
-mkFrameNetData framemap fname = fromMaybe (fname,DefRoot []) $ do
-  frm <- HM.lookup fname (framemap^.frameDB)
-  let txt = frm^.frame_definition
-      defroot0 = F.p_defRoot (T.L.fromStrict txt)
-  return (fname,convertDefRoot defroot0)
--}
-
-
-
-{-
-import           Control.Concurrent.STM
-import           Control.Distributed.Process.Lifted
-import           Control.Monad
-import           Control.Monad.IO.Class                    (MonadIO(liftIO))
-import           Control.Monad.Trans.Maybe                 (MaybeT(MaybeT,runMaybeT))
-import           Data.Aeson
-import qualified Data.ByteString.Char8               as B
-import qualified Data.ByteString.Lazy.Char8          as BL
-import           Data.ByteString.Unsafe                    (unsafePackCString)
-import qualified Data.HashMap.Strict                 as HM
-import           Data.Text                                 (Text)
-import qualified Data.Text                           as T
-import qualified Data.Text.Encoding                  as TE
-import           Foreign.C.String
-import           System.IO
---
-import           CloudHaskell.Server
-import           Query.Binding
-import           QueryServer.Type
-import           CoreNLP
-
-registerText :: (MonadIO m) => String -> EngineWrapper -> Text -> MaybeT m RegisteredSentences
-registerText corenlp_server engine txt = do
-  guard ((not . T.null) txt)
-  bstr_nlp0 <- (liftIO . runCoreNLP corenlp_server . TE.encodeUtf8) txt
-  guard ((not . B.null) bstr_nlp0)
-  bstr0 <- liftIO $
-    B.useAsCString bstr_nlp0 $ \cstr_nlp0 -> do
-      withCString "did_you_mean" $ \did_you_mean -> do
-        B.hPutStrLn stderr "step1"
-        bstr_nlp1 <- json_tparse cstr_nlp0 >>= preprocess_query engine >>= \j -> find j did_you_mean >>= B.packCString
-        B.hPutStrLn stderr "step2"
-        bstr_nlp2 <- runCoreNLP corenlp_server bstr_nlp1
-        B.useAsCString bstr_nlp1 $ \cstr_nlp1 -> do
-          -- bstr_nlp1 <- packCString cstr_nlp1
-          B.useAsCString bstr_nlp2 $ \cstr_nlp2 ->
-            json_tparse cstr_nlp2 >>= register_documents engine cstr_nlp1 >>= serialize >>= B.packCString
-  liftIO $ putStrLn "inside registerText"
-  liftIO $ print bstr0
-  (MaybeT . return . decodeStrict') bstr0
-
-
-queryRegisteredSentences :: EngineWrapper -> RegisteredSentences -> IO BL.ByteString
-queryRegisteredSentences engine r = do
-  -- need to be configured.
-  let bstr = BL.toStrict $ encode (r { rs_max_clip_len = Just 200 })
-  bstr' <- B.useAsCString bstr $
-     json_tparse >=> query engine >=> serialize >=> unsafePackCString
-  return (BL.fromStrict bstr')
-
-querySuggestion :: EngineWrapper -> [Text] -> IO BL.ByteString
-querySuggestion engine ideas = do
-  let bstr = BL.toStrict $ encode (object [ "ideas" .= ideas ])
-  bstr' <- B.useAsCString bstr $
-     json_tparse >=> suggest engine >=> serialize >=> unsafePackCString
-  return (BL.fromStrict bstr')
-
-type ResultBstr = BL.ByteString
-
-failed :: BL.ByteString
-failed = encode Null
-
-
--}
+    let sdat = SRLData { _aconfig = acfg
+                       , _pipeline = pp
+                       , _apredata = apdat
+                       , _netagger = ntggr
+                       , _forest = frst
+                       , _companyMap = cmap
+                       }
+    forever $ do
+      (i,q) <- atomically $ do
+                 qq <- readTVar qqvar
+                 case next qq of
+                   Nothing -> retry
+                   Just (i,q) -> do
+                     let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
+                     writeTVar qqvar qq'
+                     return (i,q)
+      -- tellLog ("query start: " ++ show (i,q))
+      let CQ_Text txt = q
+      (tokenss,mgs) <- runSRL sdat txt
+      -- let tokenss = []
+      --     mgs = []
+      let r = CR_TokenMeaningGraph tokenss mgs
+      atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+      -- sendChan sc r
