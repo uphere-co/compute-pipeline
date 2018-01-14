@@ -152,18 +152,17 @@ serve :: TMVar ProcessId -> LogProcess () -> LogProcess ()
 serve pidref action = do
   pid <-  spawnLocal $ action >> tellLog "action finished"
 
-  tellLog "prepartion mode"
+  tellLog "preparation mode"
   tellLog (show pid)
   liftIO (atomically (putTMVar pidref pid))
   tellLog "wait mode"
   local incClientNum $ serve pidref action
 
 
-server :: String -> (p -> QQVar k v -> LogProcess ()) -> p -> Process ()
-server port action p = do
+server :: QQVar k v -> String -> (p -> QQVar k v -> LogProcess ()) -> p -> Process ()
+server qqvar port action p = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
-  qqvar <- liftIO (newTVarIO emptyQQ)
   lock <- newLogLock 0
 
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)

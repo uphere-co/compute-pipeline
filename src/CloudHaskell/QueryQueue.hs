@@ -50,3 +50,20 @@ next = listToMaybe . mapMaybe (\(k,v) -> (k,) <$> getNewQuery v) . IM.toList
 
 remove :: Int -> QueryQueue q r -> QueryQueue q r
 remove i = IM.update (\_ -> Just Removed) i
+
+
+singleQuery :: QQVar q r -> q -> IO r
+singleQuery qqvar query  = do
+  i <- atomically $ do
+    qq <- readTVar qqvar
+    let (i,qq') = newQuery query qq
+    writeTVar qqvar qq'
+    return i
+  r <- atomically $ do
+    qq <- readTVar qqvar
+    case getAnswered =<< IM.lookup i qq of
+      Nothing -> retry
+      Just r -> let qq' = remove i qq
+                in writeTVar qqvar qq' >> return r
+  -- print r
+  return r
