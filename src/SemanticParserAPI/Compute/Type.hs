@@ -2,9 +2,12 @@
 
 module SemanticParserAPI.Compute.Type where
 
-import           Data.Binary
-import           Data.Text    (Text)
-import           GHC.Generics
+import           Data.Binary                    (Binary)
+import           Data.Text                      (Text)
+import           GHC.Generics                   (Generic)
+--
+import           SRL.Analyze.Type               (MGVertex,MGEdge,MeaningGraph)
+
 
 data ComputeQuery = CQ_Text Text
                   deriving (Generic,Show)
@@ -12,8 +15,7 @@ data ComputeQuery = CQ_Text Text
 instance Binary ComputeQuery
 
 
-data ComputeResult = CR_Text Text
+data ComputeResult = CR_TokenMeaningGraph [[(Int,Text)]] [MeaningGraph]
                    deriving (Generic,Show)
 
 instance Binary ComputeResult
-

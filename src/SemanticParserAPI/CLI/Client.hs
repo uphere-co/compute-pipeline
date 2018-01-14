@@ -32,6 +32,7 @@ import           CloudHaskell.Util                   (LogProcess,newLogLock
                                                      ,tryCreateTransport
                                                      ,pingHeartBeat
                                                      ,retrieveQueryServerPid
+                                                     ,queryProcess
                                                      )
 import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
 
@@ -40,21 +41,6 @@ import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeRe
 instance MonadException Process where
   controlIO f = join . liftIO $ f (RunIO return)
 
-
-
-
-
-
-queryProcess :: forall query result a.
-                (Binary query,Binary result,Typeable query,Typeable result) =>
-                SendPort (query, SendPort result)
-             -> query
-             -> (result -> LogProcess a)
-             -> LogProcess a
-queryProcess sc q f = do
-  (sc',rc') <- newChan :: LogProcess (SendPort result, ReceivePort result)
-  sendChan sc (q,sc')
-  f =<< receiveChan rc'
 
 
 

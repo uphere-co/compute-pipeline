@@ -22,23 +22,37 @@ library
                   binary,
                   bytestring,
                   connection,
+                  containers,
+                  data-default,
+                  directory,
                   distributed-process,
                   distributed-process-lifted,
                   haskeline,
                   http-client,
                   http-client-tls,
                   http-types,
+                  jvm,
+                  lens,
                   monad-loops,
                   network-simple,
                   network-transport,
                   network-transport-uphere,
                   optparse-applicative,
+                  process,
                   stm,
                   text,
                   transformers,
                   unordered-containers,
                   --
-                  uphere-network-util
+                  HCoreNLP,
+                  HFrameNet,
+                  lexicon-builder,
+                  nlp-types,
+                  semantic-role-labeler,
+                  semantic-types,
+                  syntactic-analysis,
+                  uphere-network-util,
+                  wiki-ner
 
   exposed-modules:
                     CloudHaskell.Util

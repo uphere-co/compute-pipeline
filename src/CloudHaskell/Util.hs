@@ -1,18 +1,21 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar, newTMVarIO, newEmptyTMVarIO, putTMVar)
-import           Control.Distributed.Process.Lifted                  
+import           Control.Distributed.Process.Lifted
 import           Control.Monad                     (void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
 import           Control.Monad.Trans.Reader
-import qualified Data.Binary                 as Bi
+import           Data.Binary                       (Binary,Word32,decode,encode,get,put)
 import qualified Data.ByteString             as B
 import qualified Data.ByteString.Char8       as BC
 import qualified Data.ByteString.Lazy        as BL
 import qualified Data.HashMap.Strict         as HM
+import           Data.Typeable                     (Typeable)
 import qualified Network.Simple.TCP          as NS
 import           Network.Transport                 (Transport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
@@ -23,31 +26,27 @@ import           Network.Transport.UpHere          (createTransport
 
 
 
--- import           Network.Util
-
-
-
-recvAndUnpack :: Bi.Binary a => NS.Socket -> IO (Maybe a)
+recvAndUnpack :: Binary a => NS.Socket -> IO (Maybe a)
 recvAndUnpack sock = do
   msizebstr <- NS.recv sock 4
   case msizebstr of
     Nothing -> return Nothing
     Just sizebstr -> do
-      let s32 = (Bi.decode . BL.fromStrict) sizebstr :: Bi.Word32
+      let s32 = (decode . BL.fromStrict) sizebstr :: Word32
           s = fromIntegral s32 :: Int
       mmsg <- NS.recv sock s
       case mmsg of
         Nothing -> return Nothing
-        Just msg -> (return . Just . Bi.decode . BL.fromStrict) msg
+        Just msg -> (return . Just . decode . BL.fromStrict) msg
 
 packNumBytes :: B.ByteString -> B.ByteString
 packNumBytes bstr =
-  let len = (fromIntegral . B.length) bstr :: Bi.Word32
-  in BL.toStrict (Bi.encode len)
+  let len = (fromIntegral . B.length) bstr :: Word32
+  in BL.toStrict (encode len)
 
-packAndSend :: (Bi.Binary a) => NS.Socket -> a -> IO ()
+packAndSend :: (Binary a) => NS.Socket -> a -> IO ()
 packAndSend sock x = do
-  let msg = (BL.toStrict . Bi.encode) x
+  let msg = (BL.toStrict . encode) x
       sizebstr = packNumBytes msg
   NS.send sock sizebstr
   NS.send sock msg
@@ -84,11 +83,15 @@ tryCreateTransport dhpp =
                    Right transport -> return (Just transport)
 
 
+onesecond :: Int
+onesecond = 1000000
+
 pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat p1 them n = do
   send them (HB n)
-  liftIO (threadDelay 5000000)
-  mhb <- expectTimeout 10000000
+
+  liftIO (threadDelay (5*onesecond))
+  mhb <- expectTimeout (100*onesecond)
   case mhb of
     Just (HB n') -> do
       tellLog ("ping-pong : " ++ show n')
@@ -110,9 +113,9 @@ retrieveQueryServerPid lock (serverip,serverport) = do
 
 data HeartBeat = HB { heartBeat :: Int }
 
-instance Bi.Binary HeartBeat where
-  put (HB n) = Bi.put n
-  get = HB <$> Bi.get
+instance Binary HeartBeat where
+  put (HB n) = put n
+  get = HB <$> get
 
 type LogProcess = ReaderT LogLock Process
 
@@ -126,10 +129,10 @@ tellLog msg = do
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
   pid <- action                                            -- main process launch
-  whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails. 
+  whileJust_ (expectTimeout 10000000) $ \(HB n) -> do      -- heartbeating until it fails.
     tellLog ("heartbeat: " ++ show n)
     send them (HB n)
-  tellLog "heartbeat failed: reload"                       -- when fail, it prints messages  
+  tellLog "heartbeat failed: reload"                       -- when fail, it prints messages
   kill pid "connection closed"                             -- and start over the whole process.
 
 
@@ -137,7 +140,7 @@ broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
 broadcastProcessId lock pidref port = do
   NS.serve NS.HostAny port $ \(sock,addr) -> do
     atomicLog lock ("TCP connection established from " ++ show addr)
-    pid <- atomically (takeTMVar pidref) 
+    pid <- atomically (takeTMVar pidref)
     packAndSend sock pid
 
 
@@ -158,8 +161,20 @@ server port action p = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   resultref <- liftIO $ newTMVarIO HM.empty
-  lock <- newLogLock 0 
-  
+  lock <- newLogLock 0
+
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
-  flip runReaderT lock $ 
+  flip runReaderT lock $
     local incClientNum $ serve pidref (action p resultref)
+
+
+queryProcess :: forall query result a.
+                (Binary query,Binary result,Typeable query,Typeable result) =>
+                SendPort (query, SendPort result)
+             -> query
+             -> (result -> LogProcess a)
+             -> LogProcess a
+queryProcess sc q f = do
+  (sc',rc') <- newChan :: LogProcess (SendPort result, ReceivePort result)
+  sendChan sc (q,sc')
+  f =<< receiveChan rc'
