@@ -5,6 +5,7 @@ module SemanticParserAPI.Compute where
 
 import           Control.Concurrent                        (forkIO,forkOn,forkOS,threadDelay)
 import           Control.Concurrent.STM                    (TMVar,atomically,retry,newTVarIO,readTVar,writeTVar)
+import           Control.DeepSeq                           (deepseq)
 import           Control.Exception                         (bracket)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
                                                            ,expect
@@ -45,8 +46,8 @@ start () qqvar = do
       (q,sc') <- receiveChan rc
       spawnLocal $ do
         r <- liftIO $ singleQuery qqvar q
-        liftIO (print r) -- for the time being to make sure r is fully evaluated.
-        sendChan sc' r
+        -- liftIO (print r) -- for the time being to make sure r is fully evaluated.
+        r `deepseq` sendChan sc' r
 
 
 computeMain :: (Int,String,String) -> IO ()
