@@ -25,6 +25,7 @@ library
                   connection,
                   containers,
                   data-default,
+                  deepseq,
                   directory,
                   distributed-process,
                   distributed-process-lifted,
@@ -38,7 +39,6 @@ library
                   monad-loops,
                   network-simple,
                   network-transport,
-                  network-transport-uphere,
                   optparse-applicative,
                   process,
                   stm,
@@ -49,6 +49,7 @@ library
                   HCoreNLP,
                   HFrameNet,
                   lexicon-builder,
+                  network-transport-uphere,
                   nlp-types,
                   semantic-role-labeler,
                   semantic-types,
@@ -78,7 +79,7 @@ executable compute-server
                        semantic-parser-api-compute
   hs-source-dirs:      app
   default-language:    Haskell2010
-  ghc-options: -threaded -Wall-fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+  ghc-options: -threaded -Wall-fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2 -rtsopts
 
 
 executable compute-client

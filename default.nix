@@ -2,7 +2,7 @@
 , data-default, directory, distributed-process
 , distributed-process-lifted, haskeline, HCoreNLP, HFrameNet
 , http-client, http-client-tls, http-types, jvm, lens
-, lexicon-builder, monad-loops, network-simple, network-transport
+, lexicon-builder, monad-loops, network-simple, network-transport, network-transport-tcp
 , network-transport-uphere, nlp-types, optparse-applicative
 , process, semantic-role-labeler, semantic-types, stdenv, stm
 , syntactic-analysis, text, transformers, unordered-containers
@@ -18,7 +18,7 @@ mkDerivation {
     base binary bytestring connection containers data-default directory
     distributed-process distributed-process-lifted haskeline HCoreNLP
     HFrameNet http-client http-client-tls http-types jvm lens
-    lexicon-builder monad-loops network-simple network-transport
+    lexicon-builder monad-loops network-simple network-transport network-transport-tcp
     network-transport-uphere nlp-types optparse-applicative process
     semantic-role-labeler semantic-types stm syntactic-analysis text
     transformers unordered-containers uphere-network-util wiki-ner
