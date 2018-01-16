@@ -2,6 +2,7 @@
 
 module SemanticParserAPI.Compute.Type where
 
+import           Control.DeepSeq                (NFData)
 import           Data.Aeson
 import           Data.Binary                    (Binary)
 import           Data.Text                      (Text)
@@ -16,6 +17,7 @@ data ComputeQuery = CQ_Text Text
 instance Binary ComputeQuery
 instance ToJSON ComputeQuery
 instance FromJSON ComputeQuery
+instance NFData ComputeQuery
 
 data ComputeResult = CR_TokenMeaningGraph [[(Int,Text)]] [MeaningGraph]
                    deriving (Generic,Show)
@@ -23,3 +25,4 @@ data ComputeResult = CR_TokenMeaningGraph [[(Int,Text)]] [MeaningGraph]
 instance Binary ComputeResult
 instance ToJSON ComputeResult
 instance FromJSON ComputeResult
+instance NFData ComputeResult

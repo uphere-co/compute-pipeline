@@ -5,12 +5,14 @@ module CloudHaskell.Util where
 import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically,newTVarIO)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar,newTMVarIO, newEmptyTMVarIO, putTMVar)
+import           Control.Distributed.Process       (usend)
 import           Control.Distributed.Process.Lifted
 import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
 import           Control.Exception                 (SomeException)
 import           Control.Monad                     (void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
+import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Reader
 import           Data.Binary                       (Binary,Word32,decode,encode,get,put)
 import qualified Data.ByteString             as B
@@ -22,6 +24,7 @@ import qualified Network.Simple.TCP          as NS
 import           Network.Transport                 (Transport,closeTransport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
 --
+--import           Network.Transport.TCP             (createTransport,defaultTCPParameters)
 import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
@@ -81,13 +84,14 @@ tryCreateTransport dhpp =
   untilJust $ do etransport <- createTransport dhpp defaultTCPParameters
                  case etransport of
                    Left err -> do hPutStrLn stderr (show err)
-                                  threadDelay 5000000
+                                  threadDelay (5*onesecond)
                                   return Nothing
                    Right transport -> return (Just transport)
 
 
 onesecond :: Int
 onesecond = 1000000
+
 
 pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat p1 them n = do
@@ -130,12 +134,23 @@ tellLog msg = do
   atomicLog lock msg
 
 
+
+
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
+  {- spawnLocal $ do
+    let go n = do liftIO $ do
+                    print n
+                    threadDelay 1000000
+                  send them (HB n)
+                  go (n+1)
+    go (0 :: Int) -}
+
   pid <- action                                            -- main process launch
   whileJust_ (expectTimeout (10*onesecond)) $ \(HB n) -> do      -- heartbeating until it fails.
     tellLog ("heartbeat received: " ++ show n)
     send them (HB n)
+    tellLog ("ping-pong sent: " ++ show n)
   tellLog "heartbeat failed: reload"                       -- when fail, it prints messages
   kill pid "connection closed"                             -- and start over the whole process.
 
