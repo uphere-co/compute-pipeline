@@ -33,7 +33,7 @@ import           NLP.Type.CoreNLP
 import           NLP.Type.NamedEntity                   (NamedEntityClass)
 import           NLP.Type.TagPos                        (leftTagPos)
 import           SRL.Analyze
-import           SRL.Analyze.ARB                        (mkARB)
+import           SRL.Analyze.MeaningTree                (mkMeaningTree)
 import           SRL.Analyze.Match.MeaningGraph         (changeMGText,meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure          (docStructure,mkWikiList)
 import           SRL.Analyze.Type
@@ -109,7 +109,7 @@ mkMGs conn apredata netagger (forest,companyMap) cfg fp tm article = do
       texttoken = map (_token_text) ((catMaybes . concat) mtokss)
       evtcls = evtClass texttoken
       mgs = map (meaningGraph apredata) sstrs
-      arbs = map (mkARB (apredata^.analyze_rolemap)) mgs
+      arbs = map (mkMeaningTree (apredata^.analyze_rolemap)) mgs
       wikilsts = map (mkWikiList companyMap) sstrs
       isNonFilter = True -- False
   putStrLn $ "Analyzing " ++ filename
