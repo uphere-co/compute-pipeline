@@ -8,7 +8,7 @@ import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar,newTMVarIO,
 import           Control.Distributed.Process.Lifted
 import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
 import           Control.Exception                 (SomeException)
-import           Control.Monad                     (void)
+import           Control.Monad                     (forever,void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
 import           Control.Monad.Trans.Reader
@@ -89,20 +89,20 @@ onesecond :: Int
 onesecond = 1000000
 
 
-pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
-pingHeartBeat p1 them n = do
-  -- tellLog ("heart-beat send: " ++ show n)
+pingHeartBeat :: [ProcessId] -> ProcessId -> Int -> LogProcess ()
+pingHeartBeat ps them n = do
+  tellLog ("heart-beat send: " ++ show n)
   send them (HB n)
-  mhb <- expectTimeout (100*onesecond)
+  mhb <- expectTimeout (10*onesecond)
   case mhb of
     Just (HB n') -> do
-      -- tellLog ("ping-pong received: " ++ show n')
+      tellLog ("ping-pong received: " ++ show n')
       liftIO (threadDelay (5*onesecond))
-      pingHeartBeat p1 them (n+1)
+      pingHeartBeat ps them (n+1)
     Nothing -> do
       tellLog ("heartbeat failed!")
       liftIO (threadDelay (5*onesecond))
-      kill p1 "heartbeat dead"
+      mapM_ (flip kill "heartbeat dead") ps
 
 
 retrieveQueryServerPid :: LogLock
@@ -134,14 +134,6 @@ tellLog msg = do
 
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
-  {- spawnLocal $ do
-    let go n = do liftIO $ do
-                    print n
-                    threadDelay 1000000
-                  send them (HB n)
-                  go (n+1)
-    go (0 :: Int) -}
-
   pid <- action                                            -- main process launch
   whileJust_ (expectTimeout (10*onesecond)) $ \(HB n) -> do      -- heartbeating until it fails.
     tellLog ("heartbeat received: " ++ show n)
@@ -201,14 +193,14 @@ mainP :: forall query result.
       -> ProcessId
       -> LogProcess ()
 mainP process them = do
-  tellLog "mainProcess started"
+  tellLog "start mainProcess"
   msc :: Maybe (SendPort (query,SendPort result)) <- expectTimeout 5000000
   case msc of
     Nothing -> tellLog "cannot receive query port"
     Just sc -> do
       tellLog "connection established to query server"
       p1 <- spawnLocal (process sc)
-      void $ pingHeartBeat p1 them 0
+      void $ pingHeartBeat [p1] them 0
 
 
 initP :: (ProcessId -> LogProcess ()) -> ProcessId -> LogProcess ()
@@ -227,14 +219,16 @@ client (portnum,hostg,hostl,serverip,serverport) process = do
           (\transport -> do
                node <- newLocalNode transport initRemoteTable
                lock <- newLogLock 0
-               emthem <- try (retrieveQueryServerPid lock (serverip,serverport))
-               case emthem of
-                 Left (e :: SomeException) -> do
-                   atomicLog lock "exception caught"
-                   atomicLog lock (show e)
-                 Right mthem ->
-                   case mthem of
-                     Nothing -> atomicLog lock "no pid"
-                     Just them -> do
-                       atomicLog lock ("server id =" ++ show them)
-                       runProcess node (flip runReaderT lock (process them)))
+               forever $ do
+                 emthem <- try (retrieveQueryServerPid lock (serverip,serverport))
+                 case emthem of
+                   Left (e :: SomeException) -> do
+                     atomicLog lock "exception caught"
+                     atomicLog lock (show e)
+                   Right mthem ->
+                     case mthem of
+                       Nothing -> atomicLog lock "no pid"
+                       Just them -> do
+                         atomicLog lock ("server id =" ++ show them)
+                         runProcess node (flip runReaderT lock (process them))
+                 threadDelay (5*onesecond))
