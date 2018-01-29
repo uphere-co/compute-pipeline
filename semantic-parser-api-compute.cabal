@@ -50,6 +50,7 @@ library
                   HFrameNet,
                   lexicon-builder,
                   network-transport-uphere,
+                  nlp-pipeline,
                   nlp-types,
                   semantic-role-labeler,
                   semantic-types,

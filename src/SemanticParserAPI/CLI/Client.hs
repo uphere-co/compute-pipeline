@@ -12,7 +12,7 @@ import qualified Data.Text                     as T
 import           System.Console.Haskeline            (runInputT,getInputLine,defaultSettings)
 import           System.Console.Haskeline.MonadException (MonadException(controlIO),RunIO(..))
 --
-import           CloudHaskell.Util                   (LogProcess,tellLog,queryProcess)
+import           CloudHaskell.Util                   (LogProcess,queryProcess)
 import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
 
 instance MonadException Process where
@@ -23,7 +23,6 @@ consoleClient :: SendPort (ComputeQuery, SendPort ComputeResult) -> LogProcess (
 consoleClient sc = do
   runInputT defaultSettings $
     whileJust_ (getInputLine "% ") $ \input' -> do
-      -- liftIO $ print input'
       lift $ queryProcess sc (CQ_Text (T.pack input')) (liftIO . print)
 
 

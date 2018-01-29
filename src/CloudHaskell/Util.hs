@@ -3,33 +3,29 @@
 module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkIO,threadDelay)
-import           Control.Concurrent.STM            (atomically,newTVarIO)
+import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar,newTMVarIO, newEmptyTMVarIO, putTMVar)
-import           Control.Distributed.Process       (usend)
 import           Control.Distributed.Process.Lifted
 import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
 import           Control.Exception                 (SomeException)
 import           Control.Monad                     (void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
-import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Reader
 import           Data.Binary                       (Binary,Word32,decode,encode,get,put)
 import qualified Data.ByteString             as B
 import qualified Data.ByteString.Char8       as BC
 import qualified Data.ByteString.Lazy        as BL
-import qualified Data.HashMap.Strict         as HM
 import           Data.Typeable                     (Typeable)
 import qualified Network.Simple.TCP          as NS
 import           Network.Transport                 (Transport,closeTransport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
 --
---import           Network.Transport.TCP             (createTransport,defaultTCPParameters)
 import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
 --
-import           CloudHaskell.QueryQueue           (QQVar,emptyQQ)
+import           CloudHaskell.QueryQueue           (QQVar)
 
 
 recvAndUnpack :: Binary a => NS.Socket -> IO (Maybe a)
@@ -95,12 +91,12 @@ onesecond = 1000000
 
 pingHeartBeat :: ProcessId -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat p1 them n = do
-  tellLog ("heart-beat send: " ++ show n)
+  -- tellLog ("heart-beat send: " ++ show n)
   send them (HB n)
   mhb <- expectTimeout (100*onesecond)
   case mhb of
     Just (HB n') -> do
-      tellLog ("ping-pong received: " ++ show n')
+      -- tellLog ("ping-pong received: " ++ show n')
       liftIO (threadDelay (5*onesecond))
       pingHeartBeat p1 them (n+1)
     Nothing -> do

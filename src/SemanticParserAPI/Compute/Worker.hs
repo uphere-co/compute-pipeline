@@ -8,38 +8,23 @@
 
 module SemanticParserAPI.Compute.Worker where
 
-import           Control.Concurrent             (threadDelay)
-import           Control.Concurrent.STM         (TMVar,atomically,retry,modifyTVar',readTVar,writeTVar)
-import           Control.Distributed.Process.Lifted  (SendPort,sendChan)
+import           Control.Concurrent.STM         (atomically,retry,modifyTVar',readTVar,writeTVar)
 import           Control.Lens                   ((&),(^.),(^..),(.~),_Just,makeLenses)
 import           Control.Monad                  (forever)
-import           Control.Monad.IO.Class         (liftIO)
 import qualified Data.ByteString.Char8  as B
 import           Data.Default                   (def)
-import qualified Data.HashMap.Strict    as HM
 import           Data.IntMap                    (IntMap)
 import qualified Data.IntMap            as IM
 import           Data.Maybe                     (catMaybes)
 import           Data.Text                      (Text)
 import           Data.Tree                      (Forest)
-import qualified Foreign.JNI            as JNI
 import qualified Language.Java          as J
-import           System.Directory               (getCurrentDirectory,setCurrentDirectory
-                                                ,getTemporaryDirectory)
 import           System.Environment             (getEnv)
-import           System.Process                 (readProcess)
 --
 import           CoreNLP.Simple                 (prepare)
 import           CoreNLP.Simple.Type            (tokenizer,words2sentences,postagger
                                                 ,lemma,sutime,constituency,ner)
-import           FrameNet.Query.Frame           (FrameDB,frameDB)
-import qualified FrameNet.Type.Definition as F
-import           FrameNet.Type.Frame            (frame_definition)
 import           Lexicon.Data                   (loadLexDataConfig)
-import           NLP.Semantics.Type             (MeaningRoleContent(..),MeaningTree(..)
-                                                ,mt_frame,mt_arguments,mt_subordinates
-                                                ,mr_content,po_main
-                                                )
 import           NLP.Syntax.Type.XBar           (lemmaList)
 import           NER.Type                       (CompanyInfo)
 import           NLP.Type.CoreNLP               (Sentence)
@@ -54,7 +39,6 @@ import           SRL.Analyze.Type               (AnalyzePredata,DocStructure,Mea
 import           WikiEL.Type                    (EntityMention)
 --
 import           CloudHaskell.QueryQueue        (QQVar,QueryStatus(..),next)
-import           CloudHaskell.Util              (LogProcess,tellLog)
 import           SemanticParserAPI.Compute.Type (ComputeQuery(..),ComputeResult(..))
 
 
@@ -85,11 +69,10 @@ runSRL sdat sent = do
   let sstrs = dstr ^.. ds_sentStructures . traverse . _Just
       tokenss = map (map (\(x,(_,y)) -> (x,y))) $ sstrs ^.. traverse . ss_tagged . lemmaList
       mgs = allMeaningGraphs (sdat^.apredata) (sdat^.companyMap) dstr
-  -- dotgraphs <- mapM createDotGraph mgs
-  return (tokenss,mgs) --  ,dotgraphs)
+  return (tokenss,mgs)
 
 
-queryWorker :: QQVar ComputeQuery ComputeResult -- TMVar (HM.HashMap Text ([Int],[Text]))
+queryWorker :: QQVar ComputeQuery ComputeResult
             -> IO ()
 queryWorker qqvar = do
   let acfg  = Analyze.Config False False bypassNER bypassTEXTNER "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
@@ -125,11 +108,7 @@ queryWorker qqvar = do
                      let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
                      writeTVar qqvar qq'
                      return (i,q)
-      -- tellLog ("query start: " ++ show (i,q))
       let CQ_Text txt = q
       (tokenss,mgs) <- runSRL sdat txt
-      -- let tokenss = []
-      --     mgs = []
       let r = CR_TokenMeaningGraph tokenss mgs
       atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
-      -- sendChan sc r

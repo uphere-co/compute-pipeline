@@ -8,7 +8,7 @@ import           Data.Binary                    (Binary)
 import           Data.Text                      (Text)
 import           GHC.Generics                   (Generic)
 --
-import           SRL.Analyze.Type               (MGVertex,MGEdge,MeaningGraph)
+import           SRL.Analyze.Type               (MeaningGraph)
 
 
 data ComputeQuery = CQ_Text Text

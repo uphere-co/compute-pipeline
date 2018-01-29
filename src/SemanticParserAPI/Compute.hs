@@ -3,8 +3,8 @@
 
 module SemanticParserAPI.Compute where
 
-import           Control.Concurrent                        (forkIO,forkOn,forkOS,threadDelay)
-import           Control.Concurrent.STM                    (TMVar,atomically,retry,newTVarIO,readTVar,writeTVar)
+import           Control.Concurrent                        (forkIO)
+import           Control.Concurrent.STM                    (newTVarIO)
 import           Control.DeepSeq                           (deepseq)
 import           Control.Exception                         (bracket)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
@@ -12,24 +12,18 @@ import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,R
                                                            ,newChan,sendChan,receiveChan
                                                            ,send,spawnLocal)
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
-import           Control.Lens                              ((^.),(.~),(&))
 import           Control.Monad                             (forever)
 import           Control.Monad.IO.Class                    (liftIO)
-import qualified Data.IntMap                         as IM
-import qualified Data.HashMap.Strict                 as HM
-import           Data.Text                                 (Text)
-import qualified Language.Java                       as J
 import           Network.Transport                         (closeTransport)
 import           System.IO                                 (hPutStrLn,stderr)
 --
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import qualified SRL.Analyze.Config                  as Analyze
 --
-import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,getAnswered,newQuery,remove,singleQuery)
+import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,singleQuery)
 import           CloudHaskell.Util                         (LogProcess,server,tellLog
                                                            ,withHeartBeat,tryCreateTransport)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
-import           SemanticParserAPI.Compute.Worker          (SRLData(..),queryWorker)
+import           SemanticParserAPI.Compute.Worker          (queryWorker)
 
 
 start :: () -> QQVar ComputeQuery ComputeResult -> LogProcess ()
@@ -46,7 +40,6 @@ start () qqvar = do
       (q,sc') <- receiveChan rc
       spawnLocal $ do
         r <- liftIO $ singleQuery qqvar q
-        -- liftIO (print r) -- for the time being to make sure r is fully evaluated.
         r `deepseq` sendChan sc' r
 
 

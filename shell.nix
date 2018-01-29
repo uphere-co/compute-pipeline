@@ -1,8 +1,10 @@
-{ pkgs                  ? import <nixpkgs> {}
-, uphere-nix-overlay    ? <uphere-nix-overlay>
-}:
+{ revision }:
 
-let newpkgs = import pkgs.path {
+with revision;
+
+let pkgs0 = import nixpkgs { config.allowUnfree = true; };
+
+    pkgs = import pkgs0.path {
                 overlays = [ (self: super: {
                                libsvm = import (uphere-nix-overlay + "/nix/cpp-modules/libsvm/default.nix") { inherit (self) stdenv fetchurl; };
                              })
@@ -10,9 +12,10 @@ let newpkgs = import pkgs.path {
               };
 in
 
-with newpkgs;
+with pkgs;
 
 let
+
   fasttext = import (uphere-nix-overlay + "/nix/cpp-modules/fasttext.nix") { inherit stdenv fetchgit; };
   res_corenlp = import (uphere-nix-overlay + "/nix/linguistic-resources/corenlp.nix") {
     inherit fetchurl fetchzip srcOnly;
@@ -20,9 +23,13 @@ let
   corenlp = res_corenlp.corenlp;
   corenlp_models = res_corenlp.corenlp_models;
 
-  hsconfig = import (uphere-nix-overlay + "/nix/haskell-modules/configuration-semantic-parser-api.nix")
-               { inherit corenlp corenlp_models fasttext fetchgit fetchurl haskellPackages jdk stdenv;
-                 haskellLib = haskell.lib; };
+  hsconfig = lib.callPackageWith (pkgs//revision)
+               (uphere-nix-overlay + "/nix/haskell-modules/configuration-semantic-parser-api.nix") {
+                 inherit corenlp corenlp_models fasttext;
+                 haskellLib = haskell.lib;
+               };
+
+
   newHaskellpkgs = haskellPackages.override { overrides = hsconfig; };
 
   hsenv = newHaskellpkgs.ghcWithPackages (p: with p; [
@@ -58,6 +65,7 @@ let
             p.HUKB-driver
             p.nlp-types
             p.OntoNotes
+            p.nlp-pipeline
             p.PropBank
             p.semantic-role-labeler
             p.wiki-ner
