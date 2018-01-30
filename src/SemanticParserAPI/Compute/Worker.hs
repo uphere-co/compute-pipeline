@@ -72,12 +72,12 @@ runSRL sdat sent = do
   return (tokenss,mgs)
 
 
-queryWorker :: QQVar ComputeQuery ComputeResult
+queryWorker :: (Bool,Bool)
+            -> FilePath
+            -> QQVar ComputeQuery ComputeResult
             -> IO ()
-queryWorker qqvar = do
-  let acfg  = Analyze.Config False False bypassNER bypassTEXTNER "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
-      bypassNER = False
-      bypassTEXTNER = False
+queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar = do
+  let acfg  = Analyze.Config False False bypassNER bypassTEXTNER lcfg
   cfg <- loadLexDataConfig (acfg^. Analyze.configFile) >>= \case Left err -> error err
                                                                  Right x  -> return x
   (apdat,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg

@@ -43,8 +43,11 @@ start () qqvar = do
         r `deepseq` sendChan sc' r
 
 
-computeMain :: (Int,String,String) -> IO ()
-computeMain (portnum,hostg,hostl) = do
+computeMain :: (Int,String,String)
+            -> (Bool,Bool)  -- ^ (bypassNER, bypassTEXTNER)
+            -> FilePath -- ^ configjson "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
+            -> IO ()
+computeMain (portnum,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
     let port = show portnum
         port' = show (portnum+1)
         dhpp = DHPP (hostg,port') (hostl,port')
@@ -54,4 +57,4 @@ computeMain (portnum,hostg,hostl) = do
       bracket (tryCreateTransport dhpp)
               closeTransport
               (\transport -> newLocalNode transport initRemoteTable >>= \node -> runProcess node (server qqvar port start ()))
-    queryWorker qqvar
+    queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar
