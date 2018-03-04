@@ -23,15 +23,8 @@ let
   corenlp = res_corenlp.corenlp;
   corenlp_models = res_corenlp.corenlp_models;
 
-  hsconfig = import (uphere-nix-overlay + "/nix/haskell-modules/configuration-semantic-parser-api.nix")
-               { inherit pkgs uphere-nix-overlay event-analyzer fetchfin graph-algorithms HCoreNLP HFrameNet;
-                 inherit HUKB HWordNet lexicon lexicon-builder multi-word-tagger;
-                 inherit nlp-shared-types nlp-types OntoNotes PropBank;
-                 inherit semantic-parser-api-compute semantic-parser-api-ghcjs;
-                 inherit semantic-role-labeler semantic-types syntactic-analysis;
-                 inherit textview time-tagger uphere-db uphere-network-util uphere-opaleye VerbNet wiki-ner;
-                 inherit corenlp corenlp_models fetchgit fetchurl haskellPackages;
-                 inherit stdenv jdk fasttext;
+  hsconfig = lib.callPackageWith (pkgs//revision) (uphere-nix-overlay + "/nix/haskell-modules/configuration-semantic-parser-api.nix")
+               { inherit corenlp corenlp_models fasttext;
                  haskellLib = haskell.lib;
                };
 

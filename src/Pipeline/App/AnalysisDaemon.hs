@@ -45,7 +45,8 @@ runDaemon cfg = do
   (apredata,netagger,forest,companyMap) <- loadConfig (False,False) cfgG
   forever $ do
     -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
-    forM_ rssAnalysisList $ \(src,sec,url) ->
+    forM_ rssAnalysisList $ \(src,sec,url) -> do
+      print (src,sec,url)
       runSRL conn apredata netagger (forest,companyMap) cfg (src ++ "/" ++ sec)
     putStrLn "Waiting next run..."
     let sec = 1000000 in threadDelay (60*sec)
@@ -64,12 +65,15 @@ runSRL :: PGS.Connection
        -> IO ()
 runSRL conn apredata netagger (forest,companyMap) cfg src = do
   as1b <- getNewItemsForSRL cfg src
+  -- print as1b
   let as1 = (take 5000 as1b) -- as1a ++ as1b
+  -- print as1
  
   loaded1 <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as1
   let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded1)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
   forM_ (chunksOf n loaded) $ \ls -> do
+    -- print ls
     forkChild (runAnalysisByChunks conn netagger (forest,companyMap) apredata cfg ls)
 
   waitForChildren
