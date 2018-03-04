@@ -39,7 +39,8 @@ import           SRL.Analyze.Type               (AnalyzePredata,DocStructure,Mea
 import           WikiEL.Type                    (EntityMention)
 --
 import           CloudHaskell.QueryQueue        (QQVar,QueryStatus(..),next)
-import           SemanticParserAPI.Compute.Type (ComputeQuery(..),ComputeResult(..))
+import           SemanticParserAPI.Compute.Type (ComputeQuery(..),ComputeResult(..)
+                                                ,ResultSentence(..))
 
 
 data SRLData = SRLData { _aconfig :: Analyze.Config
@@ -108,7 +109,9 @@ queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar = do
                      let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
                      writeTVar qqvar qq'
                      return (i,q)
-      let CQ_Text txt = q
-      (tokenss,mgs) <- runSRL sdat txt
-      let r = CR_TokenMeaningGraph tokenss mgs
-      atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+      case q of
+        CQ_Sentence txt -> do
+          (tokenss,mgs) <- runSRL sdat txt
+          let r = CR_Sentence (ResultSentence txt tokenss mgs)
+          atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+        _ -> return ()

@@ -23,7 +23,7 @@ consoleClient :: SendPort (ComputeQuery, SendPort ComputeResult) -> LogProcess (
 consoleClient sc = do
   runInputT defaultSettings $
     whileJust_ (getInputLine "% ") $ \input' -> do
-      lift $ queryProcess sc (CQ_Text (T.pack input')) (liftIO . print)
+      lift $ queryProcess sc (CQ_Sentence (T.pack input')) (liftIO . print)
 
 
 
