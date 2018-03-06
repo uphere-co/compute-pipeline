@@ -25,8 +25,9 @@ import           CoreNLP.Simple                 (prepare)
 import           CoreNLP.Simple.Type            (tokenizer,words2sentences,postagger
                                                 ,lemma,sutime,constituency,ner)
 import           Lexicon.Data                   (loadLexDataConfig)
-import           NLP.Syntax.Type.XBar           (lemmaList)
 import           NER.Type                       (CompanyInfo)
+import           NLP.Shared.Type                (PathConfig(..))
+import           NLP.Syntax.Type.XBar           (lemmaList)
 import           NLP.Type.CoreNLP               (Sentence)
 import           SRL.Analyze                    (loadConfig)
 import qualified SRL.Analyze.Config as Analyze
@@ -39,9 +40,12 @@ import           SRL.Analyze.Type               (AnalyzePredata,DocStructure,Mea
 import           WikiEL.Type                    (EntityMention)
 --
 import           CloudHaskell.QueryQueue        (QQVar,QueryStatus(..),next)
-import           SemanticParserAPI.Compute.Type (ComputeQuery(..),ComputeResult(..)
-                                                ,ResultSentence(..))
-
+import           CloudHaskell.Util              (tellLog)
+import           SemanticParserAPI.Compute.Reuters (loadExistingARB)
+import           SemanticParserAPI.Compute.Type (ComputeQuery(..)
+                                                ,ComputeResult(..)
+                                                ,ResultSentence(..)
+                                                ,ResultReuters(..))
 
 data SRLData = SRLData { _aconfig :: Analyze.Config
                        , _pipeline :: J.J ('J.Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -71,6 +75,11 @@ runSRL sdat sent = do
       tokenss = map (map (\(x,(_,y)) -> (x,y))) $ sstrs ^.. traverse . ss_tagged . lemmaList
       mgs = allMeaningGraphs (sdat^.apredata) (sdat^.companyMap) dstr
   return (tokenss,mgs)
+
+
+runReuters :: Int -> IO Text
+runReuters n = do
+  return "no results"
 
 
 queryWorker :: (Bool,Bool)
@@ -114,4 +123,26 @@ queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar = do
           (tokenss,mgs) <- runSRL sdat txt
           let r = CR_Sentence (ResultSentence txt tokenss mgs)
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
-        _ -> return ()
+        CQ_Reuters n -> do
+          putStrLn ("CQ_Reuters " ++ show n)
+          lst <- loadExistingARB testPathConfig
+          print lst
+          rtxt <- runReuters n
+          let r = CR_Reuters (ResultReuters n rtxt)
+          atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+          return ()
+
+
+testPathConfig :: PathConfig
+testPathConfig = PathConfig
+  { _corenlpstore  = "/scratch/wavewave/run_webapp/data/newsapianalyzed"
+  , _mgstore       = "/scratch/wavewave/run_webapp/temp/mgs"
+  , _mgdotfigstore = "/scratch/wavewave/run_webapp/temp/dot"
+  , _lexconfigpath = "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
+  , _arbstore      = "/scratch/wavewave/run_webapp/temp/arb"
+  , _errstore      = "/scratch/wavewave/run_webapp/data/newsapierror"
+  , _dbstring      = "dbname=mydbexp host=localhost port=5432 user=wavewave"
+  , _newsapistore  = ""
+  , _nytstore      = ""
+  , _rssstore      = "/scratch/wavewave/run_webapp/RSS"
+  }

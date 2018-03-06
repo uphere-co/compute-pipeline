@@ -12,7 +12,7 @@ import           SRL.Analyze.Type               (MeaningGraph)
 
 
 data ComputeQuery = CQ_Sentence Text
-                  | CQ_Reuter Int
+                  | CQ_Reuters Int
                   deriving (Generic,Show)
 
 instance Binary   ComputeQuery
