@@ -41,7 +41,7 @@ import           WikiEL.Type                    (EntityMention)
 --
 import           CloudHaskell.QueryQueue        (QQVar,QueryStatus(..),next)
 import           CloudHaskell.Util              (tellLog)
-import           SemanticParserAPI.Compute.Reuters (loadExistingARB)
+import           SemanticParserAPI.Compute.Reuters (loadExistingMG)
 import           SemanticParserAPI.Compute.Type (ComputeQuery(..)
                                                 ,ComputeResult(..)
                                                 ,ResultSentence(..)
@@ -125,8 +125,8 @@ queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar = do
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
         CQ_Reuters n -> do
           putStrLn ("CQ_Reuters " ++ show n)
-          lst <- loadExistingARB testPathConfig
-          print lst
+          lst <- catMaybes <$> loadExistingMG testPathConfig
+          mapM_ print lst
           rtxt <- runReuters n
           let r = CR_Reuters (ResultReuters n rtxt)
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)

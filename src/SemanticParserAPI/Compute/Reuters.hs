@@ -39,13 +39,14 @@ import           System.IO
 -- import qualified DB.Schema.RSS.Article         as Ar
 import           NLP.Shared.Type                   (EventClass(..)
                                                    ,PathConfig(..),ItemRSS
-                                                   ,link,arbstore,mgdotfigstore
+                                                   ,link,arbstore,mgdotfigstore,mgstore
                                                    )
 import           NLP.Semantics.Type                (ARB(..),PrepOr(..)
                                                    ,objectB,predicateR,subjectA,po_main
                                                    )
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
 import           RSS.Data                          (rssAnalysisList)
+import           SRL.Analyze.Type                  (MeaningGraph)
 import           WikiEL.Type                       (EntityMention)
 --
 import           Pipeline.Load                     (getFileListRecursively)
@@ -124,28 +125,30 @@ updateARB cfg arbs arbsfiltered = do
     let sec = 1000000 in threadDelay (10*sec)
 -}
 
-loadExistingARB :: PathConfig -> IO [Maybe EventCard]
-loadExistingARB cfg  = do
-  let arbpath = cfg^.arbstore
+loadExistingMG :: PathConfig -> IO [Maybe MeaningGraph] --  [Maybe EventCard]
+loadExistingMG cfg  = do
+  {- let arbpath = cfg^.arbstore
       dotpath = cfg^.mgdotfigstore
-  fps_arb <- getFileListRecursively arbpath
+  fps_arb <- getFileListRecursively arbpath -}
   -- print arbpath
   --print fps_arb
-  fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath
-  let fps = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot)) fps_arb
-  forM (take 2000 $ zip [1..] fps) $ \(i,fp) -> do
+  {- fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath -}
+  -- let fps = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot)) fps_arb
+  fps_mg <- getFileListRecursively (cfg^.mgstore)
+  let fps = fps_mg
+  forM (take 100 $ zip [1..] fps) $ \(i,fp) -> do
     when (i `mod` 1000 == 0) $ do
       putStrLn (show i ++ "th file")
 
     bstr <- B8.readFile fp
-    let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
+    {- let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
     let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",(T.take 2 hsh),hsh]) rssAnalysisList
     (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\sfp -> try $ B8.readFile (T.unpack sfp)) sfps
     let sbstrs = rights ebstrs
     mitem <- case sbstrs of
                []   -> return Nothing
-               x:xs -> let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) x in return mitem
-    return $ (,,) <$> Just fp <*> A.decode' (BL.fromStrict bstr) <*> (Just mitem)
+               x:xs -> let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) x in return mitem -}
+    return (A.decode' (BL.fromStrict bstr))
 
 
 
