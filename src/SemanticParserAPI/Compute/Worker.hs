@@ -76,11 +76,12 @@ runSRL sdat sent = do
       mgs = allMeaningGraphs (sdat^.apredata) (sdat^.companyMap) dstr
   return (tokenss,mgs)
 
-
-runReuters :: Int -> IO Text
+{- 
+runReuters :: Int -> IO [MeaningGraph]
 runReuters n = do
+  
   return "no results"
-
+-}
 
 queryWorker :: (Bool,Bool)
             -> FilePath
@@ -125,10 +126,11 @@ queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar = do
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
         CQ_Reuters n -> do
           putStrLn ("CQ_Reuters " ++ show n)
-          lst <- catMaybes <$> loadExistingMG testPathConfig
-          mapM_ print lst
-          rtxt <- runReuters n
-          let r = CR_Reuters (ResultReuters n rtxt)
+          lst <- catMaybes <$> loadExistingMG testPathConfig n
+          -- mapM_ print lst
+          print (length lst)
+          -- rtxt <- runReuters n
+          let r = CR_Reuters (ResultReuters n lst)
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
           return ()
 

@@ -50,107 +50,26 @@ import           SRL.Analyze.Type                  (MeaningGraph)
 import           WikiEL.Type                       (EntityMention)
 --
 import           Pipeline.Load                     (getFileListRecursively)
--- import           Pipeline.Type
 
-
---
--- this is orphan instances but for the time being
---
--- instance Hashable (PrepOr Text)
--- instance Hashable ARB
--- instance Hashable (PrepOr ARB)
 
 type EventCard = (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)],[EventClass])), Maybe ItemRSS)
 
-{-
-rssAnalysisList :: [(Source,Section,RSSLink)]
-rssAnalysisList =
-  [ -- ("reuters","companyNews","http://feeds.reuters.com/reuters/companyNews")
-  -- , ("reuters","technologyNews","http://feeds.reuters.com/reuters/technologyNews")
-  -- ,
-    ("reuters","Archive","http://www.reuters.com/resources/archive/us")
-  {- , ("cnbc","business","https://www.cnbc.com/id/10001147/device/rss/rss.html")
-  , ("cnbc","economy","https://www.cnbc.com/id/20910258/device/rss/rss.html")
-  , ("cnbc","finance","https://www.cnbc.com/id/10000664/device/rss/rss.html")
-  , ("cnbc","technology","https://www.cnbc.com/id/19854910/device/rss/rss.html")
-  , ("marketwatch","topstories","http://feeds.marketwatch.com/marketwatch/topstories")
-  , ("marketwatch","marketpulse","http://feeds.marketwatch.com/marketwatch/marketpulse") -- Paragraph  -}
-  ]
--}
 
 
 defaultTime :: Text
 defaultTime = "19800101000000"
 
-maxN = 1000
 
-
-{-
-updateARB :: PathConfig
-          -> TVar [EventCard]
-          -> TVar [EventCard]
-          -> IO ()
-updateARB cfg arbs arbsfiltered = do
-  let arbpath = cfg^.arbstore
-      dotpath = cfg^.mgdotfigstore
-  forever $ do
-    arbs' <- readTVarIO arbs
-    arbsfiltered' <- readTVarIO arbsfiltered
-    let cfps = map (^._1) (arbs' ++ arbsfiltered')
-    fps_arb <- getFileListRecursively arbpath
-    fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath
-    let newarbs' = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot) && (not (x `elem` cfps))) fps_arb
-
-    newarbs'' <- forM newarbs' $ \fp -> do
-      bstr <- B8.readFile fp
-      let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
-      let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",(T.take 2 hsh),hsh]) rssAnalysisList
-      (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\sfp -> try $ B8.readFile (T.unpack sfp)) sfps
-      let sbstrs = rights ebstrs
-      mitem <- case sbstrs of
-                 []   -> return Nothing
-                 x:xs -> let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) x in return mitem
-      return $ (,,) <$> Just fp <*> A.decode' (BL.fromStrict bstr) <*> (Just mitem)
-    let newarbs = catMaybes newarbs''
-        newarbs_filter_pass = filterARB maxN newarbs
-        newarbs_filter_fail = filter (\a -> a `notElem` newarbs_filter_pass) newarbs
-    putStrLn ("number of new A-R-Bs is " ++ show (length newarbs))
-    if (not $ null newarbs)
-      then do
-      atomically (writeTVar arbs (sortEventCardByTime (newarbs_filter_pass ++ arbs')))
-      atomically (writeTVar arbsfiltered (sortEventCardByTime (newarbs_filter_fail ++ arbsfiltered')))
-      else do
-      atomically (writeTVar arbs arbs')
-      atomically (writeTVar arbsfiltered arbsfiltered')
-    let sec = 1000000 in threadDelay (10*sec)
--}
-
-loadExistingMG :: PathConfig -> IO [Maybe MeaningGraph] --  [Maybe EventCard]
-loadExistingMG cfg  = do
-  {- let arbpath = cfg^.arbstore
-      dotpath = cfg^.mgdotfigstore
-  fps_arb <- getFileListRecursively arbpath -}
-  -- print arbpath
-  --print fps_arb
-  {- fps_dot <- map takeBaseName . filter (\x -> takeExtension x == ".png") <$> getFileListRecursively dotpath -}
-  -- let fps = filter (\x -> ('_' `elem` x) && (takeBaseName x `elem` fps_dot)) fps_arb
+loadExistingMG :: PathConfig -> Int -> IO [Maybe MeaningGraph]
+loadExistingMG cfg numMG  = do
   fps_mg <- getFileListRecursively (cfg^.mgstore)
   let fps = fps_mg
-  forM (take 100 $ zip [1..] fps) $ \(i,fp) -> do
+  forM (take numMG $ zip [1..] fps) $ \(i,fp) -> do
     when (i `mod` 1000 == 0) $ do
       putStrLn (show i ++ "th file")
 
     bstr <- B8.readFile fp
-    {- let hsh = fst $ T.breakOn "_" $ T.pack $ takeBaseName fp
-    let sfps = map (\(x,y,_) -> T.intercalate "/" [T.pack (_rssstore cfg),T.pack x,T.pack y,"RSSItem",(T.take 2 hsh),hsh]) rssAnalysisList
-    (ebstrs :: [Either IOException B8.ByteString]) <- liftIO $ mapM (\sfp -> try $ B8.readFile (T.unpack sfp)) sfps
-    let sbstrs = rights ebstrs
-    mitem <- case sbstrs of
-               []   -> return Nothing
-               x:xs -> let (mitem :: Maybe ItemRSS) = (A.decode . BL.fromStrict) x in return mitem -}
     return (A.decode' (BL.fromStrict bstr))
-
-
 
 
 
@@ -200,19 +119,6 @@ filterARB n arbs =
   in take n $ sortEventCardByTime arbs2
 
 
-{-
-getARB :: TVar [EventCard]
-       -> Int
-       -> Handler [EventCard]
-getARB arbs i = do
-  liftIO $ putStrLn "getARB called"
-  arbs1 <- liftIO $ readTVarIO arbs
-  liftIO $ print (length arbs1)
-  let n = 1000
-      result = take n (drop (n*i) arbs1)
-  liftIO $ mapM_ print (take 3 result)
-  return result
--}
 
 sortEventCardBy f ecs = sortBy (flip compare `on` f) ecs
 

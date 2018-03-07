@@ -32,7 +32,7 @@ instance FromJSON ResultSentence
 instance NFData   ResultSentence
 
 data ResultReuters = ResultReuters { _reuters_query :: Int
-                                   , _reuters_test :: Text
+                                   , _reuters_mgs :: [MeaningGraph]
                                    }
                    deriving (Generic,Show)
 

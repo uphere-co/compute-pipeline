@@ -29,7 +29,7 @@ consoleClient sc = do
         case w of
           ":v" -> let input = T.pack (intercalate " " ws)
                   in lift $ queryProcess sc (CQ_Sentence input) (liftIO . print)
-          ":r" -> lift $ queryProcess sc (CQ_Reuters 10) (liftIO . print)
+          ":r" -> lift $ queryProcess sc (CQ_Reuters 100) (liftIO . print)
           _ -> return ()
 
 
