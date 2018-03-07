@@ -29,7 +29,9 @@ library
                   directory,
                   distributed-process,
                   distributed-process-lifted,
+                  filepath,
                   haskeline,
+                  hashable,
                   http-client,
                   http-client-tls,
                   http-types,
@@ -43,6 +45,7 @@ library
                   process,
                   stm,
                   text,
+                  time,
                   transformers,
                   unordered-containers,
                   --
@@ -51,7 +54,9 @@ library
                   lexicon-builder,
                   network-transport-uphere,
                   nlp-pipeline,
+                  nlp-shared-types,
                   nlp-types,
+                  rss-scraper,
                   semantic-role-labeler,
                   semantic-types,
                   syntactic-analysis,
@@ -62,6 +67,7 @@ library
                     CloudHaskell.QueryQueue
                     CloudHaskell.Util
                     SemanticParserAPI.Compute
+                    SemanticParserAPI.Compute.Reuters
                     SemanticParserAPI.Compute.CoreNLP
                     SemanticParserAPI.Compute.Network
                     SemanticParserAPI.Compute.Type

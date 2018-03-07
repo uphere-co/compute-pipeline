@@ -91,12 +91,12 @@ onesecond = 1000000
 
 pingHeartBeat :: [ProcessId] -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat ps them n = do
-  tellLog ("heart-beat send: " ++ show n)
+  -- tellLog ("heart-beat send: " ++ show n)
   send them (HB n)
   mhb <- expectTimeout (10*onesecond)
   case mhb of
     Just (HB n') -> do
-      tellLog ("ping-pong received: " ++ show n')
+      -- tellLog ("ping-pong received: " ++ show n')
       liftIO (threadDelay (5*onesecond))
       pingHeartBeat ps them (n+1)
     Nothing -> do
@@ -136,9 +136,9 @@ withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
   pid <- action                                            -- main process launch
   whileJust_ (expectTimeout (10*onesecond)) $ \(HB n) -> do      -- heartbeating until it fails.
-    tellLog ("heartbeat received: " ++ show n)
+    -- tellLog ("heartbeat received: " ++ show n)
     send them (HB n)
-    tellLog ("ping-pong sent: " ++ show n)
+    -- tellLog ("ping-pong sent: " ++ show n)
   tellLog "heartbeat failed: reload"                       -- when fail, it prints messages
   kill pid "connection closed"                             -- and start over the whole process.
 
