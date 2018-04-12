@@ -30,9 +30,9 @@ $(makeAdaptorAndInstance "pAnalysis" ''AnalysisP)
 $(makeTable "analysis" 'pAnalysis ''AnalysisP)
 
 queryAll :: Query (To Column Analysis)
-queryAll = queryTable table
+queryAll = queryTable DB.Schema.NewsAPI.Analysis.table
 
--- smart constructor for inserting a new value.                                                                               
+-- smart constructor for inserting a new value.
 newAnalysis :: ByteString
            -> Text
            -> Maybe Bool

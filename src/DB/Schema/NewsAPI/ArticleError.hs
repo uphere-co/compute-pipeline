@@ -27,7 +27,7 @@ $(makeAdaptorAndInstance "pArticleError" ''ArticleErrorP)
 $(makeTable "articleerror" 'pArticleError ''ArticleErrorP)
 
 queryAll :: Query (To Column ArticleError)
-queryAll = queryTable table 
+queryAll = queryTable DB.Schema.NewsAPI.ArticleError.table 
 
 -- smart constructor for inserting a new value.
 newArticleError :: ByteString

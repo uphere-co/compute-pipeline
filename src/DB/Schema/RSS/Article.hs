@@ -28,7 +28,7 @@ $(makeAdaptorAndInstance "pRSSArticle" ''RSSArticleP)
 $(makeTable "rssarticle" 'pRSSArticle ''RSSArticleP)
 
 queryAll :: Query (To Column RSSArticle)
-queryAll = queryTable table 
+queryAll = queryTable DB.Schema.RSS.Article.table 
 
 -- smart constructor for inserting a new value.
 newRSSArticle :: ByteString

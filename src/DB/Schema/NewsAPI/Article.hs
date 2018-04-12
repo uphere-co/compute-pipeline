@@ -28,7 +28,7 @@ $(makeAdaptorAndInstance "pArticle" ''ArticleP)
 $(makeTable "article" 'pArticle ''ArticleP)
 
 queryAll :: Query (To Column Article)
-queryAll = queryTable table 
+queryAll = queryTable DB.Schema.NewsAPI.Article.table 
 
 -- smart constructor for inserting a new value.
 newArticle :: ByteString
