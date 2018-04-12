@@ -31,9 +31,9 @@ $(makeAdaptorAndInstance "pRSSAnalysis" ''RSSAnalysisP)
 $(makeTable "rssanalysis" 'pRSSAnalysis ''RSSAnalysisP)
 
 queryAll :: Query (To Column RSSAnalysis)
-queryAll = queryTable table
+queryAll = queryTable DB.Schema.RSS.Analysis.table
 
--- smart constructor for inserting a new value.                                                                               
+-- smart constructor for inserting a new value.
 newRSSAnalysis :: ByteString
                -> Text
                -> Maybe Bool
