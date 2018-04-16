@@ -27,6 +27,8 @@ import qualified DB.Schema.RSS.ErrorArticle     as EA
 --
 import           DB.Type
 
+
+{- 
 uploadRSSArticle :: (ToRSSArticle a) => Connection -> a -> IO ()
 uploadRSSArticle conn x = do
   let a = toRSSArticle x
@@ -247,3 +249,4 @@ getRSSAnalysisBySourceAndTime conn src time = runQuery conn (queryRSSAnalysisByS
 
 getRSSAnalysisByHash :: Connection -> ByteString -> IO [An.RSSAnalysisH]
 getRSSAnalysisByHash conn hsh = (runQuery conn (queryRSSAnalysisByHash hsh) :: IO [An.RSSAnalysisH])
+-}

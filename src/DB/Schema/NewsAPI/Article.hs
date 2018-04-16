@@ -1,11 +1,10 @@
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 -- {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 
 module DB.Schema.NewsAPI.Article where
 
@@ -14,12 +13,7 @@ import           Data.Text
 import           Data.Time.LocalTime
 import           Data.Time.Clock
 import           Database.Beam
--- import           Database.Beam.Postgres (Pg)
 import           Lens.Micro
--- import Opaleye                    hiding (constant)
--- import Model.Opaleye.TH
--- import Model.Opaleye.ShowConstant (constant)
--- import Prelude
 
 data ArticleT f = Article { _articleId      :: Columnar f Text
                           , _articleHash    :: Columnar f ByteString
@@ -44,26 +38,6 @@ deriving instance Show Article
 Article (LensFor articleId) (LensFor articleHash)
         (LensFor articleSource) (LensFor articleCreated) = tableLenses
 
-
-{- 
-$(makeAdaptorAndInstance "pArticle" ''ArticleP)
-
-$(makeTable "article" 'pArticle ''ArticleP)
-
-queryAll :: Query (To Column Article)
-queryAll = queryTable DB.Schema.NewsAPI.Article.table 
-
--- smart constructor for inserting a new value.
-newArticle :: ByteString
-           -> Text
-           -> UTCTime
-           -> To Maybe (To Column Article)
-newArticle hsh src ctm
-  = Article Nothing (Just (constant hsh))
-                    (Just (constant src))
-                    (Just (constant ctm))
-
--}
 
 -- The PostgreSQL table was created as follows.
 

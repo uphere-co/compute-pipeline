@@ -10,7 +10,7 @@ import           DB.Schema.NewsAPI.ArticleError (ArticleErrorT)
 import           DB.Schema.NewsAPI.Analysis     (AnalysisT)
 
 
-data NewsAPIDB f = ArticleDB { _newsapiArticles :: f (TableEntity ArticleT)
+data NewsAPIDB f = NewsAPIDB { _newsapiArticles :: f (TableEntity ArticleT)
                              , _newsapiAnalyses :: f (TableEntity AnalysisT)
                              , _newsapiArticleErrors :: f (TableEntity ArticleErrorT)
                              }

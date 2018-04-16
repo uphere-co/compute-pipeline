@@ -15,10 +15,6 @@ import           Data.Time.LocalTime
 import           Data.Time.Clock
 import           Database.Beam
 import           Lens.Micro
--- import Opaleye                    hiding (constant)
--- import Model.Opaleye.TH
--- import Model.Opaleye.ShowConstant (constant)
--- import Prelude
 
 
 data AnalysisT f = Analysis { _analysisSHA256   :: Columnar f ByteString
@@ -46,26 +42,6 @@ Analysis (LensFor analysisSHA256)  (LensFor analysisSource)
          (LensFor analysisCoreNLP) (LensFor analysisSRL)
          (LensFor analysisNER)     (LensFor analysisCreated) = tableLenses
 
-{- 
-queryAll :: Query (To Column Analysis)
-queryAll = queryTable DB.Schema.NewsAPI.Analysis.table
-
--- smart constructor for inserting a new value.
-newAnalysis :: ByteString
-           -> Text
-           -> Maybe Bool
-           -> Maybe Bool
-           -> Maybe Bool
-           -> UTCTime
-           -> To Maybe (To Column Analysis)
-newAnalysis s sr mcore msrl mner ct
-  = Analysis (Just (constant s))
-             (Just (constant sr))
-             ((toNullable . constant) <$> mcore)
-             ((toNullable . constant) <$> msrl)
-             ((toNullable . constant) <$> mner)
-             (Just (constant ct))
--}
 
 -- The PostgreSQL table was created as follows.
 
