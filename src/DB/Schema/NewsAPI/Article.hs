@@ -1,4 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -6,23 +9,43 @@
 
 module DB.Schema.NewsAPI.Article where
 
-import Data.ByteString.Char8
-import Data.Text
-import Data.Time.LocalTime
-import Data.Time.Clock
-import Opaleye                    hiding (constant)
-import Model.Opaleye.TH
-import Model.Opaleye.ShowConstant (constant)
-import Prelude
+import           Data.ByteString.Char8
+import           Data.Text
+import           Data.Time.LocalTime
+import           Data.Time.Clock
+import           Database.Beam
+-- import           Database.Beam.Postgres (Pg)
+import           Lens.Micro
+-- import Opaleye                    hiding (constant)
+-- import Model.Opaleye.TH
+-- import Model.Opaleye.ShowConstant (constant)
+-- import Prelude
 
-$(makeTypes [d|
-    data Article = Article { _id      :: Int
-                           , _hash    :: ByteString
-                           , _source  :: Text
-                           , _created :: UTCTime
-                           }
-                 deriving Show |])
-  
+data ArticleT f = Article { _articleId      :: Columnar f Text
+                          , _articleHash    :: Columnar f ByteString
+                          , _articleSource  :: Columnar f Text
+                          , _articleCreated :: Columnar f UTCTime
+                          }
+             deriving (Generic)
+
+instance Beamable ArticleT
+
+instance Table ArticleT where
+  data PrimaryKey ArticleT f = ArticleKey (Columnar f Text) deriving Generic
+  primaryKey = ArticleKey <$> _articleId
+
+instance Beamable (PrimaryKey ArticleT)
+
+type Article = ArticleT Identity
+
+deriving instance Show Article
+
+
+Article (LensFor articleId) (LensFor articleHash)
+        (LensFor articleSource) (LensFor articleCreated) = tableLenses
+
+
+{- 
 $(makeAdaptorAndInstance "pArticle" ''ArticleP)
 
 $(makeTable "article" 'pArticle ''ArticleP)
@@ -39,6 +62,8 @@ newArticle hsh src ctm
   = Article Nothing (Just (constant hsh))
                     (Just (constant src))
                     (Just (constant ctm))
+
+-}
 
 -- The PostgreSQL table was created as follows.
 

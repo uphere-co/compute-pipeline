@@ -1,4 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -6,29 +9,44 @@
 
 module DB.Schema.NewsAPI.Analysis where
 
-import Data.ByteString.Char8
-import Data.Text
-import Data.Time.LocalTime
-import Data.Time.Clock
-import Opaleye                    hiding (constant)
-import Model.Opaleye.TH
-import Model.Opaleye.ShowConstant (constant)
-import Prelude
+import           Data.ByteString.Char8
+import           Data.Text
+import           Data.Time.LocalTime
+import           Data.Time.Clock
+import           Database.Beam
+import           Lens.Micro
+-- import Opaleye                    hiding (constant)
+-- import Model.Opaleye.TH
+-- import Model.Opaleye.ShowConstant (constant)
+-- import Prelude
 
-$(makeTypes [d|
-    data Analysis = Analysis { _sha256   :: ByteString
-                             , _source   :: Text
-                             , _corenlp  :: Nullable Bool
-                             , _srl      :: Nullable Bool
-                             , _ner      :: Nullable Bool
-                             , _created  :: UTCTime
-                             }
-                  deriving Show |])
 
-$(makeAdaptorAndInstance "pAnalysis" ''AnalysisP)
+data AnalysisT f = Analysis { _analysisSHA256   :: Columnar f ByteString
+                            , _analysisSource   :: Columnar f Text
+                            , _analysisCoreNLP  :: Columnar f (Maybe Bool)
+                            , _analysisSRL      :: Columnar f (Maybe Bool)
+                            , _analysisNER      :: Columnar f (Maybe Bool)
+                            , _analysisCreated  :: Columnar f UTCTime
+                         }
+              deriving Generic
 
-$(makeTable "analysis" 'pAnalysis ''AnalysisP)
+instance Beamable AnalysisT
 
+instance Table AnalysisT where
+  data PrimaryKey AnalysisT f = AnalysisKey (Columnar f ByteString) deriving Generic
+  primaryKey = AnalysisKey <$> _analysisSHA256
+
+instance Beamable (PrimaryKey AnalysisT)
+
+type Analysis = AnalysisT Identity
+
+deriving instance Show Analysis
+
+Analysis (LensFor analysisSHA256)  (LensFor analysisSource)
+         (LensFor analysisCoreNLP) (LensFor analysisSRL)
+         (LensFor analysisNER)     (LensFor analysisCreated) = tableLenses
+
+{- 
 queryAll :: Query (To Column Analysis)
 queryAll = queryTable DB.Schema.NewsAPI.Analysis.table
 
@@ -47,6 +65,7 @@ newAnalysis s sr mcore msrl mner ct
              ((toNullable . constant) <$> msrl)
              ((toNullable . constant) <$> mner)
              (Just (constant ct))
+-}
 
 -- The PostgreSQL table was created as follows.
 

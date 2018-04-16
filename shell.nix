@@ -34,6 +34,8 @@ let
               aeson-pretty
               base16-bytestring
               base64-bytestring
+              beam-core
+              beam-postgres
               cabal-install
               cryptohash
               data-default

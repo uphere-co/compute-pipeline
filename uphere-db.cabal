@@ -17,6 +17,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     DB.Operation
+                       DB.Schema.NewsAPI
                        DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article
                        DB.Schema.NewsAPI.ArticleError
@@ -30,8 +31,11 @@ library
   build-depends:       base,
                        --
                        base16-bytestring,
+                       beam-core,
+                       beam-postgres,
                        bytestring,
                        lens,
+                       microlens,
                        opaleye,
                        postgresql-simple,
                        text,
