@@ -46,7 +46,6 @@ let
               http-conduit
               lens
               monad-loops
-              opaleye
               optparse-applicative
               split
               string-conversions
@@ -54,7 +53,6 @@ let
               text-format
               uniplate
               unix
-              p.uphere-opaleye
             ]);
 in stdenv.mkDerivation {
   name = "uphere-db-dev";
