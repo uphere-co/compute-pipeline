@@ -18,6 +18,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:
                        DB.Operation.NewsAPI.Analysis
+                       DB.Operation.NewsAPI.Article
                        DB.Schema.NewsAPI
                        DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article

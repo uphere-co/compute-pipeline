@@ -7,6 +7,7 @@ import           Data.Time.Clock (UTCTime)
 import           Database.Beam
 import           Database.Beam.Postgres (runBeamPostgresDebug,Pg)
 import           Database.PostgreSQL.Simple (Connection)
+import           Lens.Micro
 --
 import DB.Schema.NewsAPI
 import DB.Schema.NewsAPI.Analysis
@@ -18,6 +19,12 @@ queryAnalysisAll =
   runSelectReturningList $ select $
     all_ (_newsapiAnalyses newsAPIDB)
 
+queryAnalysisByHash :: ByteString -> Pg [Analysis]
+queryAnalysisByHash hsh =
+  runSelectReturningList $ select $ do
+    a <- all_ (_newsapiAnalyses newsAPIDB)
+    guard_ (_analysisSHA256 a ==. val_ hsh)
+    pure a
 
 queryAnalysisBySource :: String -> Pg [Analysis]
 queryAnalysisBySource src =
@@ -44,21 +51,34 @@ queryAnalysisBySourceAndTime src time =
     pure a
 
 
-queryAnalysisByHash :: ByteString -> Pg [Analysis]
-queryAnalysisByHash hsh =
-  runSelectReturningList $ select $ do
-    a <- all_ (_newsapiAnalyses newsAPIDB)
-    guard_ (_analysisSHA256 a ==. val_ hsh)
-    pure a
 
 
-getAnalysisByHash :: ByteString -> Connection -> IO [Analysis]
-getAnalysisByHash hsh conn =
+getAnalysisAll :: Connection -> IO [Analysis]
+getAnalysisAll conn =
+  runBeamPostgresDebug putStrLn conn queryAnalysisAll
+
+getAnalysisByHash :: Connection -> ByteString -> IO [Analysis]
+getAnalysisByHash conn hsh =
   runBeamPostgresDebug putStrLn conn $ queryAnalysisByHash hsh
 
 
+getAnalysisBySource :: Connection -> String -> IO [Analysis]
+getAnalysisBySource conn src =
+  runBeamPostgresDebug putStrLn conn $ queryAnalysisBySource src
+
+
+getAnalysisByTime :: Connection -> UTCTime -> IO [Analysis]
+getAnalysisByTime conn time =
+  runBeamPostgresDebug putStrLn conn $ queryAnalysisByTime time
+
+
+getAnalysisBySourceAndTime :: Connection -> String -> UTCTime -> IO [Analysis]
+getAnalysisBySourceAndTime conn src time =
+  runBeamPostgresDebug putStrLn conn $ queryAnalysisBySourceAndTime src time
+
+
 uploadAnalysis :: Connection -> Analysis -> IO ()
-uploadAnalysis conn analysis = do
+uploadAnalysis conn analysis =
   void . runBeamPostgresDebug putStrLn conn . runInsert $
     insert (_newsapiAnalyses newsAPIDB) $
       insertValues [ analysis ]
@@ -66,14 +86,25 @@ uploadAnalysis conn analysis = do
 
 uploadAnalysisIfMissing :: Connection -> Analysis -> IO ()
 uploadAnalysisIfMissing conn analysis = do
-  as' <- getAnalysisByHash (_analysisSHA256 analysis) conn
+  as' <- getAnalysisByHash conn (_analysisSHA256 analysis)
   case as' of
     [] -> uploadAnalysis conn analysis
     as -> print "Already exists"
 
 
-{-
-    conn Analysis.table $
-    Analysis.newAnalysis analysis_hash analysis_source analysis_corenlp analysis_srl analysis_ner analysis_created
-  return ()
--}
+  -- What happens if ov is null? I couldn't find a way to check if it is null.
+  -- Due to the test, if ov is null, then null is inserted despite outer Just.
+updateAnalysisStatus :: Connection
+                     -> ByteString
+                     -> (Maybe Bool,Maybe Bool,Maybe Bool)
+                     -> IO ()
+updateAnalysisStatus conn hsh (mb1,mb2,mb3) =
+  runBeamPostgresDebug putStrLn conn $
+    runUpdate $
+      update (_newsapiAnalyses newsAPIDB)
+             (\analysis -> [ analysis^.analysisCoreNLP <-. val_ mb1
+                           , analysis^.analysisSRL     <-. val_ mb2
+                           , analysis^.analysisNER     <-. val_ mb3
+                           ]
+              )
+             (\analysis -> analysis ^.analysisSHA256 ==. (val_ hsh))

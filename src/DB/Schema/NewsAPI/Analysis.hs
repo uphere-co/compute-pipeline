@@ -74,22 +74,7 @@ Analysis (LensFor analysisSHA256)  (LensFor analysisSource)
 
 {-
 
-updateAnalysisStatus :: PGS.Connection -> ByteString -> (Maybe Bool,Maybe Bool,Maybe Bool) -> IO ()
-updateAnalysisStatus conn hsh (mb1,mb2,mb3) = do
-  let f ov mb = if (isNothing mb) then (Just ov) else (if (fromJust mb) then ((toNullable . constant) <$> Just True) else ((toNullable . constant) <$> Nothing)) -- What happens if ov is null? I couldn't find a way to check if it is null.
-                                                                                                                                                                -- Due to the test, if ov is null, then null is inserted despite outer Just.
-  runUpdate conn Analysis.table (\(Analysis.Analysis s src mcore msrl mner ct) -> Analysis.Analysis (Just s) (Just src) (f mcore mb1) (f msrl mb2) (f mner mb3) (Just ct))
-    (\x -> (Analysis._sha256 x) .== (constant hsh))
-  return ()
 
 
-
-getAnalysisAll conn = (runQuery conn queryAnalysisAll :: IO [Analysis.AnalysisH])
-
-getAnalysisBySource src conn = (runQuery conn (queryAnalysisBySource src) :: IO [Analysis.AnalysisH])
-
-getAnalysisByTime time conn = (runQuery conn (queryAnalysisByTime time) :: IO [Analysis.AnalysisH])
-
-getAnalysisBySourceAndTime conn src time = (runQuery conn (queryAnalysisBySourceAndTime src time) :: IO [Analysis.AnalysisH])
 
 -}
