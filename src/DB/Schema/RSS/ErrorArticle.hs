@@ -47,3 +47,27 @@ RSSErrorArticle (LensFor rssErrorHash)
 --   created timestamp with time zone,
 --   constraint unique_rsserrorarticle_hash UNIQUE (hash)
 -- );
+
+-- from DB.Operation
+
+uploadRSSErrorArticle :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
+uploadRSSErrorArticle conn x = do
+  let a = toRSSErrorArticle x
+  runInsert conn EA.table $
+    EA.newRSSErrorArticle (a ^. rss_error_article_hash) (a ^. rss_error_article_source) (a ^. rss_error_article_errormsg) (a ^. rss_error_article_created)
+  return ()
+
+uploadRSSErrorArticleIfMissing :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
+uploadRSSErrorArticleIfMissing conn x = do
+  let a = toRSSErrorArticle x
+  (as' :: [EA.RSSErrorArticleH]) <- runQuery conn (queryRSSErrorArticleByHash (a ^. rss_error_article_hash))
+  case as' of
+    []  -> uploadRSSErrorArticle conn a
+    _as -> putStrLn "Already exists"
+
+
+queryRSSErrorArticleByHash :: ByteString -> Query (To Column (EA.RSSErrorArticle))
+queryRSSErrorArticleByHash hsh = proc () -> do
+  r <- EA.queryAll -< ()
+  restrict -< EA._hash r .== (constant hsh)
+  returnA -< r

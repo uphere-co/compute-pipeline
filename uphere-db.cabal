@@ -17,7 +17,6 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
-                       -- DB.Operation
                        DB.Schema.NewsAPI
                        DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article
@@ -38,12 +37,9 @@ library
                        bytestring,
                        lens,
                        microlens,
-                       -- opaleye,
                        postgresql-simple,
                        text,
                        time
-                       -- template-haskell,
-                     --
-                       -- uphere-opaleye
+
   hs-source-dirs:      src
   default-language:    Haskell2010

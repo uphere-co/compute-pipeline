@@ -65,3 +65,12 @@ newArticleError s sn ct
 
 --   constraint unique_sha256_error UNIQUE (sha256)
 -- );
+
+
+-- newsapi
+
+uploadArticleError :: PGS.Connection -> NewsAPIArticleErrorDB -> IO ()
+uploadArticleError conn NewsAPIArticleErrorDB {..} = do
+  runInsert conn AE.table $
+    AE.newArticleError article_error_hash article_error_source article_error_created
+  return ()
