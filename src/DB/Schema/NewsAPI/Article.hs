@@ -60,7 +60,7 @@ Article (LensFor articleId) (LensFor articleHash)
 
 -- from newsapi
 
-
+{- 
 uploadArticle :: PGS.Connection -> NewsAPIArticle -> IO ()
 uploadArticle conn NewsAPIArticle {..} = do
   runInsert conn A.table $
@@ -103,3 +103,4 @@ getArticleBySource src conn = (runQuery conn (queryArticleBySource src) :: IO [A
 getArticleByTime time conn = (runQuery conn (queryArticleByTime time) :: IO [A.ArticleH])
 
 getArticleBySourceAndTime conn src time = (runQuery conn (queryArticleBySourceAndTime src time) :: IO [A.ArticleH])
+-}

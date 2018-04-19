@@ -71,18 +71,8 @@ Analysis (LensFor analysisSHA256)  (LensFor analysisSource)
 
 -- from newsapi
 
-uploadAnalysis :: PGS.Connection -> NewsAPIAnalysisDB -> IO ()
-uploadAnalysis conn NewsAPIAnalysisDB {..} = do
-  runInsert conn Analysis.table $
-    Analysis.newAnalysis analysis_hash analysis_source analysis_corenlp analysis_srl analysis_ner analysis_created
-  return ()
 
-uploadAnalysisIfMissing :: PGS.Connection -> NewsAPIAnalysisDB -> IO ()
-uploadAnalysisIfMissing conn NewsAPIAnalysisDB {..} = do
-  as' <- getAnalysisByHash analysis_hash conn
-  case as' of
-    [] -> uploadAnalysis conn (NewsAPIAnalysisDB {..})
-    as -> print "Already exists"
+{-
 
 updateAnalysisStatus :: PGS.Connection -> ByteString -> (Maybe Bool,Maybe Bool,Maybe Bool) -> IO ()
 updateAnalysisStatus conn hsh (mb1,mb2,mb3) = do
@@ -92,35 +82,7 @@ updateAnalysisStatus conn hsh (mb1,mb2,mb3) = do
     (\x -> (Analysis._sha256 x) .== (constant hsh))
   return ()
 
-queryAnalysisAll :: Query (To Column (Analysis.Analysis))
-queryAnalysisAll = proc () -> do
-  r <- Analysis.queryAll -< ()
-  returnA -< r
 
-queryAnalysisBySource :: String -> Query (To Column (Analysis.Analysis))
-queryAnalysisBySource src = proc () -> do
-  r <- Analysis.queryAll -< ()
-  restrict -< Analysis._source r .== (constant (T.pack src))
-  returnA -< r
-
-queryAnalysisByTime :: UTCTime -> Query (To Column (Analysis.Analysis))
-queryAnalysisByTime time = proc () -> do
-  r <- Analysis.queryAll -< ()
-  restrict -< pgUTCTime time .<= (safeCoerceToRep $ Analysis._created r)
-  returnA -< r
-
-queryAnalysisBySourceAndTime :: String -> UTCTime -> Query (To Column (Analysis.Analysis))
-queryAnalysisBySourceAndTime src time = proc () -> do
-  r <- Analysis.queryAll -< ()
-  restrict -< Analysis._source r .== (constant (T.pack src))
-  restrict -< pgUTCTime time .<= (safeCoerceToRep $ Analysis._created r)
-  returnA -< r
-
-queryAnalysisByHash :: ByteString -> Query (To Column (Analysis.Analysis))
-queryAnalysisByHash hsh = proc () -> do
-  r <- Analysis.queryAll -< ()
-  restrict -< Analysis._sha256 r .== (constant hsh)
-  returnA -< r
 
 getAnalysisAll conn = (runQuery conn queryAnalysisAll :: IO [Analysis.AnalysisH])
 
@@ -130,4 +92,4 @@ getAnalysisByTime time conn = (runQuery conn (queryAnalysisByTime time) :: IO [A
 
 getAnalysisBySourceAndTime conn src time = (runQuery conn (queryAnalysisBySourceAndTime src time) :: IO [Analysis.AnalysisH])
 
-getAnalysisByHash hsh conn = (runQuery conn (queryAnalysisByHash hsh) :: IO [Analysis.AnalysisH])
+-}

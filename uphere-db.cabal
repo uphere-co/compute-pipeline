@@ -17,14 +17,15 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
+                       DB.Operation.NewsAPI.Analysis
                        DB.Schema.NewsAPI
                        DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article
                        DB.Schema.NewsAPI.ArticleError
-                       DB.Schema.RSS
-                       DB.Schema.RSS.Analysis
-                       DB.Schema.RSS.Article
-                       DB.Schema.RSS.ErrorArticle
+                       -- DB.Schema.RSS
+                       -- DB.Schema.RSS.Analysis
+                       -- DB.Schema.RSS.Article
+                       -- DB.Schema.RSS.ErrorArticle
                        DB.Type
                        DB.Util
   -- other-modules:

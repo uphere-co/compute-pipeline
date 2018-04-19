@@ -69,8 +69,10 @@ newArticleError s sn ct
 
 -- newsapi
 
+{- 
 uploadArticleError :: PGS.Connection -> NewsAPIArticleErrorDB -> IO ()
 uploadArticleError conn NewsAPIArticleErrorDB {..} = do
   runInsert conn AE.table $
     AE.newArticleError article_error_hash article_error_source article_error_created
   return ()
+-}

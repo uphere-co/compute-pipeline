@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module DB.Schema.NewsAPI where
 
@@ -17,7 +19,7 @@ data NewsAPIDB f = NewsAPIDB { _newsapiArticles :: f (TableEntity ArticleT)
 
                  deriving Generic
 
-instance Database NewsAPIDB
+instance Database be NewsAPIDB
 
 newsAPIDB :: DatabaseSettings be NewsAPIDB
 newsAPIDB = defaultDbSettings
