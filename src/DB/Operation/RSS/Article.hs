@@ -68,9 +68,6 @@ queryRSSArticleByHash hsh =
     pure a 
 
 
-
-
-
 countRSSArticleAll :: Pg (Maybe Int)
 countRSSArticleAll =
   runSelectReturningOne $ select $
@@ -100,20 +97,6 @@ getRSSArticleAll :: Connection -> IO [RSSArticle]
 getRSSArticleAll conn =
   runBeamPostgresDebug putStrLn conn queryRSSArticleAll
 
-getCountRSSArticleAll :: (MonadIO m) => Connection -> m Int
-getCountRSSArticleAll conn = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn countRSSArticleAll
-  return n
-
-getCountRSSArticleByTime :: (MonadIO m) => Connection -> UTCTime -> m Int
-getCountRSSArticleByTime conn time = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSArticleByTime time)
-  return n
-
-getCountRSSArticleBetweenTime :: (MonadIO m) => Connection -> UTCTime -> UTCTime -> m Int
-getCountRSSArticleBetweenTime conn time1 time2 = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSArticleBetweenTime time1 time2)
-  return n
 
 getRSSArticleBySource :: Connection -> Text -> IO [RSSArticle]
 getRSSArticleBySource conn src =
@@ -130,6 +113,21 @@ getRSSArticleBySourceAndTime conn src time =
 getRSSArticleByHash :: Connection -> ByteString -> IO [RSSArticle]
 getRSSArticleByHash conn hsh =
   runBeamPostgresDebug putStrLn conn (queryRSSArticleByHash hsh)
+
+getCountRSSArticleAll :: (MonadIO m) => Connection -> m Int
+getCountRSSArticleAll conn = do
+  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn countRSSArticleAll
+  return n
+
+getCountRSSArticleByTime :: (MonadIO m) => Connection -> UTCTime -> m Int
+getCountRSSArticleByTime conn time = do
+  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSArticleByTime time)
+  return n
+
+getCountRSSArticleBetweenTime :: (MonadIO m) => Connection -> UTCTime -> UTCTime -> m Int
+getCountRSSArticleBetweenTime conn time1 time2 = do
+  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSArticleBetweenTime time1 time2)
+  return n
 
 
 uploadRSSArticle :: Connection -> RSSArticle -> IO ()
