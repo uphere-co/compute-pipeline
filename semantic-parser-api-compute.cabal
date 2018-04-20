@@ -56,7 +56,7 @@ library
                   nlp-pipeline,
                   nlp-shared-types,
                   nlp-types,
-                  rss-scraper,
+                  -- rss-scraper,
                   semantic-role-labeler,
                   semantic-types,
                   syntactic-analysis,
@@ -107,19 +107,3 @@ executable compute-client
   default-language:    Haskell2010
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
 
--- executable stresstest
---   main-is:             stresstest.hs
---   build-depends:       base,
---                        bytestring,
---                        distributed-process,
---                        distributed-process-lifted,
---                        optparse-applicative,
---                        text,
---                        transformers,
---                        --
---                        network-transport-uphere,
---                        --
---                        semantic-parser-api-compute
---   hs-source-dirs:      app
---   default-language:    Haskell2010
---   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
