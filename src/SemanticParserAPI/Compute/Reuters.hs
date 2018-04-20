@@ -25,18 +25,9 @@ import           Data.Maybe                        (catMaybes)
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
--- import           Database.PostgreSQL.Simple        (Connection)
--- import           DB.Operation                      (getRSSAnalysisBySourceAndTime,getRSSArticleBySourceAndTime)
--- import           DB.Util                           (bstrHashToB16)
--- import           Network.Wai
--- import           Network.Wai.Handler.Warp
--- import           Network.Wai.Middleware.Cors
--- import           Servant
 import           System.FilePath                   (takeExtension, takeBaseName)
 import           System.IO
 --
--- import qualified DB.Schema.RSS.Analysis        as An
--- import qualified DB.Schema.RSS.Article         as Ar
 import           NLP.Shared.Type                   (EventClass(..)
                                                    ,PathConfig(..),ItemRSS
                                                    ,link,arbstore,mgdotfigstore,mgstore
@@ -45,7 +36,7 @@ import           NLP.Semantics.Type                (ARB(..),PrepOr(..)
                                                    ,objectB,predicateR,subjectA,po_main
                                                    )
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
-import           RSS.Data                          (rssAnalysisList)
+-- import           RSS.Data                          (rssAnalysisList)
 import           SRL.Analyze.Type                  (MeaningGraph)
 import           WikiEL.Type                       (EntityMention)
 --
