@@ -23,14 +23,14 @@ queryAnalysisByHash :: ByteString -> Pg [Analysis]
 queryAnalysisByHash hsh =
   runSelectReturningList $ select $ do
     a <- all_ (_newsapiAnalyses newsAPIDB)
-    guard_ (_analysisSHA256 a ==. val_ hsh)
+    guard_ (a^.analysisSHA256 ==. val_ hsh)
     pure a
 
 queryAnalysisBySource :: String -> Pg [Analysis]
 queryAnalysisBySource src =
   runSelectReturningList $ select $ do
     a <- all_ (_newsapiAnalyses newsAPIDB)
-    guard_ (_analysisSource a ==. val_ (T.pack src))
+    guard_ (a^.analysisSource ==. val_ (T.pack src))
     pure a
 
 
@@ -38,7 +38,7 @@ queryAnalysisByTime :: UTCTime -> Pg [Analysis]
 queryAnalysisByTime time =
   runSelectReturningList $ select $ do
     a <- all_ (_newsapiAnalyses newsAPIDB)
-    guard_ (val_ time <=. _analysisCreated a)
+    guard_ (val_ time <=. a^.analysisCreated)
     pure a
 
 
@@ -47,7 +47,7 @@ queryAnalysisBySourceAndTime src time =
   runSelectReturningList $ select $ do
     a <- all_ (_newsapiAnalyses newsAPIDB)
     guard_ (_analysisSource a ==. val_ (T.pack src))
-    guard_ (val_ time <=. _analysisCreated a)
+    guard_ (val_ time <=. a^.analysisCreated)
     pure a
 
 

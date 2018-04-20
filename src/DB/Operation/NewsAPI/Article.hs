@@ -2,55 +2,66 @@ module DB.Operation.NewsAPI.Article where
 
 import           Control.Monad (void)
 import           Data.ByteString.Char8 (ByteString)
+import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Time.Clock (UTCTime)
 import           Database.Beam
 import           Database.Beam.Postgres (runBeamPostgresDebug,Pg)
 import           Database.PostgreSQL.Simple (Connection)
+import           Lens.Micro
 --
 import DB.Schema.NewsAPI
 import DB.Schema.NewsAPI.Article
 
 
--- from newsapi
+queryArticleAll :: Pg [Article]
+queryArticleAll =
+  runSelectReturningList $ select $
+    all_ (_newsapiArticles newsAPIDB)
 
 
-{-
-queryArticleAll :: Query (To Column (A.Article))
-queryArticleAll = proc () -> do
-  r <- A.queryAll -< ()
-  returnA -< r
+queryArticleBySource :: Text -> Pg [Article]
+queryArticleBySource src =
+  runSelectReturningList $ select $ do
+    a <- all_ (_newsapiArticles newsAPIDB)
+    guard_ (a^.articleSource ==. val_ src)
+    pure a
 
-queryArticleBySource :: String -> Query (To Column (A.Article))
-queryArticleBySource src = proc () -> do
-  r <- A.queryAll -< ()
-  restrict -< A._source r .== (constant (T.pack src))
-  returnA -< r
-
-queryArticleByTime :: UTCTime -> Query (To Column (A.Article))
-queryArticleByTime time = proc () -> do
-  r <- A.queryAll -< ()
-  restrict -< pgUTCTime time .<= (safeCoerceToRep $ A._created r)
-  returnA -< r
-
-queryArticleBySourceAndTime :: String -> UTCTime -> Query (To Column (A.Article))
-queryArticleBySourceAndTime src time = proc () -> do
-  r <- A.queryAll -< ()
-  restrict -< A._source r .== (constant (T.pack src))
-  restrict -< pgUTCTime time .<= (safeCoerceToRep $ A._created r)
-  returnA -< r
+queryArticleByTime :: UTCTime -> Pg [Article]
+queryArticleByTime time =
+  runSelectReturningList $ select $ do
+    a <- all_ (_newsapiArticles newsAPIDB)
+    guard_ (val_ time <=. a^.articleCreated)
+    pure a
 
 
+queryArticleBySourceAndTime :: Text -> UTCTime -> Pg [Article]
+queryArticleBySourceAndTime src time =
+  runSelectReturningList $ select $ do
+    a <- all_ (_newsapiArticles newsAPIDB)
+    guard_ (a^.articleSource ==. val_ src)
+    guard_ (val_ time <=. a^.articleCreated)
+    return a
 
 
+getArticleAll :: Connection -> IO [Article]
+getArticleAll conn =
+  runBeamPostgresDebug putStrLn conn queryArticleAll
 
-getArticleAll conn = (runQuery conn queryArticleAll :: IO [A.ArticleH])
 
-getArticleBySource src conn = (runQuery conn (queryArticleBySource src) :: IO [A.ArticleH])
+getArticleBySource :: Connection -> Text -> IO [Article]
+getArticleBySource conn src =
+  runBeamPostgresDebug putStrLn conn (queryArticleBySource src)
 
-getArticleByTime time conn = (runQuery conn (queryArticleByTime time) :: IO [A.ArticleH])
 
-getArticleBySourceAndTime conn src time = (runQuery conn (queryArticleBySourceAndTime src time) :: IO [A.ArticleH])
+getArticleByTime :: Connection -> UTCTime -> IO [Article]
+getArticleByTime conn time =
+  runBeamPostgresDebug putStrLn conn (queryArticleByTime time)
+
+
+getArticleBySourceAndTime :: Connection -> Text -> UTCTime -> IO [Article]
+getArticleBySourceAndTime conn src time =
+  runBeamPostgresDebug putStrLn conn (queryArticleBySourceAndTime src time)
 
 
 uploadArticle :: Connection -> Article -> IO ()
@@ -58,4 +69,3 @@ uploadArticle conn article = do
   void . runBeamPostgresDebug putStrLn conn . runInsert $
     insert (_newsapiArticles newsAPIDB) $
       insertValues [ article ]
--}
