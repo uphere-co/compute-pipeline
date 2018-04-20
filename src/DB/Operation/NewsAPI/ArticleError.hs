@@ -16,7 +16,7 @@ import DB.Schema.NewsAPI.ArticleError
 uploadArticleError :: Connection -> ArticleError -> IO ()
 uploadArticleError conn err = do
   void . runBeamPostgresDebug putStrLn conn . runInsert $
-    insert (_newsapiArticles newsAPIDB) $
+    insert (_newsapiArticleErrors newsAPIDB) $
       insertValues [ err ]
 
 

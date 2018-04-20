@@ -62,7 +62,7 @@ RSSAnalysis (LensFor rssAnalysisId)
 
 
 -- from DB.Operation
-
+{-
 uploadRSSAnalysis :: (ToRSSAnalysis a) => Connection -> a -> IO ()
 uploadRSSAnalysis conn x = do
   let a = toRSSAnalysis x
@@ -162,3 +162,4 @@ getRSSAnalysisBySourceAndTime conn src time = runQuery conn (queryRSSAnalysisByS
 
 getRSSAnalysisByHash :: Connection -> ByteString -> IO [An.RSSAnalysisH]
 getRSSAnalysisByHash conn hsh = (runQuery conn (queryRSSAnalysisByHash hsh) :: IO [An.RSSAnalysisH])
+-}

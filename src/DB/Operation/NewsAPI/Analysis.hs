@@ -86,7 +86,7 @@ uploadAnalysis conn analysis =
 
 uploadAnalysisIfMissing :: Connection -> Analysis -> IO ()
 uploadAnalysisIfMissing conn analysis = do
-  as' <- getAnalysisByHash conn (_analysisSHA256 analysis)
+  as' <- getAnalysisByHash conn (analysis^.analysisSHA256)
   case as' of
     [] -> uploadAnalysis conn analysis
     as -> print "Already exists"

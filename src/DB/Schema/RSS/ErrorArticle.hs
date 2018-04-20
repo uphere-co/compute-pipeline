@@ -49,7 +49,7 @@ RSSErrorArticle (LensFor rssErrorHash)
 -- );
 
 -- from DB.Operation
-
+{-
 uploadRSSErrorArticle :: (ToRSSErrorArticle a) => Connection -> a -> IO ()
 uploadRSSErrorArticle conn x = do
   let a = toRSSErrorArticle x
@@ -71,3 +71,4 @@ queryRSSErrorArticleByHash hsh = proc () -> do
   r <- EA.queryAll -< ()
   restrict -< EA._hash r .== (constant hsh)
   returnA -< r
+-}

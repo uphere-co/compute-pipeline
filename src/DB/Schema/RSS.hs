@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
-
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module DB.Schema.RSS where
 
 import           Database.Beam
@@ -16,7 +17,7 @@ data RSSDB f = RSSDB { _rssArticles :: f (TableEntity RSSArticleT)
                      }
              deriving Generic
 
-instance Database RSSDB
+instance Database be RSSDB
 
 rssDB :: DatabaseSettings be RSSDB
 rssDB = defaultDbSettings
