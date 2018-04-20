@@ -26,7 +26,7 @@ import           NER.Load                          (loadCompanies)
 import           NER.Type                          (CompanyInfo,alias)
 import           NLP.Shared.Type                   (PathConfig,corenlpstore,dbstring,lexconfigpath,mgstore)
 import           NLP.Type.CoreNLP
-import           RSS.Data                          (rssAnalysisList)
+-- import           RSS.Data                          (rssAnalysisList)
 import           Text.Search.Generic.SearchTree    (addTreeItem)
 import           WikiEL.Type                       (EntityMention)
 --
@@ -38,6 +38,24 @@ import           Pipeline.Run.CoreNLP
 import           Pipeline.Source.RSS.Analysis
 import           Pipeline.Type
 
+
+type Source = String
+type Section = String
+type RSSLink = String
+
+rssAnalysisList :: [(Source,Section,RSSLink)]
+rssAnalysisList =
+  [ {- ("reuters","companyNews","http://feeds.reuters.com/reuters/companyNews")
+  , ("reuters","technologyNews","http://feeds.reuters.com/reuters/technologyNews")
+  , -} ("reuters","Archive","http://www.reuters.com/resources/archive/us")
+  {- , ("cnbc","business","https://www.cnbc.com/id/10001147/device/rss/rss.html")
+  , ("cnbc","economy","https://www.cnbc.com/id/20910258/device/rss/rss.html")
+  , ("cnbc","finance","https://www.cnbc.com/id/10000664/device/rss/rss.html")
+  , ("cnbc","technology","https://www.cnbc.com/id/19854910/device/rss/rss.html")
+  , ("marketwatch","topstories","http://feeds.marketwatch.com/marketwatch/topstories")
+  , ("marketwatch","marketpulse","http://feeds.marketwatch.com/marketwatch/marketpulse") -- Paragraph  -}
+  ]
+
 runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
   conn <- getConnection (cfg ^. dbstring)
@@ -47,7 +65,7 @@ runDaemon cfg = do
     -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
     forM_ rssAnalysisList $ \(src,sec,url) -> do
       print (src,sec,url)
-      runSRL conn apredata netagger (forest,companyMap) cfg (src ++ "/" ++ sec)
+      runSRL conn apredata netagger (forest,companyMap) cfg (T.pack (src ++ "/" ++ sec))
     putStrLn "Waiting next run..."
     let sec = 1000000 in threadDelay (60*sec)
   closeConnection conn
@@ -61,14 +79,14 @@ runSRL :: PGS.Connection
        -> ([Sentence] -> [EntityMention T.Text])
        -> (Forest (Either Int Text), IntMap CompanyInfo)
        -> PathConfig
-       -> String
+       -> Text
        -> IO ()
 runSRL conn apredata netagger (forest,companyMap) cfg src = do
   as1b <- getNewItemsForSRL cfg src
   -- print as1b
   let as1 = (take 5000 as1b) -- as1a ++ as1b
   -- print as1
- 
+
   loaded1 <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as1
   let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded1)
   let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1

@@ -36,6 +36,8 @@ let
             aeson
             attoparsec
             base16-bytestring
+            beam-core
+            beam-postgres
             data-default
             directory-tree
             discrimination
@@ -45,7 +47,7 @@ let
             hedis
             lens
             monad-loops
-            opaleye
+            # opaleye
             optparse-applicative
             postgresql-simple
             servant
@@ -55,7 +57,7 @@ let
             yaml
             yayaml
             p.event-analyzer
-            p.newsapi
+            #p.newsapi
             p.nlp-types
             p.nlp-shared-types
             p.textview
@@ -67,7 +69,7 @@ let
             p.wiki-ner
             p.uphere-network-util
             #p.nyt-scrapper
-            p.rss-scraper
+            #p.rss-scraper
             p.time-tagger
             p.OntoNotes
             p.multi-word-tagger

@@ -2,27 +2,35 @@
 
 module Pipeline.Source.RSS.Article where
 
-import           Control.Lens                      ((^.))
+import           Control.Lens                      ((^.),to)
 import           Data.Aeson                        (eitherDecodeStrict)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B   
 import qualified Data.ByteString.Lazy.Char8 as L8  
 import           Data.Maybe                        (fromJust,isJust,isNothing)
 import           Data.Text                         (Text)
-import qualified Data.Text                  as T   
+import qualified Data.Text                  as T
+import qualified Data.Text.Encoding         as TE
 import           Data.Time.Clock                   (UTCTime)
+import           Database.Beam.Postgres            (runBeamPostgresDebug)
 import qualified Database.PostgreSQL.Simple as PGS 
-import           Opaleye                           (runQuery)
+-- import           Opaleye                           (runQuery)
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
-import           DB.Operation
-import qualified DB.Schema.RSS.Article      as Ar
+-- import           DB.Operation.RSS.Analysis
+import           DB.Operation.RSS.Article
+-- import           DB.Operation.RSS.ErrorArticle
+import           DB.Schema.RSS.Article
 import           NLP.Shared.Type
-import           RSS.Type                          (itempath)
+-- import           RSS.Type                          (itempath)
 --
 import           Pipeline.Operation.DB
 import           Pipeline.Type
+
+
+itempath :: FilePath
+itempath = "RSSItem"
 
 
 getHashByTime :: PathConfig -> UTCTime -> IO [(Text,Text)]
@@ -30,7 +38,9 @@ getHashByTime cfg time = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- getRSSArticleByTime conn time
   PGS.close conn
-  return (map (\x -> (Ar._source x, T.pack $ L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x)) articles)
+  let mkPair :: RSSArticle -> (Text,Text)
+      mkPair x = (x^.rssArticleSource, x^.rssArticleHash.to B16.encode.to TE.decodeUtf8)
+  return (map mkPair articles)
 
 whatConst :: SourceConstraint -> String
 whatConst sc
@@ -39,19 +49,19 @@ whatConst sc
   | (isJust (_source sc)) && (isNothing (_bTime sc)) && (isNothing (_eTime sc)) = "Source"
   | otherwise                                                                   = "Not Supported"
 
-getRSSArticleBy :: PathConfig -> SourceConstraint -> IO [Maybe (Ar.RSSArticleH,ItemRSS)]
+getRSSArticleBy :: PathConfig -> SourceConstraint -> IO [Maybe (RSSArticle,ItemRSS)]
 getRSSArticleBy cfg sc = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- case (whatConst sc) of
-                "SrcAndBetTime" -> runQuery conn (queryRSSArticleBySourceAndBetTime (T.unpack $ fromJust $ _source sc) (fromJust $ _bTime sc) (fromJust $ _eTime sc))
-                "BetweenTime"   -> runQuery conn (queryRSSArticleBetweenTime (fromJust $ _bTime sc) (fromJust $ _eTime sc))
-                "Source"        -> getRSSArticleBySource conn (T.unpack $ fromJust $ _source sc)
+                "SrcAndBetTime" -> runBeamPostgresDebug putStrLn conn (queryRSSArticleBySourceAndBetTime (fromJust $ _source sc) (fromJust $ _bTime sc) (fromJust $ _eTime sc))
+                "BetweenTime"   -> runBeamPostgresDebug putStrLn conn (queryRSSArticleBetweenTime (fromJust $ _bTime sc) (fromJust $ _eTime sc))
+                "Source"        -> getRSSArticleBySource conn (fromJust $ _source sc)
                 otherwise       -> return []
   result <- flip mapM articles $ \x -> do
-    let hsh = L8.unpack $ L8.fromStrict $ B16.encode $ Ar._hash x
-        src = T.unpack $ Ar._source x
-        fileprefix = (cfg ^. rssstore) </> src
-        filepath = fileprefix </> itempath </> (take 2 hsh) </> hsh
+    let hshtxt = x^.rssArticleHash.to B16.encode.to TE.decodeUtf8
+        src = x^.rssArticleSource
+        fileprefix = (cfg ^. rssstore) </> T.unpack src
+        filepath = fileprefix </> itempath </> take 2 (T.unpack hshtxt) </> T.unpack hshtxt
     fchk <- doesFileExist filepath
     case fchk of
       True -> do

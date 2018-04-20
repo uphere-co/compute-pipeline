@@ -16,10 +16,14 @@ import           GHC.Generics
 --
 import qualified CoreNLP.Proto.HCoreNLPProto.ListTimex as T
 import qualified CoreNLP.Proto.CoreNLPProtos.Document  as D
-import qualified DB.Schema.NewsAPI.Article             as Ar
-import qualified DB.Schema.RSS.Article                 as RAr
+import qualified DB.Schema.NewsAPI.Analysis            as NewsAPI
+import qualified DB.Schema.NewsAPI.Article             as NewsAPI
+import qualified DB.Schema.NewsAPI.ArticleError        as NewsAPI
+import qualified DB.Schema.RSS.Analysis                as RSS
+import qualified DB.Schema.RSS.Article                 as RSS
+import qualified DB.Schema.RSS.ErrorArticle            as RSS
 import           DB.Type
-import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
+-- import           NewsAPI.Type                                (NewsAPIArticleErrorDB(..),NewsAPIAnalysisDB(..))
 import           NLP.Shared.Type
 --
 
@@ -45,7 +49,7 @@ cOptions = CoreNLPRunOption <$> strOption (long "config" <> short 'c' <> help "C
                             <*> strOption (long "btime" <> short 'b' <> help "Begin time")
                             <*> strOption (long "etime" <> short 'e' <> help "End time")
 
-progOption :: ParserInfo ProgOption 
+progOption :: ParserInfo ProgOption
 progOption = info pOptions (fullDesc <> progDesc "NLP Pipeline")
 
 corenlpRunOption :: ParserInfo CoreNLPRunOption
@@ -65,31 +69,35 @@ data DoneAnalysis = DoneAnalysis
 
 makeLenses ''DoneAnalysis
 
-mkNewsAPIAnalysisDB :: DoneAnalysis -> Ar.ArticleP a ByteString Text UTCTime -> NewsAPIAnalysisDB
-mkNewsAPIAnalysisDB das article =
-  NewsAPIAnalysisDB { analysis_hash = Ar._hash article
+mkNewsAPIAnalysis :: DoneAnalysis -> NewsAPI.Article -> NewsAPI.Analysis
+mkNewsAPIAnalysis das article = undefined
+{-  NewsAPI.Analysis { analysis_hash = Ar._hash article
                     , analysis_source = Ar._source article
                     , analysis_corenlp = das ^. done_corenlp
                     , analysis_srl     = das ^. done_srl
                     , analysis_ner     = das ^. done_ner
                     , analysis_created = Ar._created article
                     }
+-}
 
-mkNewsAPIArticleErrorDB :: Ar.ArticleP a ByteString Text UTCTime -> NewsAPIArticleErrorDB
-mkNewsAPIArticleErrorDB article =
-  NewsAPIArticleErrorDB { article_error_hash = Ar._hash article
+mkNewsAPIArticleError :: NewsAPI.Article -> NewsAPI.ArticleError
+mkNewsAPIArticleError article = undefined
+{-  NewsAPIArticleErrorDB { article_error_hash = Ar._hash article
                         , article_error_source = Ar._source article
                         , article_error_created = Ar._created article
                         }
+-}
 
-mkRSSAnalysisDBInfo das article =
-  RSSAnalysisDB { _rss_analysis_hash    = RAr._hash article
+mkRSSAnalysis :: DoneAnalysis -> RSS.RSSArticle -> RSS.RSSAnalysis
+mkRSSAnalysis das article = undefined
+{-  RSSAnalysisDB { _rss_analysis_hash    = RAr._hash article
                 , _rss_analysis_source  = RAr._source article
                 , _rss_analysis_corenlp = das ^. done_corenlp
                 , _rss_analysis_srl     = das ^. done_srl
                 , _rss_analysis_ner     = das ^. done_ner
                 , _rss_analysis_created = RAr._created article
                 }
+-}
 
 nominalDay :: NominalDiffTime
 nominalDay = 86400

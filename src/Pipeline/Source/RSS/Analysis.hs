@@ -1,22 +1,24 @@
-{-# LANGUAGE Arrows              #-}
-
 module Pipeline.Source.RSS.Analysis where
 
-import           Control.Arrow
-import           Control.Lens                      ((^.))
+import           Control.Lens                      ((^.),to)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Lazy.Char8 as BL8  
+import           Data.Text                         (Text)
 import qualified Data.Text                  as T
+import qualified Data.Text.Encoding         as TE
 import           Data.Time.Clock                   (UTCTime)
+import           Database.Beam
+import           Database.Beam.Postgres (runBeamPostgresDebug)
 -- import           Opaleye                           (runQuery)
-import           Opaleye                    hiding (constant)
+-- import           Opaleye                    hiding (constant)
 import           System.FilePath                   ((</>),takeBaseName)
 --
 -- import           RSS.DB
-import           DB.Operation                      (queryRSSAnalysisAll,queryRSSAnalysisBySource)
-import qualified DB.Schema.RSS.Analysis     as An
-import qualified DB.Schema.RSS.Analysis     as RAn
-import           Model.Opaleye.ShowConstant        (constant)
+import           DB.Operation.RSS.Analysis         (queryRSSAnalysisAll
+                                                   ,queryRSSAnalysisBySource)
+import           DB.Schema.RSS
+import           DB.Schema.RSS.Analysis
+-- import           Model.Opaleye.ShowConstant        (constant)
 import           NLP.Shared.Type                   (PathConfig,dbstring)
 --
 import           Pipeline.Operation.DB             (getConnection)
@@ -26,28 +28,36 @@ import           Pipeline.Type
 getAllRSSAnalysisFilePath :: PathConfig -> IO [(FilePath,UTCTime)]
 getAllRSSAnalysisFilePath cfg = do
   conn <- getConnection (cfg ^. dbstring)
-  as <- runQuery conn queryRSSAnalysisAll  -- getRSSAnalysisAll conn
-  return $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
+  as <- runBeamPostgresDebug putStrLn conn queryRSSAnalysisAll
+  pure $ map mkPair as
 
 
-getRSSAnalysisFilePathBySource :: PathConfig -> String -> IO [(FilePath,UTCTime)]
+getRSSAnalysisFilePathBySource :: PathConfig -> Text -> IO [(FilePath,UTCTime)]
 getRSSAnalysisFilePathBySource cfg src = do
   conn <- getConnection (cfg ^. dbstring)
-  as <- runQuery conn (queryRSSAnalysisBySource src) -- getRSSAnalysisBySource conn src
-  return  $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
+  as <- runBeamPostgresDebug putStrLn conn (queryRSSAnalysisBySource src)
+  pure $ map mkPair as
 
--- (filter (\(h,_) -> takeBaseName h == "8b638633ec8ead0aeae84bff9dce786ccaee1bd0d22ad940dde532d8e86d922c"))
 
-getNewItemsForSRL :: PathConfig -> String -> IO [(FilePath,UTCTime)]
+getNewItemsForSRL :: PathConfig -> Text -> IO [(FilePath,UTCTime)]
 getNewItemsForSRL cfg src = do
   conn <- getConnection (cfg ^. dbstring)
-  as <- runQuery conn $ proc () -> do
-    r <- An.queryAll -< ()
-    restrict -< (An._source r .== constant (T.pack src)) .&& (An._corenlp r .== toNullable (constant True)) .&& (isNull (An._srl r)  .|| (An._srl r .== toNullable (constant False)))
-    returnA -< r
-  return  $ map (\a -> (let hsh = ranHshB16 a in (take 2 hsh) </> hsh,RAn._created a)) as
+  as <- runBeamPostgresDebug putStrLn conn $
+    runSelectReturningList $ select $ do
+      a <- all_ (_rssAnalyses rssDB)
+      guard_ (    (a^.rssAnalysisSource ==. val_ src)
+              &&. (a^.rssAnalysisCoreNLP ==. val_ (Just True))
+              &&. (    (a^.rssAnalysisSRL ==. val_ Nothing )
+                   ||. (a^.rssAnalysisSRL ==. val_ (Just False))))
+      pure a
+  pure $ map mkPair as
 
 
 
-ranHshB16 :: RAn.RSSAnalysisH -> FilePath
-ranHshB16 a = (BL8.unpack . BL8.fromStrict . B16.encode . RAn._hash) a
+mkPair :: RSSAnalysis -> (FilePath,UTCTime)
+mkPair a = let hsh = ranHshB16 a in (take 2 (T.unpack hsh) </> T.unpack hsh,a^.rssAnalysisCreated)
+
+
+
+ranHshB16 :: RSSAnalysis -> Text
+ranHshB16 x = x^.rssAnalysisHash . to (TE.decodeUtf8 . B16.encode)
