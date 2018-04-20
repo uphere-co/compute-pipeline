@@ -1,44 +1,45 @@
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
+-- {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
 module DB.Schema.RSS.Article where
 
-import Data.ByteString.Char8
-import Data.Text
-import Data.Time.LocalTime
-import Data.Time.Clock
-import Opaleye                    hiding (constant)
-import Model.Opaleye.TH
-import Model.Opaleye.ShowConstant (constant)
-import Prelude
+import           Data.ByteString.Char8
+import           Data.Text
+import           Data.Time.LocalTime
+import           Data.Time.Clock
+import           Database.Beam
+import           Lens.Micro
+-- import Opaleye                    hiding (constant)
+-- import Model.Opaleye.TH
+-- import Model.Opaleye.ShowConstant (constant)
+-- import Prelude
 
-$(makeTypes [d|
-    data RSSArticle = RSSArticle { _id      :: Int
-                                 , _hash    :: ByteString
-                                 , _source  :: Text
-                                 , _created :: UTCTime
-                                 }
-                    deriving Show |])
-  
-$(makeAdaptorAndInstance "pRSSArticle" ''RSSArticleP)
+data RSSArticleT f = RSSArticle { _rssArticleId      :: Columnar f Int
+                                , _rssArticleHash    :: Columnar f ByteString
+                                , _rssArticleSource  :: Columnar f Text
+                                , _rssArticleCreated :: Columnar f UTCTime
+                                }
+                   deriving Generic
 
-$(makeTable "rssarticle" 'pRSSArticle ''RSSArticleP)
+instance Beamable RSSArticleT
 
-queryAll :: Query (To Column RSSArticle)
-queryAll = queryTable DB.Schema.RSS.Article.table 
+instance Table RSSArticleT where
+  data PrimaryKey RSSArticleT f = RSSArticleKey (Columnar f Int) deriving Generic
+  primaryKey = RSSArticleKey <$> _rssArticleId
 
--- smart constructor for inserting a new value.
-newRSSArticle :: ByteString
-              -> Text
-              -> UTCTime
-              -> To Maybe (To Column RSSArticle)
-newRSSArticle hsh src ctm
-  = RSSArticle Nothing (Just (constant hsh))
-                       (Just (constant src))
-                       (Just (constant ctm))
+instance Beamable (PrimaryKey RSSArticleT)
+
+type RSSArticle = RSSArticleT Identity
+
+RSSArticle (LensFor rssArticleId)
+           (LensFor rssArticleHash)
+           (LensFor rssArticleSource)
+           (LensFor rssArticleCreated) = tableLenses
 
 -- The PostgreSQL table was created as follows.
 

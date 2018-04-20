@@ -34,6 +34,8 @@ let
               aeson-pretty
               base16-bytestring
               base64-bytestring
+              beam-core
+              beam-postgres
               cabal-install
               cryptohash
               data-default
@@ -44,7 +46,6 @@ let
               http-conduit
               lens
               monad-loops
-              opaleye
               optparse-applicative
               split
               string-conversions
@@ -52,7 +53,6 @@ let
               text-format
               uniplate
               unix
-              p.uphere-opaleye
             ]);
 in stdenv.mkDerivation {
   name = "uphere-db-dev";

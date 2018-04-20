@@ -1,14 +1,14 @@
-{ mkDerivation, base, base16-bytestring, bytestring, lens, opaleye
-, postgresql-simple, stdenv, template-haskell, text, time
-, uphere-opaleye
+{ mkDerivation, base, base16-bytestring, beam-core, beam-postgres
+, bytestring, lens, microlens, postgresql-simple, stdenv, text
+, time
 }:
 mkDerivation {
   pname = "uphere-db";
   version = "0.1.0.0";
   src = ./.;
   libraryHaskellDepends = [
-    base base16-bytestring bytestring lens opaleye postgresql-simple
-    template-haskell text time uphere-opaleye
+    base base16-bytestring beam-core beam-postgres bytestring lens
+    microlens postgresql-simple text time
   ];
   license = stdenv.lib.licenses.unfree;
 }

@@ -1,54 +1,50 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 
 module DB.Schema.RSS.Analysis where
 
-import Data.ByteString.Char8
-import Data.Text
-import Data.Time.LocalTime
-import Data.Time.Clock
-import Opaleye                    hiding (constant)
-import Model.Opaleye.TH
-import Model.Opaleye.ShowConstant (constant)
-import Prelude
+import           Data.ByteString.Char8
+import           Data.Text
+import           Data.Time.LocalTime
+import           Data.Time.Clock
+import           Database.Beam
+import           Lens.Micro
 
-$(makeTypes [d|
-    data RSSAnalysis = RSSAnalysis { _id      :: Int
-                                   , _hash    :: ByteString
-                                   , _source  :: Text
-                                   , _corenlp :: Nullable Bool
-                                   , _srl     :: Nullable Bool
-                                   , _ner     :: Nullable Bool
-                                   , _created :: UTCTime
+
+data RSSAnalysisT f  = RSSAnalysis { _rssAnalysisId      :: Columnar f Int
+                                   , _rssAnalysisHash    :: Columnar f ByteString
+                                   , _rssAnalysisSource  :: Columnar f Text
+                                   , _rssAnalysisCoreNLP :: Columnar f (Maybe Bool)
+                                   , _rssAnalysisSRL     :: Columnar f (Maybe Bool)
+                                   , _rssAnalysisNER     :: Columnar f (Maybe Bool)
+                                   , _rssAnalysisCreated :: Columnar f UTCTime
                                    }
-                     deriving Show |])
+                     deriving Generic
 
-$(makeAdaptorAndInstance "pRSSAnalysis" ''RSSAnalysisP)
+instance Beamable RSSAnalysisT
 
-$(makeTable "rssanalysis" 'pRSSAnalysis ''RSSAnalysisP)
+instance Table RSSAnalysisT where
+  data PrimaryKey RSSAnalysisT f = RSSAnalysisKey (Columnar f ByteString) deriving Generic
+  primaryKey = RSSAnalysisKey <$> _rssAnalysisHash
 
-queryAll :: Query (To Column RSSAnalysis)
-queryAll = queryTable DB.Schema.RSS.Analysis.table
+instance Beamable (PrimaryKey RSSAnalysisT)
 
--- smart constructor for inserting a new value.
-newRSSAnalysis :: ByteString
-               -> Text
-               -> Maybe Bool
-               -> Maybe Bool
-               -> Maybe Bool
-               -> UTCTime
-               -> To Maybe (To Column RSSAnalysis)
-newRSSAnalysis hsh src mcore msrl mner ctm
-  = RSSAnalysis Nothing
-                (Just (constant hsh))
-                (Just (constant src))
-                ((toNullable . constant) <$> mcore)
-                ((toNullable . constant) <$> msrl)
-                ((toNullable . constant) <$> mner)
-                (Just (constant ctm))
+type RSSAnalysis = RSSAnalysisT Identity
+
+deriving instance Show RSSAnalysis
+
+RSSAnalysis (LensFor rssAnalysisId)
+            (LensFor rssAnalysisHash)
+            (LensFor rssAnalysisSource)
+            (LensFor rssAnalysisCoreNLP)
+            (LensFor rssAnalysisSRL)
+            (LensFor rssAnalysisNER)
+            (LensFor rssAnalysisCreated) = tableLenses
 
 -- The PostgreSQL table was created as follows.
 
@@ -63,3 +59,5 @@ newRSSAnalysis hsh src mcore msrl mner ctm
 
 --   constraint unique_rssanalysis_hash UNIQUE (hash)
 -- );
+
+

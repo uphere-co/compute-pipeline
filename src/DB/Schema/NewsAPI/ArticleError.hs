@@ -1,4 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -6,28 +9,40 @@
 
 module DB.Schema.NewsAPI.ArticleError where
 
-import Data.ByteString.Char8
-import Data.Text
-import Data.Time.LocalTime
-import Data.Time.Clock
-import Opaleye                    hiding (constant)
-import Model.Opaleye.TH
-import Model.Opaleye.ShowConstant (constant)
+import           Data.ByteString.Char8
+import           Data.Text
+import           Data.Time.LocalTime
+import           Data.Time.Clock
+import           Database.Beam
+import           Lens.Micro
+-- import Opaleye                    hiding (constant)
+-- import Model.Opaleye.TH
+-- import Model.Opaleye.ShowConstant (constant)
 import Prelude
 
-$(makeTypes [d|
-    data ArticleError = ArticleError { _sha256 :: ByteString
-                                     , _source :: Text
-                                     , _created :: UTCTime
-                                     }
-                 deriving Show |])
+data ArticleErrorT f = ArticleError { _aerrorSHA256 :: Columnar f ByteString
+                                    , _aerrorSource :: Columnar f Text
+                                    , _aerrroCreated :: Columnar f UTCTime
+                                    }
+                     deriving Generic
 
-$(makeAdaptorAndInstance "pArticleError" ''ArticleErrorP)
+instance Beamable ArticleErrorT
 
-$(makeTable "articleerror" 'pArticleError ''ArticleErrorP)
+instance Table ArticleErrorT where
+  data PrimaryKey ArticleErrorT f = ArticleErrorKey (Columnar f ByteString) deriving Generic
+  primaryKey = ArticleErrorKey <$> _aerrorSHA256
 
+instance Beamable (PrimaryKey ArticleErrorT)
+
+type ArticleError = ArticleErrorT Identity
+
+ArticleError (LensFor aerrorSHA256)
+             (LensFor aerrorSource)
+             (LensFor aerrorCreated) = tableLenses
+
+{-
 queryAll :: Query (To Column ArticleError)
-queryAll = queryTable DB.Schema.NewsAPI.ArticleError.table 
+queryAll = queryTable DB.Schema.NewsAPI.ArticleError.table
 
 -- smart constructor for inserting a new value.
 newArticleError :: ByteString
@@ -38,6 +53,8 @@ newArticleError s sn ct
   = ArticleError (Just (constant s))
                  (Just (constant sn))
                  (Just (constant ct))
+
+-}
 
 -- The PostgreSQL table was created as follows.
 

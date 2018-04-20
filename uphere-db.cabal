@@ -16,10 +16,18 @@ extra-source-files:  ChangeLog.md, README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     DB.Operation
+  exposed-modules:
+                       DB.Operation.NewsAPI.Analysis
+                       DB.Operation.NewsAPI.Article
+                       DB.Operation.NewsAPI.ArticleError
+                       DB.Operation.RSS.Article
+                       DB.Operation.RSS.Analysis
+                       DB.Operation.RSS.ErrorArticle
+                       DB.Schema.NewsAPI
                        DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article
                        DB.Schema.NewsAPI.ArticleError
+                       DB.Schema.RSS
                        DB.Schema.RSS.Analysis
                        DB.Schema.RSS.Article
                        DB.Schema.RSS.ErrorArticle
@@ -30,14 +38,14 @@ library
   build-depends:       base,
                        --
                        base16-bytestring,
+                       beam-core,
+                       beam-postgres,
                        bytestring,
                        lens,
-                       opaleye,
+                       microlens,
                        postgresql-simple,
                        text,
-                       time,
-                       template-haskell,
-                     --
-                       uphere-opaleye
+                       time
+
   hs-source-dirs:      src
   default-language:    Haskell2010

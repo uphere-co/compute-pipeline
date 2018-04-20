@@ -1,46 +1,42 @@
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
+-- {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
 module DB.Schema.RSS.ErrorArticle where
 
-import Data.ByteString.Char8
-import Data.Text
-import Data.Time.LocalTime
-import Data.Time.Clock
-import Opaleye                    hiding (constant)
-import Model.Opaleye.TH
-import Model.Opaleye.ShowConstant (constant)
-import Prelude
+import           Data.ByteString.Char8
+import           Data.Text
+import           Data.Time.LocalTime
+import           Data.Time.Clock
+import           Database.Beam
+import           Lens.Micro
 
-$(makeTypes [d|
-    data RSSErrorArticle = RSSErrorArticle { _hash     :: ByteString
-                                           , _source   :: Text
-                                           , _errormsg :: Text
-                                           , _created  :: UTCTime
-                                           }
-                         deriving Show |])
+data RSSErrorArticleT f = RSSErrorArticle { _rssErrorHash     :: Columnar f ByteString
+                                          , _rssErrorSource   :: Columnar f Text
+                                          , _rssErrorMsg      :: Columnar f Text
+                                          , _rssErrorCreated  :: Columnar f UTCTime
+                                          }
+                        deriving Generic
 
-$(makeAdaptorAndInstance "pRSSErrorArticle" ''RSSErrorArticleP)
+instance Beamable RSSErrorArticleT
 
-$(makeTable "rsserrorarticle" 'pRSSErrorArticle ''RSSErrorArticleP)
+instance Table RSSErrorArticleT where
+  data PrimaryKey RSSErrorArticleT f = RSSErrorArticleKey (Columnar f ByteString)
+                                     deriving Generic
+  primaryKey = RSSErrorArticleKey <$> _rssErrorHash
 
-queryAll :: Query (To Column RSSErrorArticle)
-queryAll = queryTable DB.Schema.RSS.ErrorArticle.table
+instance Beamable (PrimaryKey RSSErrorArticleT)
 
--- smart constructor for inserting a new value.
-newRSSErrorArticle :: ByteString
-                   -> Text
-                   -> Text
-                   -> UTCTime
-                   -> To Maybe (To Column RSSErrorArticle)
-newRSSErrorArticle hsh src err ctm
-  = RSSErrorArticle (Just (constant hsh))
-                 (Just (constant src))
-                 (Just (constant err))
-                 (Just (constant ctm))
+type RSSErrorArticle = RSSErrorArticleT Identity
+
+RSSErrorArticle (LensFor rssErrorHash)
+                (LensFor rssErrorSource)
+                (LensFor rssErrorMsg)
+                (LensFor rssErrorCreated) = tableLenses
 
 -- The PostgreSQL table was created as follows.
 
@@ -51,3 +47,4 @@ newRSSErrorArticle hsh src err ctm
 --   created timestamp with time zone,
 --   constraint unique_rsserrorarticle_hash UNIQUE (hash)
 -- );
+
