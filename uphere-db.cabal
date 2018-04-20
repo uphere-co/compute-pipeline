@@ -22,6 +22,7 @@ library
                        DB.Operation.NewsAPI.ArticleError
                        DB.Operation.RSS.Article
                        DB.Operation.RSS.Analysis
+                       DB.Operation.RSS.ErrorArticle
                        DB.Schema.NewsAPI
                        DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article

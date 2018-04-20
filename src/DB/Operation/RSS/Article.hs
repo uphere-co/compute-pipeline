@@ -131,7 +131,7 @@ getCountRSSArticleBetweenTime conn time1 time2 = do
 
 
 uploadRSSArticle :: Connection -> RSSArticle -> IO ()
-uploadRSSArticle conn article = do
+uploadRSSArticle conn article =
   void . runBeamPostgresDebug putStrLn conn . runInsert $
     insert (_rssArticles rssDB) $
       insertValues [article] 
