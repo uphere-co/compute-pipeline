@@ -10,7 +10,7 @@
 module Pipeline.Run.CoreNLP where
 
 import           Control.Exception                            (SomeException,try)
-import           Control.Lens                                 ((^.),_1,_2,set)
+import           Control.Lens                                 ((^.),_1,_2,set,to)
 import           Control.Monad                                (forM_,join,when)
 import qualified Data.Aeson                            as A
 import qualified Data.ByteString.Lazy.Char8            as BL
@@ -23,9 +23,13 @@ import           System.FilePath                              ((</>))
 --
 import           NLP.Shared.Type                              (ItemRSS,PathConfig,corenlpstore,dbstring,errstore,description)
 
-import           DB.Operation
-import qualified DB.Schema.RSS.Article                 as RAr
-import           DB.Type                                      (RSSErrorArticleDB(..))
+import           DB.Operation.RSS.Analysis                    (updateRSSAnalysisStatus)
+import           DB.Operation.RSS.Article
+import           DB.Operation.RSS.ErrorArticle
+import           DB.Schema.RSS.Article
+import           DB.Schema.RSS.ErrorArticle
+
+-- import           DB.Type                                      (RSSErrorArticleDB(..))
 import           DB.Util                                      (b16ToBstrHash,bstrHashToB16)
 import           SRL.Analyze.CoreNLP                          (runParser)
 --
@@ -80,25 +84,28 @@ testFilter = id
 
 preParseRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                        -> PathConfig
-                       -> [Maybe (RAr.RSSArticleH,ItemRSS)]
+                       -> [Maybe (RSSArticle,ItemRSS)]
                        -> IO ()
 preParseRSSArticles pp cfg articles = do
   conn <- getConnection (cfg ^. dbstring)
   forM_ (testFilter (mapMaybe (join . fmap preprocessRSSArticle) articles)) $ \(article,item) -> do
-    let hsh = bstrHashToB16 $ RAr._hash article
-        src = T.unpack $ RAr._source article
+    let hsh = article^.rssArticleHash.to bstrHashToB16
+        src = article^.rssArticleSource
         txt = item^.description
-    fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> hsh)
-    echk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. errstore) </> hsh)
+    fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> T.unpack hsh)
+    echk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. errstore) </> T.unpack hsh)
     when (not fchk && not echk) $ do
       -- let txt = preprocessText txt0
       eresult <- try $ runParser pp txt
       case eresult of
         Left  (_e :: SomeException) -> do
-          saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> hsh) txt
-          uploadRSSErrorArticleIfMissing conn (RSSErrorArticleDB (b16ToBstrHash hsh) (T.pack src) "" (RAr._created article))
+          saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> T.unpack hsh) txt
+          let err = RSSErrorArticle (b16ToBstrHash hsh) src "" (article^.rssArticleCreated)
+          uploadRSSErrorArticleIfMissing conn err
         Right result                -> do
-          saveHashNameBSFileInPrefixSubDirs ((cfg ^. corenlpstore) </> hsh) (BL.toStrict $ A.encode result)
+          saveHashNameBSFileInPrefixSubDirs
+            ((cfg ^. corenlpstore) </> T.unpack hsh)
+            (BL.toStrict $ A.encode result)
           updateRSSAnalysisStatus conn (b16ToBstrHash hsh) (Just True,Nothing,Nothing)
   closeConnection conn
 

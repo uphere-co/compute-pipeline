@@ -20,12 +20,12 @@ import           System.FilePath                        ((</>),takeFileName,take
 import           Data.Range                             (Range)
 import           Data.Time.Clock                        (UTCTime,getCurrentTime)
 import           Data.Graph.Algorithm.Basic             (maxConnectedNodes,numberOfIsland)
-import           DB.Operation                           (updateRSSAnalysisStatus)
+import           DB.Operation.RSS.Analysis              (updateRSSAnalysisStatus)
 import           DB.Util                                (b16ToBstrHash)
 import           Lexicon.Data                           (loadLexDataConfig)
 import           MWE.Util                               (mkTextFromToken)
 import           NER.Type                               (CompanyInfo(..))
-import           NewsAPI.DB
+-- import           NewsAPI.DB
 import           NLP.Shared.Type                        (PathConfig,EventClass(..)
                                                         ,arbstore,corenlpstore,lexconfigpath
                                                         ,mgstore,mgdotfigstore)
@@ -144,5 +144,8 @@ runAnalysisByChunks :: Connection
 runAnalysisByChunks conn netagger (forest,companyMap) apredata cfg loaded = do
   flip mapM_ loaded $ \(fp,tm,artl) -> do
     handle (\(e :: SomeException) -> print e) $ do
-      updateRSSAnalysisStatus conn (b16ToBstrHash (takeBaseName fp)) (Nothing,Just True,Nothing)
+      updateRSSAnalysisStatus
+        conn
+        (b16ToBstrHash (T.pack (takeBaseName fp)))
+        (Nothing,Just True,Nothing)
       mkMGs conn apredata netagger (forest,companyMap) cfg fp tm artl

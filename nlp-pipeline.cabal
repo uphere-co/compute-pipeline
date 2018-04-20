@@ -77,8 +77,8 @@ library
                    Pipeline.App.AnalysisRunner
                    -- Pipeline.App.CoreNLPBatch
                    Pipeline.App.CoreNLPDaemon
-                   Pipeline.App.CoreNLPRunner
-                   Pipeline.App.RSSMonitor
+                   -- Pipeline.App.CoreNLPRunner
+                   -- Pipeline.App.RSSMonitor
                    Pipeline.Load
                    Pipeline.Operation.Concurrent
                    Pipeline.Operation.DB
@@ -89,7 +89,7 @@ library
                    -- Pipeline.Run.WikiEL
                    -- Pipeline.Source.NewsAPI.Analysis
                    -- Pipeline.Source.NewsAPI.Article
-                   Pipeline.Source.NYT.Article
+                   -- Pipeline.Source.NYT.Article
                    Pipeline.Source.RSS.Analysis
                    Pipeline.Source.RSS.Article
                    Pipeline.Type

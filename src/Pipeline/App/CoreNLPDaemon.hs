@@ -12,7 +12,7 @@ import           System.Environment                (getEnv)
 import           CoreNLP.Simple                    (prepare)
 import           CoreNLP.Simple.Type               (constituency,lemma,ner,postagger,sutime,tokenizer,words2sentences)
 import           NLP.Shared.Type                   (PathConfig,dbstring)
-import           RSS.Data                          (rssAnalysisList)
+-- import           RSS.Data                          (rssAnalysisList)
 --
 import           Pipeline.Operation.DB             (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP              (runCoreNLPforRSS)
