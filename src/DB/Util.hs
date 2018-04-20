@@ -3,9 +3,11 @@ module DB.Util where
 import           Data.ByteString                   (ByteString)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Lazy.Char8 as BL8
+import           Data.Text (Text)
+import qualified Data.Text.Encoding as TE
 
-bstrHashToB16 :: ByteString -> String
-bstrHashToB16 = BL8.unpack . BL8.fromStrict . B16.encode
+bstrHashToB16 :: ByteString -> Text
+bstrHashToB16 = TE.decodeUtf8 . B16.encode
 
-b16ToBstrHash :: String -> ByteString
-b16ToBstrHash = fst . B16.decode . BL8.toStrict . BL8.pack
+b16ToBstrHash :: Text -> ByteString
+b16ToBstrHash = fst . B16.decode . TE.encodeUtf8
