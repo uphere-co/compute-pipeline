@@ -36,7 +36,7 @@ countArticle cond =
     aggregate_ (\a -> as_ @Int countAll_) $ queryArticle cond
 
 
-byId :: Text -> Condition s
+byId :: Int -> Condition s
 byId id' a = a^.articleId ==. val_ id'
 
 
