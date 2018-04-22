@@ -67,16 +67,14 @@ getRSSArticleBy cfg sc = do
                             btime = fromJust $ _bTime sc
                             etime = fromJust $ _eTime sc
                         in queryArticle (\a ->     bySource src a
-                                               &&. createdAfter btime a
-                                               &&. createdBefore etime a)
+                                               &&. createdBetween btime etime a)
                 "BetweenTime"   ->
                   runBeamPostgresDebug putStrLn conn $
                     runSelectReturningList $
                       select $
                         let btime = fromJust $ _bTime sc
                             etime = fromJust $ _eTime sc
-                        in queryArticle (\a ->     createdAfter btime a
-                                               &&. createdBefore etime a)
+                        in queryArticle (createdBetween btime etime)
                 "Source"        ->
                   runBeamPostgresDebug putStrLn conn $
                     runSelectReturningList $

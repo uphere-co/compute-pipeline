@@ -9,16 +9,11 @@ import qualified Data.Text.Encoding         as TE
 import           Data.Time.Clock                   (UTCTime)
 import           Database.Beam
 import           Database.Beam.Postgres (runBeamPostgresDebug)
--- import           Opaleye                           (runQuery)
--- import           Opaleye                    hiding (constant)
 import           System.FilePath                   ((</>),takeBaseName)
 --
--- import           RSS.DB
-import           DB.Operation.RSS.Analysis         (queryRSSAnalysisAll
-                                                   ,queryRSSAnalysisBySource)
+import           DB.Operation.RSS.Analysis         (queryAnalysis,bySource)
 import           DB.Schema.RSS
 import           DB.Schema.RSS.Analysis
--- import           Model.Opaleye.ShowConstant        (constant)
 import           NLP.Shared.Type                   (PathConfig,dbstring)
 --
 import           Pipeline.Operation.DB             (getConnection)
@@ -28,14 +23,21 @@ import           Pipeline.Type
 getAllRSSAnalysisFilePath :: PathConfig -> IO [(FilePath,UTCTime)]
 getAllRSSAnalysisFilePath cfg = do
   conn <- getConnection (cfg ^. dbstring)
-  as <- runBeamPostgresDebug putStrLn conn queryRSSAnalysisAll
+  as <- runBeamPostgresDebug putStrLn conn $
+          runSelectReturningList $
+            select $
+              all_ (_rssAnalyses rssDB)
+              -- queryAnalysis (\_ -> val_ True ==. val_ True)
   pure $ map mkPair as
 
 
 getRSSAnalysisFilePathBySource :: PathConfig -> Text -> IO [(FilePath,UTCTime)]
 getRSSAnalysisFilePathBySource cfg src = do
   conn <- getConnection (cfg ^. dbstring)
-  as <- runBeamPostgresDebug putStrLn conn (queryRSSAnalysisBySource src)
+  as <- runBeamPostgresDebug putStrLn conn $
+          runSelectReturningList $
+            select $
+              queryAnalysis (bySource src)
   pure $ map mkPair as
 
 
@@ -43,13 +45,12 @@ getNewItemsForSRL :: PathConfig -> Text -> IO [(FilePath,UTCTime)]
 getNewItemsForSRL cfg src = do
   conn <- getConnection (cfg ^. dbstring)
   as <- runBeamPostgresDebug putStrLn conn $
-    runSelectReturningList $ select $ do
-      a <- all_ (_rssAnalyses rssDB)
-      guard_ (    (a^.rssAnalysisSource ==. val_ src)
-              &&. (a^.rssAnalysisCoreNLP ==. val_ (Just True))
-              &&. (    (a^.rssAnalysisSRL ==. val_ Nothing )
-                   ||. (a^.rssAnalysisSRL ==. val_ (Just False))))
-      pure a
+          runSelectReturningList $
+            select $
+              queryAnalysis $ \a ->     bySource src a
+                                    &&. (a^.rssAnalysisCoreNLP ==. val_ (Just True))
+                                    &&. (    (a^.rssAnalysisSRL ==. val_ Nothing )
+                                         ||. (a^.rssAnalysisSRL ==. val_ (Just False)))
   pure $ map mkPair as
 
 
