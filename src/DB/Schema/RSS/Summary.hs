@@ -35,6 +35,13 @@ type Summary = SummaryT Identity
 
 deriving instance Show Summary
 
+Summary (LensFor summaryId)
+        (LensFor summaryHash)
+        (LensFor summaryLink)
+        (LensFor summaryTitle)
+        (LensFor summaryDescription)
+        (LensFor summaryPubDate)     = tableLenses
+
 
 -- The PostgreSQL table was created as follows.
 
