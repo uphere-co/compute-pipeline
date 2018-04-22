@@ -1,15 +1,16 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 module DB.Schema.RSS where
 
 import           Database.Beam
 import           GHC.Generics (Generic)
 --
-import           DB.Schema.RSS.Analysis     (RSSAnalysisT)
-import           DB.Schema.RSS.Article      (RSSArticleT)
-import           DB.Schema.RSS.ErrorArticle (RSSErrorArticleT)
-import           DB.Schema.RSS.Summary      (SummaryT)
+import           DB.Schema.RSS.Analysis     (RSSAnalysisT(..))
+import           DB.Schema.RSS.Article      (RSSArticleT(..))
+import           DB.Schema.RSS.ErrorArticle (RSSErrorArticleT(..))
+import           DB.Schema.RSS.Summary      (SummaryT(..))
 
 
 data RSSDB f = RSSDB { _rssArticles :: f (TableEntity RSSArticleT)
@@ -22,5 +23,14 @@ data RSSDB f = RSSDB { _rssArticles :: f (TableEntity RSSArticleT)
 instance Database be RSSDB
 
 rssDB :: DatabaseSettings be RSSDB
-rssDB = defaultDbSettings
+rssDB = defaultDbSettings `withDbModification`
+          dbModification {
+            _rssArticles = modifyTable (\_ -> "rssarticle") $
+                             tableModification
+                             { _rssArticleId      = fieldNamed "id"
+                             , _rssArticleHash    = fieldNamed "hash"
+                             , _rssArticleSource  = fieldNamed "source"
+                             , _rssArticleCreated = fieldNamed "created"
+                             }
+          }
 
