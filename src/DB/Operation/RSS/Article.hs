@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeApplications #-}
 module DB.Operation.RSS.Article where
 
@@ -7,127 +9,51 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Time.Clock (UTCTime)
 import           Database.Beam
-import           Database.Beam.Postgres (runBeamPostgresDebug,Pg)
+import           Database.Beam.Postgres
+import           Database.Beam.Postgres.Syntax
 import           Database.PostgreSQL.Simple (Connection)
 import           Lens.Micro
 --
 import DB.Schema.RSS
 import DB.Schema.RSS.Article
 
+type EExpr = QExpr PgExpressionSyntax 
 
-queryRSSArticleAll :: Pg [RSSArticle]
-queryRSSArticleAll =
-  runSelectReturningList $ select $
-    all_ (_rssArticles rssDB)
+type SExpr s = Q PgSelectSyntax RSSDB s (RSSArticleT (EExpr s))
 
-queryRSSArticleBetweenTime :: UTCTime -> UTCTime -> Pg [RSSArticle]
-queryRSSArticleBetweenTime time1 time2 =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssArticles rssDB)
-    guard_ ((val_ time1 <=. a^.rssArticleCreated) &&.
-            (a^.rssArticleCreated <=. val_ time2))
-    pure a
+type Condition s = RSSArticleT (EExpr s) -> EExpr s Bool
 
-queryRSSArticleBySource :: Text -> Pg [RSSArticle]
-queryRSSArticleBySource src =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssArticles rssDB)
-    guard_ (a^.rssArticleSource ==. val_ src)
-    pure a
-
-queryRSSArticleByTime :: UTCTime -> Pg [RSSArticle]
-queryRSSArticleByTime time =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssArticles rssDB)
-    guard_ (val_ time <=. a^.rssArticleCreated)
-    pure a
+queryArticle :: Condition s -> SExpr s
+queryArticle cond = do
+  a <- all_ (_rssArticles rssDB)
+  guard_ (cond a)
+  pure a
 
 
-queryRSSArticleBySourceAndTime :: Text -> UTCTime -> Pg [RSSArticle]
-queryRSSArticleBySourceAndTime src time =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssArticles rssDB)
-    guard_ (a^.rssArticleSource ==. val_ src)
-    guard_ (val_ time <=. a^.rssArticleCreated)
-    pure a
-
-queryRSSArticleBySourceAndBetTime :: Text -> UTCTime -> UTCTime -> Pg [RSSArticle]
-queryRSSArticleBySourceAndBetTime src time1 time2 =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssArticles rssDB)
-    guard_ (a^.rssArticleSource ==. val_ src)
-    guard_ ((val_ time1 <=. a^.rssArticleCreated) &&. (a^.rssArticleCreated <=. val_ time2))
-    pure a
+countArticle :: (forall s. Condition s) -> Pg (Maybe Int)
+countArticle cond =
+  runSelectReturningOne $ select $ 
+    aggregate_ (\a -> as_ @Int countAll_) $ queryArticle cond
 
 
-queryRSSArticleByHash :: ByteString -> Pg [RSSArticle]
-queryRSSArticleByHash hsh =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssArticles rssDB)
-    guard_ (a^.rssArticleHash ==. val_ hsh)
-    pure a 
+bySource :: Text -> Condition s
+bySource src a = a^.rssArticleSource ==. val_ src
 
 
-countRSSArticleAll :: Pg (Maybe Int)
-countRSSArticleAll =
-  runSelectReturningOne $ select $
-    aggregate_ (\a -> as_ @Int countAll_) $
-      all_ (_rssArticles rssDB)
+byHash :: ByteString -> Condition s
+byHash hsh a = a^.rssArticleHash ==. val_ hsh
 
 
-countRSSArticleByTime :: UTCTime -> Pg (Maybe Int)
-countRSSArticleByTime time =
-  runSelectReturningOne $ select $
-    aggregate_ (\a -> as_ @Int countAll_) $ do
-      a <- all_ (_rssArticles rssDB)
-      guard_ (val_ time <=. a^.rssArticleCreated)
-      pure a      
-
-countRSSArticleBetweenTime :: UTCTime -> UTCTime -> Pg (Maybe Int)
-countRSSArticleBetweenTime time1 time2 =
-  runSelectReturningOne $ select $
-    aggregate_ (\a -> as_ @Int countAll_) $ do
-      a <- all_ (_rssArticles rssDB)
-      guard_ ((val_ time1 <=. a^.rssArticleCreated) &&.
-              (a^.rssArticleCreated <=. val_ time2))
-      pure a
+createdAfter :: UTCTime -> Condition s
+createdAfter time a = val_ time <=. a ^.rssArticleCreated
 
 
-getRSSArticleAll :: Connection -> IO [RSSArticle]
-getRSSArticleAll conn =
-  runBeamPostgresDebug putStrLn conn queryRSSArticleAll
+createdBefore :: UTCTime -> Condition s
+createdBefore time a = a^.rssArticleCreated <=. val_ time
 
 
-getRSSArticleBySource :: Connection -> Text -> IO [RSSArticle]
-getRSSArticleBySource conn src =
-  runBeamPostgresDebug putStrLn conn (queryRSSArticleBySource src)
-
-getRSSArticleByTime :: Connection -> UTCTime -> IO [RSSArticle]
-getRSSArticleByTime conn time =
-  runBeamPostgresDebug putStrLn conn (queryRSSArticleByTime time)
-
-getRSSArticleBySourceAndTime :: Connection -> Text -> UTCTime -> IO [RSSArticle]
-getRSSArticleBySourceAndTime conn src time =
-  runBeamPostgresDebug putStrLn conn (queryRSSArticleBySourceAndTime src time)
-
-getRSSArticleByHash :: Connection -> ByteString -> IO [RSSArticle]
-getRSSArticleByHash conn hsh =
-  runBeamPostgresDebug putStrLn conn (queryRSSArticleByHash hsh)
-
-getCountRSSArticleAll :: (MonadIO m) => Connection -> m Int
-getCountRSSArticleAll conn = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn countRSSArticleAll
-  return n
-
-getCountRSSArticleByTime :: (MonadIO m) => Connection -> UTCTime -> m Int
-getCountRSSArticleByTime conn time = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSArticleByTime time)
-  return n
-
-getCountRSSArticleBetweenTime :: (MonadIO m) => Connection -> UTCTime -> UTCTime -> m Int
-getCountRSSArticleBetweenTime conn time1 time2 = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSArticleBetweenTime time1 time2)
-  return n
+createdBetween :: UTCTime -> UTCTime -> Condition s
+createdBetween time1 time2 a = createdAfter time1 a &&. createdBefore time2 a
 
 
 uploadRSSArticle :: Connection -> RSSArticle -> IO ()
@@ -139,7 +65,10 @@ uploadRSSArticle conn article =
 
 uploadRSSArticleIfMissing :: Connection -> RSSArticle -> IO ()
 uploadRSSArticleIfMissing conn article = do
-  as' <- getRSSArticleByHash conn (article^.rssArticleHash)
+  as' <- runBeamPostgresDebug putStrLn conn $
+           runSelectReturningList $
+             select $
+               queryArticle (byHash (article^.rssArticleHash))
   case as' of
     []  -> uploadRSSArticle conn article
     _as -> putStrLn "Already exists"
