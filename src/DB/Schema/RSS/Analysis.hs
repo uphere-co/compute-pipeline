@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
--- {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -29,8 +28,8 @@ data RSSAnalysisT f  = RSSAnalysis { _rssAnalysisId      :: Columnar f Int
 instance Beamable RSSAnalysisT
 
 instance Table RSSAnalysisT where
-  data PrimaryKey RSSAnalysisT f = RSSAnalysisKey (Columnar f ByteString) deriving Generic
-  primaryKey = RSSAnalysisKey <$> _rssAnalysisHash
+  data PrimaryKey RSSAnalysisT f = RSSAnalysisKey (Columnar f Int) deriving Generic
+  primaryKey = RSSAnalysisKey <$> _rssAnalysisId
 
 instance Beamable (PrimaryKey RSSAnalysisT)
 

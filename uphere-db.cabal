@@ -23,6 +23,7 @@ library
                        DB.Operation.RSS.Article
                        DB.Operation.RSS.Analysis
                        DB.Operation.RSS.ErrorArticle
+                       DB.Operation.RSS.Summary
                        DB.Schema.NewsAPI
                        DB.Schema.NewsAPI.Analysis
                        DB.Schema.NewsAPI.Article
@@ -31,6 +32,7 @@ library
                        DB.Schema.RSS.Analysis
                        DB.Schema.RSS.Article
                        DB.Schema.RSS.ErrorArticle
+                       DB.Schema.RSS.Summary
                        DB.Type
                        DB.Util
   -- other-modules:

@@ -15,7 +15,7 @@ import           Data.Time.Clock
 import           Database.Beam
 import           Lens.Micro
 
-data ArticleT f = Article { _articleId      :: Columnar f Text
+data ArticleT f = Article { _articleId      :: Columnar f Int
                           , _articleHash    :: Columnar f ByteString
                           , _articleSource  :: Columnar f Text
                           , _articleCreated :: Columnar f UTCTime
@@ -25,7 +25,7 @@ data ArticleT f = Article { _articleId      :: Columnar f Text
 instance Beamable ArticleT
 
 instance Table ArticleT where
-  data PrimaryKey ArticleT f = ArticleKey (Columnar f Text) deriving Generic
+  data PrimaryKey ArticleT f = ArticleKey (Columnar f Int) deriving Generic
   primaryKey = ArticleKey <$> _articleId
 
 instance Beamable (PrimaryKey ArticleT)
