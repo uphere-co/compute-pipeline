@@ -24,13 +24,42 @@ instance Database be RSSDB
 
 rssDB :: DatabaseSettings be RSSDB
 rssDB = defaultDbSettings `withDbModification`
-          dbModification {
-            _rssArticles = modifyTable (\_ -> "rssarticle") $
-                             tableModification
-                             { _rssArticleId      = fieldNamed "id"
-                             , _rssArticleHash    = fieldNamed "hash"
-                             , _rssArticleSource  = fieldNamed "source"
-                             , _rssArticleCreated = fieldNamed "created"
-                             }
+          dbModification
+          { _rssArticles =
+              modifyTable (\_ -> "rssarticle") $
+                tableModification
+                { _rssArticleId      = fieldNamed "id"
+                , _rssArticleHash    = fieldNamed "hash"
+                , _rssArticleSource  = fieldNamed "source"
+                , _rssArticleCreated = fieldNamed "created"
+                }
+          , _rssAnalyses =
+              modifyTable (\_ -> "rssarticle") $
+                tableModification
+                { _rssAnalysisId      = fieldNamed "id"
+                , _rssAnalysisHash    = fieldNamed "hash"
+                , _rssAnalysisSource  = fieldNamed "source"
+                , _rssAnalysisCoreNLP = fieldNamed "corenlp"
+                , _rssAnalysisSRL     = fieldNamed "srl"
+                , _rssAnalysisNER     = fieldNamed "ner"
+                , _rssAnalysisCreated = fieldNamed "created"
+                }
+          , _rssErrorArticles =
+              modifyTable (\_ -> "rsserrorarticle") $
+                tableModification
+                { _rssErrorHash    = fieldNamed "hash"
+                , _rssErrorSource  = fieldNamed "source"
+                , _rssErrorMsg     = fieldNamed "errormsg"
+                , _rssErrorCreated = fieldNamed "created"
+                }
+          , _summaries =
+              modifyTable (\_ -> "summary") $
+                tableModification
+                { _summaryId          = fieldNamed "id"
+                , _summaryHash        = fieldNamed "hash"
+                , _summaryLink        = fieldNamed "link"
+                , _summaryTitle       = fieldNamed "title"
+                , _summaryDescription = fieldNamed "description"
+                , _summaryPubDate     = fieldNamed "pubDate"
+                }
           }
-
