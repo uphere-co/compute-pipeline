@@ -60,6 +60,6 @@ rssDB = defaultDbSettings `withDbModification`
                 , _summaryLink        = fieldNamed "link"
                 , _summaryTitle       = fieldNamed "title"
                 , _summaryDescription = fieldNamed "description"
-                , _summaryPubDate     = fieldNamed "pubDate"
+                , _summaryPubDate     = fieldNamed "pubdate"
                 }
           }
