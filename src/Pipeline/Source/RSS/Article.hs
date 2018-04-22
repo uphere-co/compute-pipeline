@@ -2,6 +2,7 @@
 
 module Pipeline.Source.RSS.Article where
 
+import           Control.Error.Safe                (rightMay)
 import           Control.Lens                      ((^.),to)
 import           Data.Aeson                        (eitherDecodeStrict)
 import qualified Data.ByteString.Base16     as B16
@@ -15,16 +16,14 @@ import           Data.Time.Clock                   (UTCTime)
 import           Database.Beam                     (select,runSelectReturningList,(&&.))
 import           Database.Beam.Postgres            (runBeamPostgresDebug)
 import qualified Database.PostgreSQL.Simple as PGS
--- import           Opaleye                           (runQuery)
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
--- import           DB.Operation.RSS.Analysis
 import           DB.Operation.RSS.Article
--- import           DB.Operation.RSS.ErrorArticle
 import           DB.Schema.RSS.Article
-import           NLP.Shared.Type
--- import           RSS.Type                          (itempath)
+import           NLP.Shared.Type                   (Summary(..),PathConfig
+                                                   ,dbstring,rssstore
+                                                   )
 --
 import           Pipeline.Operation.DB
 import           Pipeline.Type
@@ -41,8 +40,6 @@ getHashByTime cfg time = do
                 runSelectReturningList $
                   select $
                     queryArticle (createdAfter time)
-
-  --   getRSSArticleByTime conn time
   PGS.close conn
   let mkPair :: RSSArticle -> (Text,Text)
       mkPair x = (x^.rssArticleSource, x^.rssArticleHash.to B16.encode.to TE.decodeUtf8)
@@ -55,7 +52,7 @@ whatConst sc
   | (isJust (_source sc)) && (isNothing (_bTime sc)) && (isNothing (_eTime sc)) = "Source"
   | otherwise                                                                   = "Not Supported"
 
-getRSSArticleBy :: PathConfig -> SourceConstraint -> IO [Maybe (RSSArticle,ItemRSS)]
+getRSSArticleBy :: PathConfig -> SourceConstraint -> IO [Maybe (RSSArticle,Summary)]
 getRSSArticleBy cfg sc = do
   conn <- getConnection (cfg ^. dbstring)
   articles <- case (whatConst sc) of
@@ -90,15 +87,8 @@ getRSSArticleBy cfg sc = do
     case fchk of
       True -> do
         bstr <- B.readFile filepath
-        content <- loadItemRSS bstr
+        let content = rightMay (eitherDecodeStrict bstr)
         return ((,) <$> Just x <*> content)
-      False -> return Nothing -- putStrLn ("Following article exists in DB, but does not exist on disk : " ++ hsh) >> return Nothing -- error "error"
+      False -> return Nothing
   PGS.close conn
   return result
-
-loadItemRSS :: B.ByteString -> IO (Maybe ItemRSS)
-loadItemRSS bstr = do
-  let esrc = eitherDecodeStrict bstr :: Either String ItemRSS
-  case esrc of
-    Left  _   -> return Nothing
-    Right src -> return (Just src)

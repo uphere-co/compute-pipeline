@@ -33,6 +33,7 @@ library
                   directory-tree,
                   discrimination,
                   either,
+                  errors,
                   filepath,
                   haskeline,
                   jni,
