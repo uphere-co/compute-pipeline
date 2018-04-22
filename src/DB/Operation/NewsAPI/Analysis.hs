@@ -1,80 +1,59 @@
+{-# LANGUAGE Rank2Types       #-}
+{-# LANGUAGE TypeApplications #-}
 module DB.Operation.NewsAPI.Analysis where
 
 import           Control.Monad (void)
 import           Data.ByteString.Char8 (ByteString)
+import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Time.Clock (UTCTime)
 import           Database.Beam
-import           Database.Beam.Postgres (runBeamPostgresDebug,Pg)
+import           Database.Beam.Postgres
+import           Database.Beam.Postgres.Syntax
 import           Database.PostgreSQL.Simple (Connection)
 import           Lens.Micro
 --
 import DB.Schema.NewsAPI
 import DB.Schema.NewsAPI.Analysis
 
+type EExpr = QExpr PgExpressionSyntax
+
+type SExpr s = Q PgSelectSyntax NewsAPIDB s (AnalysisT (EExpr s))
+
+type Condition s = AnalysisT (EExpr s) -> EExpr s Bool
+
+queryAnalysis :: Condition s -> SExpr s
+queryAnalysis cond = do
+  a <- all_ (_newsapiAnalyses newsAPIDB)
+  guard_ (cond a)
+  pure a
+
+countAnalysis :: (forall s. Condition s) -> Pg (Maybe Int)
+countAnalysis cond =
+  runSelectReturningOne $ select $
+    aggregate_ (\a -> as_ @Int countAll_) $ queryAnalysis cond
 
 
-queryAnalysisAll :: Pg [Analysis]
-queryAnalysisAll =
-  runSelectReturningList $ select $
-    all_ (_newsapiAnalyses newsAPIDB)
-
-queryAnalysisByHash :: ByteString -> Pg [Analysis]
-queryAnalysisByHash hsh =
-  runSelectReturningList $ select $ do
-    a <- all_ (_newsapiAnalyses newsAPIDB)
-    guard_ (a^.analysisSHA256 ==. val_ hsh)
-    pure a
-
-queryAnalysisBySource :: String -> Pg [Analysis]
-queryAnalysisBySource src =
-  runSelectReturningList $ select $ do
-    a <- all_ (_newsapiAnalyses newsAPIDB)
-    guard_ (a^.analysisSource ==. val_ (T.pack src))
-    pure a
+bySource :: Text -> Condition s
+bySource src a = a^.analysisSource ==. val_ src
 
 
-queryAnalysisByTime :: UTCTime -> Pg [Analysis]
-queryAnalysisByTime time =
-  runSelectReturningList $ select $ do
-    a <- all_ (_newsapiAnalyses newsAPIDB)
-    guard_ (val_ time <=. a^.analysisCreated)
-    pure a
+bySHA256 :: ByteString -> Condition s
+bySHA256 hsh a = a^.analysisSHA256 ==. val_ hsh
 
 
-queryAnalysisBySourceAndTime :: String -> UTCTime -> Pg [Analysis]
-queryAnalysisBySourceAndTime src time =
-  runSelectReturningList $ select $ do
-    a <- all_ (_newsapiAnalyses newsAPIDB)
-    guard_ (_analysisSource a ==. val_ (T.pack src))
-    guard_ (val_ time <=. a^.analysisCreated)
-    pure a
+createdAfter :: UTCTime -> Condition s
+createdAfter time a = val_ time <=. a ^.analysisCreated
 
 
+createdBefore :: UTCTime -> Condition s
+createdBefore time a = a^.analysisCreated <=. val_ time
 
 
-getAnalysisAll :: Connection -> IO [Analysis]
-getAnalysisAll conn =
-  runBeamPostgresDebug putStrLn conn queryAnalysisAll
-
-getAnalysisByHash :: Connection -> ByteString -> IO [Analysis]
-getAnalysisByHash conn hsh =
-  runBeamPostgresDebug putStrLn conn $ queryAnalysisByHash hsh
+createdBetween :: UTCTime -> UTCTime -> Condition s
+createdBetween time1 time2 a = createdAfter time1 a &&. createdBefore time2 a
 
 
-getAnalysisBySource :: Connection -> String -> IO [Analysis]
-getAnalysisBySource conn src =
-  runBeamPostgresDebug putStrLn conn $ queryAnalysisBySource src
-
-
-getAnalysisByTime :: Connection -> UTCTime -> IO [Analysis]
-getAnalysisByTime conn time =
-  runBeamPostgresDebug putStrLn conn $ queryAnalysisByTime time
-
-
-getAnalysisBySourceAndTime :: Connection -> String -> UTCTime -> IO [Analysis]
-getAnalysisBySourceAndTime conn src time =
-  runBeamPostgresDebug putStrLn conn $ queryAnalysisBySourceAndTime src time
 
 
 uploadAnalysis :: Connection -> Analysis -> IO ()
@@ -86,7 +65,10 @@ uploadAnalysis conn analysis =
 
 uploadAnalysisIfMissing :: Connection -> Analysis -> IO ()
 uploadAnalysisIfMissing conn analysis = do
-  as' <- getAnalysisByHash conn (analysis^.analysisSHA256)
+  as' <- runBeamPostgresDebug putStrLn conn $
+           runSelectReturningList $
+             select $
+               queryAnalysis (bySHA256 (analysis^.analysisSHA256))
   case as' of
     [] -> uploadAnalysis conn analysis
     as -> print "Already exists"
