@@ -28,8 +28,8 @@ queryAnalysis cond = do
   guard_ (cond a)
   pure a
 
-countAnalyses :: (forall s. Condition s) -> Pg (Maybe Int)
-countAnalyses cond =
+countAnalysis :: (forall s. Condition s) -> Pg (Maybe Int)
+countAnalysis cond =
   runSelectReturningOne $ select $ 
     aggregate_ (\a -> as_ @Int countAll_) $ queryAnalysis cond
   
@@ -53,114 +53,6 @@ createdBefore time a = a^.rssAnalysisCreated <=. val_ time
 createdBetween :: UTCTime -> UTCTime -> Condition s
 createdBetween time1 time2 a = createdAfter time1 a &&. createdBefore time2 a
 
-
-{-
-queryRSSAnalysisBetweenTime :: UTCTime -> UTCTime -> Pg [RSSAnalysis]
-queryRSSAnalysisBetweenTime time1 time2 =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssAnalyses rssDB)
-    guard_ (val_ time1 <=. a^.rssAnalysisCreated &&. a^.rssAnalysisCreated <=. val_ time2)
-    pure a
-
-
-queryRSSAnalysisBySource :: Text -> Pg [RSSAnalysis]
-queryRSSAnalysisBySource src =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssAnalyses rssDB)
-    guard_ (a^.rssAnalysisSource ==. val_ src)
-    pure a
-
-
-queryRSSAnalysisByTime :: UTCTime -> Pg [RSSAnalysis]
-queryRSSAnalysisByTime time =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssAnalyses rssDB)
-    guard_ (val_ time <=. a^.rssAnalysisCreated)
-    pure a
-
-
-queryRSSAnalysisBySourceAndTime :: Text -> UTCTime -> Pg [RSSAnalysis]
-queryRSSAnalysisBySourceAndTime src time =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssAnalyses rssDB)
-    guard_ (a^.rssAnalysisSource ==. val_ src)
-    guard_ (val_ time <=. a^.rssAnalysisCreated)
-    pure a
-
-
-queryRSSAnalysisByHash :: ByteString -> Pg [RSSAnalysis]
-queryRSSAnalysisByHash hsh =
-  runSelectReturningList $ select $ do
-    a <- all_ (_rssAnalyses rssDB)
-    guard_ (a^.rssAnalysisHash ==. val_ hsh)
-    pure a
--}
-
-
-countRSSAnalysisAll :: Pg (Maybe Int)
-countRSSAnalysisAll =
-  runSelectReturningOne $ select $
-    aggregate_ (\a -> as_ @Int countAll_) $
-      all_ (_rssAnalyses rssDB)
-
-
-countRSSAnalysisByTime :: UTCTime -> Pg (Maybe Int)
-countRSSAnalysisByTime time =
-  runSelectReturningOne $ select $
-    aggregate_ (\a -> as_ @Int countAll_) $ do
-      a <- all_ (_rssAnalyses rssDB)
-      guard_ (val_ time <=. a^.rssAnalysisCreated)
-      pure a
-
-
-countRSSAnalysisBetweenTime :: UTCTime -> UTCTime -> Pg (Maybe Int)
-countRSSAnalysisBetweenTime time1 time2 =
-  runSelectReturningOne $ select $
-    aggregate_ (\a -> as_ @Int countAll_) $ do
-      a <- all_ (_rssAnalyses rssDB)
-      guard_ (val_ time1 <=. a^.rssAnalysisCreated &&. a^.rssAnalysisCreated <=. val_ time2)
-      pure a
-
-{-
-getRSSAnalysisAll :: Connection -> IO [RSSAnalysis]
-getRSSAnalysisAll conn =
-  runBeamPostgresDebug putStrLn conn queryRSSAnalysisAll
-
-getRSSAnalysisBySource :: Connection -> Text -> IO [RSSAnalysis]
-getRSSAnalysisBySource conn src =
-  runBeamPostgresDebug putStrLn conn (queryRSSAnalysisBySource src)
-
-
-getRSSAnalysisByTime :: Connection -> UTCTime -> IO [RSSAnalysis]
-getRSSAnalysisByTime conn time =
-  runBeamPostgresDebug putStrLn conn (queryRSSAnalysisByTime time)
-
-getRSSAnalysisBySourceAndTime :: Connection -> Text -> UTCTime -> IO [RSSAnalysis]
-getRSSAnalysisBySourceAndTime conn src time =
-  runBeamPostgresDebug putStrLn conn (queryRSSAnalysisBySourceAndTime src time)
-
-getRSSAnalysisByHash :: Connection -> ByteString -> IO [RSSAnalysis]
-getRSSAnalysisByHash conn hsh =
-  runBeamPostgresDebug putStrLn conn (queryRSSAnalysisByHash hsh)
-
-
-getCountRSSAnalysisAll :: (MonadIO m) => Connection -> m Int
-getCountRSSAnalysisAll conn = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn countRSSAnalysisAll
-  return n
-
-
-getCountRSSAnalysisByTime :: (MonadIO m) => Connection -> UTCTime -> m Int
-getCountRSSAnalysisByTime conn time = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSAnalysisByTime time)
-  return n
-
-
-getCountRSSAnalysisBetweenTime :: Connection -> UTCTime -> UTCTime -> IO Int
-getCountRSSAnalysisBetweenTime conn time1 time2 = do
-  Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSAnalysisBetweenTime time1 time2)
-  return n
--}
 
 uploadRSSAnalysis :: Connection -> RSSAnalysis -> IO ()
 uploadRSSAnalysis conn analysis =
