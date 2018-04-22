@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types       #-}
 {-# LANGUAGE TypeApplications #-}
 module DB.Operation.RSS.Analysis where
 
@@ -7,20 +8,53 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Time.Clock (UTCTime)
 import           Database.Beam
-import           Database.Beam.Postgres (runBeamPostgresDebug,Pg)
+import           Database.Beam.Postgres
+import           Database.Beam.Postgres.Syntax
 import           Database.PostgreSQL.Simple (Connection)
 import           Lens.Micro
 --
 import DB.Schema.RSS
 import DB.Schema.RSS.Analysis
 
+type EExpr = QExpr PgExpressionSyntax 
 
-queryRSSAnalysisAll :: Pg [RSSAnalysis]
-queryRSSAnalysisAll =
-  runSelectReturningList $ select $
-    all_ (_rssAnalyses rssDB)
+type SExpr s = Q PgSelectSyntax RSSDB s (RSSAnalysisT (EExpr s))
+
+type Condition s = RSSAnalysisT (EExpr s) -> EExpr s Bool
+
+queryAnalysis :: Condition s -> SExpr s
+queryAnalysis cond = do
+  a <- all_ (_rssAnalyses rssDB)
+  guard_ (cond a)
+  pure a
+
+countAnalyses :: (forall s. Condition s) -> Pg (Maybe Int)
+countAnalyses cond =
+  runSelectReturningOne $ select $ 
+    aggregate_ (\a -> as_ @Int countAll_) $ queryAnalysis cond
+  
+
+bySource :: Text -> Condition s
+bySource src a = a^.rssAnalysisSource ==. val_ src
 
 
+byHash :: ByteString -> Condition s
+byHash hsh a = a^.rssAnalysisHash ==. val_ hsh
+
+
+createdAfter :: UTCTime -> Condition s
+createdAfter time a = val_ time <=. a ^.rssAnalysisCreated
+
+
+createdBefore :: UTCTime -> Condition s
+createdBefore time a = a^.rssAnalysisCreated <=. val_ time
+
+
+createdBetween :: UTCTime -> UTCTime -> Condition s
+createdBetween time1 time2 a = createdAfter time1 a &&. createdBefore time2 a
+
+
+{-
 queryRSSAnalysisBetweenTime :: UTCTime -> UTCTime -> Pg [RSSAnalysis]
 queryRSSAnalysisBetweenTime time1 time2 =
   runSelectReturningList $ select $ do
@@ -60,7 +94,7 @@ queryRSSAnalysisByHash hsh =
     a <- all_ (_rssAnalyses rssDB)
     guard_ (a^.rssAnalysisHash ==. val_ hsh)
     pure a
-
+-}
 
 
 countRSSAnalysisAll :: Pg (Maybe Int)
@@ -87,7 +121,7 @@ countRSSAnalysisBetweenTime time1 time2 =
       guard_ (val_ time1 <=. a^.rssAnalysisCreated &&. a^.rssAnalysisCreated <=. val_ time2)
       pure a
 
-
+{-
 getRSSAnalysisAll :: Connection -> IO [RSSAnalysis]
 getRSSAnalysisAll conn =
   runBeamPostgresDebug putStrLn conn queryRSSAnalysisAll
@@ -126,7 +160,7 @@ getCountRSSAnalysisBetweenTime :: Connection -> UTCTime -> UTCTime -> IO Int
 getCountRSSAnalysisBetweenTime conn time1 time2 = do
   Just n <- liftIO $ runBeamPostgresDebug putStrLn conn (countRSSAnalysisBetweenTime time1 time2)
   return n
-
+-}
 
 uploadRSSAnalysis :: Connection -> RSSAnalysis -> IO ()
 uploadRSSAnalysis conn analysis =
@@ -137,7 +171,10 @@ uploadRSSAnalysis conn analysis =
 
 uploadRSSAnalysisIfMissing :: Connection -> RSSAnalysis -> IO ()
 uploadRSSAnalysisIfMissing conn analysis = do
-  as' <- getRSSAnalysisByHash conn (analysis^.rssAnalysisHash)
+  as' <- runBeamPostgresDebug putStrLn conn $
+           runSelectReturningList $
+             select $
+               queryAnalysis (byHash (analysis^.rssAnalysisHash))
   case as' of
     []  -> uploadRSSAnalysis conn analysis
     _as -> putStrLn "Already exists"
