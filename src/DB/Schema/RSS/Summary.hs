@@ -51,7 +51,7 @@ Summary (LensFor summaryId)
 --   link text NOT NULL,
 --   title text NOT NULL,
 --   description text NOT NULL,
---   pubDate timestamp with time zone NOT NULL
+--   pubdate timestamp with time zone NOT NULL
 --
 --   constraint unique_summary_hash UNIQUE (hash);
 -- );
