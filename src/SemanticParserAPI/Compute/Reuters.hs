@@ -29,21 +29,21 @@ import           System.FilePath                   (takeExtension, takeBaseName)
 import           System.IO
 --
 import           NLP.Shared.Type                   (EventClass(..)
-                                                   ,PathConfig(..),ItemRSS
+                                                   ,PathConfig(..)
+                                                   ,Summary
                                                    ,link,arbstore,mgdotfigstore,mgstore
                                                    )
 import           NLP.Semantics.Type                (ARB(..),PrepOr(..)
                                                    ,objectB,predicateR,subjectA,po_main
                                                    )
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
--- import           RSS.Data                          (rssAnalysisList)
 import           SRL.Analyze.Type                  (MeaningGraph)
 import           WikiEL.Type                       (EntityMention)
 --
 import           Pipeline.Load                     (getFileListRecursively)
 
 
-type EventCard = (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)],[EventClass])), Maybe ItemRSS)
+type EventCard = (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)],[EventClass])), Maybe Summary)
 
 
 
