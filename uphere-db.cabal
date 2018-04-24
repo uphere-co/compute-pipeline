@@ -33,6 +33,8 @@ library
                        DB.Schema.RSS.Article
                        DB.Schema.RSS.CoreNLP
                        DB.Schema.RSS.ErrorArticle
+                       DB.Schema.RSS.NER
+                       DB.Schema.RSS.SRL
                        DB.Schema.RSS.Summary
                        DB.Type
                        DB.Util
