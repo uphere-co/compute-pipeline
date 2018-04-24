@@ -31,6 +31,7 @@ library
                        DB.Schema.RSS
                        DB.Schema.RSS.Analysis
                        DB.Schema.RSS.Article
+                       DB.Schema.RSS.CoreNLP
                        DB.Schema.RSS.ErrorArticle
                        DB.Schema.RSS.Summary
                        DB.Type
