@@ -27,7 +27,6 @@ getAllRSSAnalysisFilePath cfg = do
           runSelectReturningList $
             select $
               all_ (_rssAnalyses rssDB)
-              -- queryAnalysis (\_ -> val_ True ==. val_ True)
   pure $ map mkPair as
 
 
