@@ -93,7 +93,10 @@ preParseRSSArticles pp cfg articles = do
 
 
 
-runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline") -> PathConfig -> SourceConstraint -> IO ()
+runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+                 -> PathConfig
+                 -> SourceTimeConstraint
+                 -> IO ()
 runCoreNLPforRSS pp cfg sc = do
   articles <- RSS.getRSSArticleBy cfg sc  
   preParseRSSArticles pp cfg articles
