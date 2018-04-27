@@ -36,41 +36,45 @@ import           Pipeline.Operation.DB
 import           Pipeline.Type
 import           Pipeline.Util
 
-
+-- this is only for market pulse source
 noisyTextClips =
-  [ "Market Pulse Stories are Rapid-fire, short news bursts on stocks and markets as they move. Visit MarketWatch.com for more information on this news." 
+  [ "Market Pulse Stories are Rapid-fire, short news bursts on stocks and markets as they move. Visit MarketWatch.com for more information on this news."
   ]
 
+-- this is only for Reuters
 tameDescription :: Text -> Text
 tameDescription txt = snd $ T.breakOnEnd "(Reuters) - " $ txt
 
 cleanNoiseText :: Text -> Text
 cleanNoiseText txt0 = let txt1 = tameDescription txt0
-                          txt2 = foldl' (\(!txt) clip -> T.replace clip "" txt) txt1 noisyTextClips 
+                          txt2 = foldl' (\(!txt) clip -> T.replace clip "" txt) txt1 noisyTextClips
                       in T.strip txt2
 
 
+
+preprocessRSSArticle :: (RSSArticle,Summary) -> Maybe (RSSArticle,Summary)
 preprocessRSSArticle (article,item) =
   let txt1 = cleanNoiseText (item ^. description)
   in if | T.null txt1        -> Nothing
         | T.head txt1 == '*' -> Nothing
-        | otherwise          -> let -- this is real extreme ad hoc 
-                                    ws = T.words txt1
-                                in if (not . null . filter (\w -> w `elem` ["*","**"])) ws
-                                   then Nothing
-                                   else let txt = T.intercalate " " (T.words txt1)
-                                        in Just (article,(set description txt item))
+        | otherwise          ->
+            let -- this is real extreme ad hoc
+                ws = T.words txt1
+            in if (not . null . filter (\w -> w `elem` ["*","**"])) ws
+               then Nothing
+               else let txt = T.intercalate " " (T.words txt1)
+                    in Just (article,(set description txt item))
 
 
 
 
 preParseRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-                       -> PathConfig
-                       -> [(RSSArticle,Summary)]
-                       -> IO ()
+                    -> PathConfig
+                    -> [(RSSArticle,Summary)]
+                    -> IO ()
 preParseRSSArticles pp cfg articles = do
   conn <- getConnection (cfg ^. dbstring)
-  let preprocessed = mapMaybe preprocessRSSArticle articles 
+  let preprocessed = mapMaybe preprocessRSSArticle articles
   forM_ preprocessed $ \(article,item) -> do
     let hsh = article^.rssArticleHash.to bstrHashToB16
         src = article^.rssArticleSource
@@ -99,5 +103,5 @@ runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                  -> SourceTimeConstraint
                  -> IO ()
 runCoreNLPforRSS pp cfg sc = do
-  articles <- RSS.getRSSArticleBy cfg sc  
+  articles <- RSS.getUnparsedRSSArticleBy cfg sc
   preParseRSSArticles pp cfg articles

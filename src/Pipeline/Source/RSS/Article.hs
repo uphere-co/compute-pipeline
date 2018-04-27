@@ -14,15 +14,19 @@ import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as TE
 import           Data.Time.Clock                   (UTCTime)
-import           Database.Beam                     (select,runSelectReturningList,val_
-                                                   ,(&&.),(==.))
+import           Database.Beam                     (select,runSelectReturningList
+                                                   ,guard_
+                                                   ,val_
+                                                   ,(&&.),(==.),(/=.))
 import           Database.Beam.Postgres            (runBeamPostgresDebug)
 import qualified Database.PostgreSQL.Simple as PGS
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
+import qualified DB.Operation.RSS.Analysis  as Analysis
 import qualified DB.Operation.RSS.Article   as Article
 import qualified DB.Operation.RSS.Summary   as Summary
+import           DB.Schema.RSS.Analysis            (rssAnalysisHash,rssAnalysisCoreNLP)
 import           DB.Schema.RSS.Article             (RSSArticle
                                                    ,rssArticleSource
                                                    ,rssArticleHash,rssArticleHash)
@@ -56,10 +60,10 @@ getHashByTime cfg time = do
       mkPair x = (x^.rssArticleSource, x^.rssArticleHash.to B16.encode.to TE.decodeUtf8)
   return (map mkPair articles)
 
-getRSSArticleBy :: PathConfig
-                -> SourceTimeConstraint
-                -> IO [(RSSArticle,NLP.Shared.Type.Summary)]
-getRSSArticleBy cfg (msrc,tc) = do
+getUnparsedRSSArticleBy :: PathConfig
+                        -> SourceTimeConstraint
+                        -> IO [(RSSArticle,NLP.Shared.Type.Summary)]
+getUnparsedRSSArticleBy cfg (msrc,tc) = do
   conn <- getConnection (cfg ^. dbstring)
   let srcconst a = maybe (val_ True) (\src -> Article.bySource src a) msrc
       timeconst a = case tc of
@@ -75,25 +79,12 @@ getRSSArticleBy cfg (msrc,tc) = do
              a <- Article.queryArticle (\a -> srcconst a &&. timeconst a)
              -- let hsh = a^.rssArticleHash
              s <- Summary.querySummary (\s -> s^.summaryHash ==. a^.rssArticleHash)
-             return (a,s)
-  -- print (take 10 articles)
- {-                     
-  result <- flip mapM articles $ \x -> do
-    let hshtxt = x^.rssArticleHash.to B16.encode.to TE.decodeUtf8
-        src = x^.rssArticleSource
-        fileprefix = (cfg ^. rssstore) </> T.unpack src
-        filepath = fileprefix </> itempath </> take 2 (T.unpack hshtxt) </> T.unpack hshtxt
-    fchk <- doesFileExist filepath
-    case fchk of
-      True -> do
-        bstr <- B.readFile filepath
-        let content = rightMay (eitherDecodeStrict bstr)
-        return ((,) <$> Just x <*> content)
-      False -> return Nothing
-  -}
+             an <- Analysis.queryAnalysis (\an -> an^.rssAnalysisHash ==. a^.rssArticleHash)
+             guard_ (an^.rssAnalysisCoreNLP /=. val_ (Just True))
+
+             pure (a,s)
   PGS.close conn
-  -- let result = [] 
-  (return . map (_2 %~ toSummary)) articles -- result
+  (return . map (_2 %~ toSummary)) articles
 
 toSummary :: Summary -> NLP.Shared.Type.Summary
 toSummary s = NLP.Shared.Type.Summary
