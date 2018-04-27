@@ -33,6 +33,8 @@ instance Beamable (PrimaryKey RSSErrorArticleT)
 
 type RSSErrorArticle = RSSErrorArticleT Identity
 
+deriving instance Show RSSErrorArticle
+
 RSSErrorArticle (LensFor rssErrorHash)
                 (LensFor rssErrorSource)
                 (LensFor rssErrorMsg)
