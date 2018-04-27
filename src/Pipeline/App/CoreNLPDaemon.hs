@@ -19,10 +19,6 @@ import           Pipeline.Run.CoreNLP              (runCoreNLPforRSS)
 import           Pipeline.Type                     (SourceTimeConstraint(..))
 import           Pipeline.Util                     (digitsToUTC)
 
-{-
-srcOnlyConst src sec = SourceConstraint (Just (T.pack $ src ++ "/" ++ sec)) Nothing Nothing
-srcBTConst src sec = SourceConstraint (Just (T.pack $ src ++ "/" ++ sec)) Nothing Nothing -- (digitsToUTC "20170501") (digitsToUTC "20171110")
--}
 
 runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do

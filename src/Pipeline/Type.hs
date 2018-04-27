@@ -115,9 +115,3 @@ data TimeConstraint = Between { _bTime :: UTCTime
 
 type SourceTimeConstraint = (Maybe Text, Maybe TimeConstraint)
 
-{-
-  { _source :: Maybe Text
-  , _bTime  :: Maybe UTCTime
-  , _eTime  :: Maybe UTCTime
-  } deriving (Show)
--}
