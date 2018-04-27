@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
--- {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
@@ -14,10 +13,6 @@ import           Data.Time.LocalTime
 import           Data.Time.Clock
 import           Database.Beam
 import           Lens.Micro
--- import Opaleye                    hiding (constant)
--- import Model.Opaleye.TH
--- import Model.Opaleye.ShowConstant (constant)
--- import Prelude
 
 data RSSArticleT f = RSSArticle { _rssArticleId      :: Columnar f Int
                                 , _rssArticleHash    :: Columnar f ByteString
@@ -35,6 +30,8 @@ instance Table RSSArticleT where
 instance Beamable (PrimaryKey RSSArticleT)
 
 type RSSArticle = RSSArticleT Identity
+
+deriving instance Show RSSArticle
 
 RSSArticle (LensFor rssArticleId)
            (LensFor rssArticleHash)

@@ -36,9 +36,12 @@ instance Beamable (PrimaryKey ArticleErrorT)
 
 type ArticleError = ArticleErrorT Identity
 
+deriving instance Show ArticleError
+
 ArticleError (LensFor aerrorSHA256)
              (LensFor aerrorSource)
              (LensFor aerrorCreated) = tableLenses
+
 
 {-
 queryAll :: Query (To Column ArticleError)
