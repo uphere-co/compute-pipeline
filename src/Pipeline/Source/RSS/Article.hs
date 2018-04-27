@@ -46,15 +46,6 @@ getHashByTime cfg time = do
       mkPair x = (x^.rssArticleSource, x^.rssArticleHash.to B16.encode.to TE.decodeUtf8)
   return (map mkPair articles)
 
-{-
-whatConst :: SourceConstraint -> String
-whatConst sc
-  | (isJust (_source sc)) && (isJust (_bTime sc)) && (isJust (_eTime sc))       = "SrcAndBetTime"
-  | (isNothing (_source sc)) && (isJust (_bTime sc)) && (isJust (_eTime sc))    = "BetweenTime"
-  | (isJust (_source sc)) && (isNothing (_bTime sc)) && (isNothing (_eTime sc)) = "Source"
-  | otherwise                                                                   = "Not Supported"
--}
-
 getRSSArticleBy :: PathConfig -> SourceTimeConstraint -> IO [Maybe (RSSArticle,Summary)]
 getRSSArticleBy cfg (msrc,tc) = do
   conn <- getConnection (cfg ^. dbstring)
@@ -69,28 +60,6 @@ getRSSArticleBy cfg (msrc,tc) = do
                 runSelectReturningList $
                   select $
                     queryArticle (\a -> srcconst a &&. timeconst a)
-  {-
-    case (whatConst sc) of
-                "SrcAndBetTime" ->
-                  runBeamPostgresDebug putStrLn conn $
-                    runSelectReturningList $
-                      select $
-                        let src = fromJust $ _source sc
-                            btime = fromJust $ _bTime sc
-                            etime = fromJust $ _eTime sc
-                "BetweenTime"   ->
-                  runBeamPostgresDebug putStrLn conn $
-                    runSelectReturningList $
-                      select $
-                        let btime = fromJust $ _bTime sc
-                            etime = fromJust $ _eTime sc
-                        in queryArticle (createdBetween btime etime)
-                "Source"        ->
-                  runBeamPostgresDebug putStrLn conn $
-                    runSelectReturningList $
-                      select $
-                        queryArticle (bySource (fromJust (_source sc)))
-                otherwise       -> pure [] -}
   result <- flip mapM articles $ \x -> do
     let hshtxt = x^.rssArticleHash.to B16.encode.to TE.decodeUtf8
         src = x^.rssArticleSource
