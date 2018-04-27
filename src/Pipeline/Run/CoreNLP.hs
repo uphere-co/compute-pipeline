@@ -26,7 +26,7 @@ import           Database.Beam                     (select,runSelectReturningLis
                                                    ,insert,runInsert,insertValues
                                                    ,guard_,val_,all_
                                                    ,(&&.),(==.),(/=.),(<-.))
-import           Database.Beam.Postgres            (runBeamPostgresDebug)
+import           Database.Beam.Postgres            (runBeamPostgres)
 import           Language.Java                         as J
 import           System.FilePath                              ((</>))
 --
@@ -89,45 +89,31 @@ preParseRSSArticles pp cfg articles = do
   let preprocessed = mapMaybe preprocessRSSArticle articles
   forM_ preprocessed $ \(article,item) -> do
     let hsh = article^.rssArticleHash
-
-        -- .to bstrHashToB16
         src = article^.rssArticleSource
         txt = item^.description
-    -- fchk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. corenlpstore) </> T.unpack hsh)
-    -- echk <- doesHashNameFileExistInPrefixSubDirs ((cfg ^. errstore) </> T.unpack hsh)
-    -- when (not fchk && not echk) $ do
-      -- let txt = preprocessText txt0
     eresult <- try $ runParser pp txt
     case eresult of
       Left  (e :: SomeException) -> do
         let errmsg = T.pack (show e)
-        -- print e
-        {- saveHashNameTextFileInPrefixSubDirs ((cfg ^. errstore) </> T.unpack hsh) txt -}
         let err = RSSErrorArticle hsh src errmsg (article^.rssArticleCreated) 
         uploadRSSErrorArticleIfMissing conn err
       Right result                -> do
         time <- getCurrentTime
         let rtxt = TE.decodeUtf8 (BL.toStrict (A.encode result))
-        -- BL.putStrLn ()
-        -- print result
-        {- saveHashNameBSFileInPrefixSubDirs
-          ((cfg ^. corenlpstore) </> T.unpack hsh)
-          (BL.toStrict $ A.encode result) -}
-        as'  <- runBeamPostgresDebug putStrLn conn $
+        as'  <- runBeamPostgres conn $
                   runSelectReturningList $
                     select $ do
                       c <- all_ (_coreNLPs rssDB)
                       guard_ (c^.coreNLPHash ==. val_ hsh)
                       pure c
-                      -- queryAnalysis (\a -> a^.rssAnalysisHash ==. val_ hsh)
         case as' of
           []  -> let corenlp :: AnalysisCoreNLP 
                      corenlp = AnalysisCoreNLP hsh (Just rtxt) time
-                 in runBeamPostgresDebug putStrLn conn $
+                 in runBeamPostgres conn $
                       runInsert $
                         insert (_coreNLPs rssDB) $
                           insertValues [corenlp]
-          _as -> runBeamPostgresDebug putStrLn conn $
+          _as -> runBeamPostgres conn $
                    runUpdate $
                      update (_coreNLPs rssDB)
                             (\corenlp -> [ corenlp^.coreNLPResult  <-. val_ (Just rtxt)
