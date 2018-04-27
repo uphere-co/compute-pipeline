@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fplugin=Language.Java.Inline.Plugin #-}
 module Pipeline.App.CoreNLPDaemon where
 
 import           Control.Concurrent                (threadDelay)

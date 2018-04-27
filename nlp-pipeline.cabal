@@ -36,6 +36,7 @@ library
                   errors,
                   filepath,
                   haskeline,
+                  inline-java,
                   jni,
                   jvm,
                   lens,
@@ -108,7 +109,12 @@ executable corenlp-daemon
                        optparse-applicative,
                        --
                        nlp-pipeline
-  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
+  ghc-options:         -threaded
+                       -Wall
+                       -fno-warn-unused-do-bind
+                       -fwarn-tabs
+                       -funbox-strict-fields
+                       -O2
   default-language:    Haskell2010
 
 -- executable corenlp-batch

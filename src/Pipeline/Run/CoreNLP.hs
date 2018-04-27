@@ -66,11 +66,12 @@ preprocessRSSArticle (article,item) =
 
 preParseRSSArticles :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                        -> PathConfig
-                       -> [Maybe (RSSArticle,Summary)]
+                       -> [(RSSArticle,Summary)]
                        -> IO ()
 preParseRSSArticles pp cfg articles = do
   conn <- getConnection (cfg ^. dbstring)
-  forM_ (mapMaybe (join . fmap preprocessRSSArticle) articles) $ \(article,item) -> do
+  let preprocessed = mapMaybe preprocessRSSArticle articles 
+  forM_ preprocessed $ \(article,item) -> do
     let hsh = article^.rssArticleHash.to bstrHashToB16
         src = article^.rssArticleSource
         txt = item^.description
