@@ -20,6 +20,7 @@ library
   build-depends:  base,
                   --
                   aeson,
+                  aeson-pretty,
                   async,
                   attoparsec,
                   base16-bytestring,
