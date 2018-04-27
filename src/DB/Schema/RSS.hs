@@ -9,14 +9,16 @@ import           GHC.Generics (Generic)
 --
 import           DB.Schema.RSS.Analysis     (RSSAnalysisT(..))
 import           DB.Schema.RSS.Article      (RSSArticleT(..))
+import           DB.Schema.RSS.CoreNLP      (AnalysisCoreNLPT(..))
 import           DB.Schema.RSS.ErrorArticle (RSSErrorArticleT(..))
 import           DB.Schema.RSS.Summary      (SummaryT(..))
 
 
-data RSSDB f = RSSDB { _rssArticles :: f (TableEntity RSSArticleT)
-                     , _rssAnalyses :: f (TableEntity RSSAnalysisT)
+data RSSDB f = RSSDB { _rssArticles      :: f (TableEntity RSSArticleT)
+                     , _rssAnalyses      :: f (TableEntity RSSAnalysisT)
                      , _rssErrorArticles :: f (TableEntity RSSErrorArticleT)
-                     , _summaries :: f (TableEntity SummaryT)
+                     , _summaries        :: f (TableEntity SummaryT)
+                     , _coreNLPs         :: f (TableEntity AnalysisCoreNLPT)
                      }
              deriving Generic
 
@@ -62,4 +64,12 @@ rssDB = defaultDbSettings `withDbModification`
                 , _summaryDescription = fieldNamed "description"
                 , _summaryPubDate     = fieldNamed "pubdate"
                 }
+          , _coreNLPs =
+              modifyTable (\_ -> "corenlp") $
+                tableModification
+                { _coreNLPHash    = fieldNamed "hash"
+                , _coreNLPResult  = fieldNamed "result"
+                , _coreNLPCreated = fieldNamed "created"
+                }
+
           }
