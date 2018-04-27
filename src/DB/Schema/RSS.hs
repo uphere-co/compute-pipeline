@@ -34,7 +34,7 @@ rssDB = defaultDbSettings `withDbModification`
                 , _rssArticleCreated = fieldNamed "created"
                 }
           , _rssAnalyses =
-              modifyTable (\_ -> "rssarticle") $
+              modifyTable (\_ -> "rssanalysis") $
                 tableModification
                 { _rssAnalysisId      = fieldNamed "id"
                 , _rssAnalysisHash    = fieldNamed "hash"
