@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Pipeline.Source.RSS.Article where
 
 import           Control.Error.Safe                (rightMay)
-import           Control.Lens                      ((^.),to)
+import           Control.Lens                      ((^.),(%~),to,_2)
 import           Data.Aeson                        (eitherDecodeStrict)
 import qualified Data.ByteString.Base16     as B16
 import qualified Data.ByteString.Char8      as B
@@ -13,18 +14,31 @@ import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as TE
 import           Data.Time.Clock                   (UTCTime)
-import           Database.Beam                     (select,runSelectReturningList,val_
-                                                   ,(&&.))
+import           Database.Beam                     (select,runSelectReturningList
+                                                   ,guard_
+                                                   ,val_
+                                                   ,(&&.),(==.),(/=.))
 import           Database.Beam.Postgres            (runBeamPostgresDebug)
 import qualified Database.PostgreSQL.Simple as PGS
 import           System.Directory                  (doesFileExist)
 import           System.FilePath                   ((</>))
 --
-import           DB.Operation.RSS.Article
-import           DB.Schema.RSS.Article
-import           NLP.Shared.Type                   (Summary(..),PathConfig
+import qualified DB.Operation.RSS.Analysis  as Analysis
+import qualified DB.Operation.RSS.Article   as Article
+import qualified DB.Operation.RSS.Summary   as Summary
+import           DB.Schema.RSS.Analysis            (rssAnalysisHash,rssAnalysisCoreNLP)
+import           DB.Schema.RSS.Article             (RSSArticle
+                                                   ,rssArticleSource
+                                                   ,rssArticleHash,rssArticleHash)
+import           DB.Schema.RSS.Summary             (Summary,summaryHash
+                                                   ,summaryLink,summaryTitle
+                                                   ,summaryDescription,summaryPubDate
+                                                   )
+import           NLP.Shared.Type                   (-- Summary(..),
+                                                    PathConfig
                                                    ,dbstring,rssstore
                                                    )
+import qualified NLP.Shared.Type                   (Summary(..))
 --
 import           Pipeline.Operation.DB
 import           Pipeline.Type
@@ -40,37 +54,41 @@ getHashByTime cfg time = do
   articles <- runBeamPostgresDebug putStrLn conn $
                 runSelectReturningList $
                   select $
-                    queryArticle (createdAfter time)
+                    Article.queryArticle (Article.createdAfter time)
   PGS.close conn
   let mkPair :: RSSArticle -> (Text,Text)
       mkPair x = (x^.rssArticleSource, x^.rssArticleHash.to B16.encode.to TE.decodeUtf8)
   return (map mkPair articles)
 
-getRSSArticleBy :: PathConfig -> SourceTimeConstraint -> IO [Maybe (RSSArticle,Summary)]
-getRSSArticleBy cfg (msrc,tc) = do
+getUnparsedRSSArticleBy :: PathConfig
+                        -> SourceTimeConstraint
+                        -> IO [(RSSArticle,NLP.Shared.Type.Summary)]
+getUnparsedRSSArticleBy cfg (msrc,tc) = do
   conn <- getConnection (cfg ^. dbstring)
-  let srcconst a = maybe (val_ True) (\src -> bySource src a) msrc
+  let srcconst a = maybe (val_ True) (\src -> Article.bySource src a) msrc
       timeconst a = case tc of
                       Nothing -> val_ True
-                      Just (Between btime etime) -> createdBetween btime etime a
-                      Just (After btime) -> createdAfter btime a
-                      Just (Before etime) -> createdBefore etime a
+                      Just (Between btime etime) -> Article.createdBetween btime etime a
+                      Just (After btime) -> Article.createdAfter btime a
+                      Just (Before etime) -> Article.createdBefore etime a
 
-  articles <- runBeamPostgresDebug putStrLn conn $
-                runSelectReturningList $
-                  select $
-                    queryArticle (\a -> srcconst a &&. timeconst a)
-  result <- flip mapM articles $ \x -> do
-    let hshtxt = x^.rssArticleHash.to B16.encode.to TE.decodeUtf8
-        src = x^.rssArticleSource
-        fileprefix = (cfg ^. rssstore) </> T.unpack src
-        filepath = fileprefix </> itempath </> take 2 (T.unpack hshtxt) </> T.unpack hshtxt
-    fchk <- doesFileExist filepath
-    case fchk of
-      True -> do
-        bstr <- B.readFile filepath
-        let content = rightMay (eitherDecodeStrict bstr)
-        return ((,) <$> Just x <*> content)
-      False -> return Nothing
+  articles :: [(RSSArticle,Summary)]
+    <- runBeamPostgresDebug putStrLn conn $
+         runSelectReturningList $
+           select $ do
+             a <- Article.queryArticle (\a -> srcconst a &&. timeconst a)
+             -- let hsh = a^.rssArticleHash
+             s <- Summary.querySummary (\s -> s^.summaryHash ==. a^.rssArticleHash)
+             an <- Analysis.queryAnalysis (\an -> an^.rssAnalysisHash ==. a^.rssArticleHash)
+             guard_ (an^.rssAnalysisCoreNLP /=. val_ (Just True))
+
+             pure (a,s)
   PGS.close conn
-  return result
+  (return . map (_2 %~ toSummary)) articles
+
+toSummary :: Summary -> NLP.Shared.Type.Summary
+toSummary s = NLP.Shared.Type.Summary
+                (s^.summaryLink)
+                (s^.summaryTitle)
+                (s^.summaryDescription)
+                (s^.summaryPubDate)
