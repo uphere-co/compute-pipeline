@@ -11,6 +11,8 @@ import           DB.Schema.RSS.Analysis     (RSSAnalysisT(..))
 import           DB.Schema.RSS.Article      (RSSArticleT(..))
 import           DB.Schema.RSS.CoreNLP      (AnalysisCoreNLPT(..))
 import           DB.Schema.RSS.ErrorArticle (RSSErrorArticleT(..))
+import           DB.Schema.RSS.NER          (AnalysisNERT(..))
+import           DB.Schema.RSS.SRL          (AnalysisSRLT(..))
 import           DB.Schema.RSS.Summary      (SummaryT(..))
 
 
@@ -19,6 +21,8 @@ data RSSDB f = RSSDB { _rssArticles      :: f (TableEntity RSSArticleT)
                      , _rssErrorArticles :: f (TableEntity RSSErrorArticleT)
                      , _summaries        :: f (TableEntity SummaryT)
                      , _coreNLPs         :: f (TableEntity AnalysisCoreNLPT)
+                     , _SRLs             :: f (TableEntity AnalysisSRLT)
+                     , _NERs             :: f (TableEntity AnalysisNERT)
                      }
              deriving Generic
 
@@ -70,6 +74,20 @@ rssDB = defaultDbSettings `withDbModification`
                 { _coreNLPHash    = fieldNamed "hash"
                 , _coreNLPResult  = fieldNamed "result"
                 , _coreNLPCreated = fieldNamed "created"
+                }
+          , _SRLs =
+              modifyTable (\_ -> "srl") $
+                tableModification
+                { _srlHash    = fieldNamed "hash"
+                , _srlResult  = fieldNamed "result"
+                , _srlCreated = fieldNamed "created"
+                }
+          , _NERs =
+              modifyTable (\_ -> "ner") $
+                tableModification
+                { _nerHash    = fieldNamed "hash"
+                , _nerResult  = fieldNamed "result"
+                , _nerCreated = fieldNamed "created"
                 }
 
           }
