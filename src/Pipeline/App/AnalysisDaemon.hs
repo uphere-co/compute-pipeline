@@ -43,6 +43,7 @@ type Source = String
 type Section = String
 type RSSLink = String
 
+
 rssAnalysisList :: [(Source,Section,RSSLink)]
 rssAnalysisList =
   [ {- ("reuters","companyNews","http://feeds.reuters.com/reuters/companyNews")
@@ -64,10 +65,12 @@ runDaemon cfg = do
   (apredata,netagger,forest,companyMap) <- loadConfig (False,False) cfgG
   forever $ do
     -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
+
     forM_ rssAnalysisList $ \(src,sec,url) -> do
       print (src,sec,url)
       runSRL conn apredata netagger (forest,companyMap) cfg (T.pack (src ++ "/" ++ sec))
     putStrLn "Waiting next run..."
+
     let sec = 1000000 in threadDelay (60*sec)
   closeConnection conn
 
@@ -83,7 +86,7 @@ runSRL :: PGS.Connection
        -> Text
        -> IO ()
 runSRL conn apredata netagger (forest,companyMap) cfg src = do
-  as1b <- getNewItemsForSRL cfg src
+  as1b <- listNewDocAnalysisInputs cfg src
   -- print as1b
   let as1 = (take 5000 as1b) -- as1a ++ as1b
   -- print as1

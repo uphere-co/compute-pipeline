@@ -62,27 +62,34 @@ getHashByTime cfg time = do
       mkPair x = (x^.rssArticleSource, x^.rssArticleHash.to B16.encode.to TE.decodeUtf8)
   return (map mkPair articles)
 
-getUnparsedRSSArticleBy :: PathConfig
-                        -> SourceTimeConstraint
-                        -> IO [(RSSArticle,NLP.Shared.Type.Summary)]
-getUnparsedRSSArticleBy cfg (msrc,tc) = do
-  conn <- getConnection (cfg ^. dbstring)
-  let srcconst a = maybe (val_ True) (\src -> Article.bySource src a) msrc
-      timeconst a = case tc of
-                      Nothing -> val_ True
-                      Just (Between btime etime) -> Article.createdBetween btime etime a
-                      Just (After btime) -> Article.createdAfter btime a
-                      Just (Before etime) -> Article.createdBefore etime a
 
-  articles :: [(RSSArticle,Summary)]
-    <- runBeamPostgresDebug putStrLn conn $
-         runSelectReturningList $
-           select $ do
-             a <- Article.queryArticle (\a -> srcconst a &&. timeconst a)
-             let hsh = a^.rssArticleHash
-             s <- Summary.querySummary (\s -> (s^.summaryHash ==. hsh))
-             guard_ . not_ . exists_ . filter_ (\c -> c^.coreNLPHash ==. hsh) $ (all_ (_coreNLPs rssDB))
-             pure (a,s)
+srcconst msrc a = maybe (val_ True) (\src -> Article.bySource src a) msrc
+timeconst tc a =
+  case tc of
+    Nothing -> val_ True
+    Just (Between btime etime) -> Article.createdBetween btime etime a
+    Just (After btime) -> Article.createdAfter btime a
+    Just (Before etime) -> Article.createdBefore etime a
+
+
+-- | list new articles satisfying constraint, and not parsed yet.
+--
+listNewArticles :: PathConfig
+                -> SourceTimeConstraint
+                -> IO [(RSSArticle,NLP.Shared.Type.Summary)]
+listNewArticles cfg (msrc,tc) = do
+  conn <- getConnection (cfg ^. dbstring)
+
+  articles :: [(RSSArticle,Summary)] <-
+    runBeamPostgresDebug putStrLn conn $
+      runSelectReturningList $
+        select $ do
+          a <- Article.queryArticle (\a -> srcconst msrc a &&. timeconst tc a)
+          let hsh = a^.rssArticleHash
+          s <- Summary.querySummary (\s -> (s^.summaryHash ==. hsh))
+          guard_ . not_ . exists_ . filter_ (\c -> c^.coreNLPHash ==. hsh) $
+            (all_ (_coreNLPs rssDB))
+          pure (a,s)
   PGS.close conn
   (return . map (_2 %~ toSummary)) articles
 
