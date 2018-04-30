@@ -56,6 +56,7 @@ rssAnalysisList =
   , ("marketwatch","marketpulse","http://feeds.marketwatch.com/marketwatch/marketpulse") -- Paragraph  -}
   ]
 
+
 runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
   conn <- getConnection (cfg ^. dbstring)

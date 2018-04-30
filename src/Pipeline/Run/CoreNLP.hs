@@ -120,7 +120,7 @@ preParseRSSArticles pp cfg articles = do
                                          , corenlp^.coreNLPCreated <-. val_ time
                                          ])
                             (\corenlp -> corenlp^.coreNLPHash ==. val_ hsh)
-        updateRSSAnalysisStatus conn hsh (Just True,Nothing,Nothing)
+        -- updateRSSAnalysisStatus conn hsh (Just True,Nothing,Nothing)
   closeConnection conn
 
 
