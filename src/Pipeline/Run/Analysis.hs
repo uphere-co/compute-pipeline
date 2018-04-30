@@ -2,26 +2,35 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Pipeline.App.AnalysisRunner where
+module Pipeline.Run.Analysis where
 
 import           Control.Exception               (SomeException,handle)
 import           Control.Lens
 import           Control.Monad                   (forM_,when)
+import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
+import qualified Data.ByteString.Lazy       as BL
 import           Data.Char                       (isSpace)
 import           Data.Foldable                   (traverse_)
 import           Data.IntMap                     (IntMap)
 import           Data.List                       (zip6)
+import           Data.List.Split                   (chunksOf)
 import           Data.Maybe
 import           Data.Range
 import           Data.Text                       (Text)
 import qualified Data.Text                  as T
+import qualified Data.Text.Encoding         as TE
+import           Data.Time.Clock                 (UTCTime,getCurrentTime)
 import           Data.Tree                       (Forest)
+import           Database.Beam
+import           Database.Beam.Postgres
 import           Database.PostgreSQL.Simple      (Connection)
 import           System.FilePath                 ((</>),takeFileName,takeBaseName)
-import           Data.Time.Clock                 (UTCTime,getCurrentTime)
+--
 import           Data.Graph.Algorithm.Basic      (maxConnectedNodes,numberOfIsland)
 import           DB.Operation.RSS.Analysis       (updateRSSAnalysisStatus)
+import           DB.Schema.RSS
+import           DB.Schema.RSS.SRL
 import           DB.Util                         (b16ToBstrHash)
 import           Lexicon.Data                    (loadLexDataConfig)
 import           MWE.Util                        (mkTextFromToken)
@@ -42,10 +51,14 @@ import           SRL.Statistics
 import           WikiEL.Type                     (EntityMention)
 --
 import           Pipeline.Load
+import           Pipeline.Operation.Concurrent (forkChild,refreshChildren,waitForChildren)
 import           Pipeline.Run
+import           Pipeline.Source.RSS.Article       (listNewDocAnalysisInputs)
 import           Pipeline.Type
 import           Pipeline.Util
 
+-- | this should be dynamically determined.
+coreN = 15 :: Int
 
 
 isSRLFiltered sstr mg =
@@ -100,7 +113,7 @@ mkMGs :: Connection
       -> UTCTime
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata netagger (forest,companyMap) cfg hsh tm input = do
+mkMGs conn apredata netagger (forest,companyMap) cfg hsh time input = do
   -- let filename = takeFileName fp
   dstr <- docStructure apredata netagger (forest,companyMap) input
   let sstrs = catMaybes (dstr ^. ds_sentStructures)
@@ -112,7 +125,30 @@ mkMGs conn apredata netagger (forest,companyMap) cfg hsh tm input = do
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs -- map (mkMeaningTree (apredata^.analyze_rolemap)) mgs
       wikilsts = map (mkWikiList companyMap) sstrs
       isNonFilter = True -- False
-  print mgs
+  let result = (mgs,arbs)
+  let rtxt = (TE.decodeUtf8 . BL.toStrict . A.encode) result
+  runBeamPostgres conn $
+    let srl :: AnalysisSRL
+        srl = AnalysisSRL hsh (Just rtxt) time
+    -- only support insert
+    in runInsert $
+         insert (_SRLs rssDB) $
+           insertValues [srl]
+{-
+    as' <-
+      runSelectReturningList $
+        select $
+          filter_ (\s -> s^.srlHash ==. val_ hsh) (all_ (_SRLs rssDB))
+    case as' of
+      []  ->
+      _as -> runUpdate $
+               update (_SRLs rssDB)
+                      (\s -> [ s^.srlResult  <-. val_ (Just rtxt)
+                             , s^.srlCreated <-. val_ time
+                             ])
+                      (\s -> s^.srlHash ==. val_ hsh)
+  -}
+  --  print A.encode (mgs,arbs)
   {-
   putStrLn $ "Analyzing " ++ filename
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
@@ -152,3 +188,21 @@ runAnalysisByChunks conn netagger (forest,companyMap) apredata cfg loaded = do
         (b16ToBstrHash (T.pack (takeBaseName fp)))
         (Nothing,Just True,Nothing) -}
       traverse_ (mkMGs conn apredata netagger (forest,companyMap) cfg hsh tm) minput
+
+-- | This does SRL and generates meaning graphs.
+--
+runSRL :: Connection
+       -> AnalyzePredata
+       -> ([Sentence] -> [EntityMention T.Text])
+       -> (Forest (Either Int Text), IntMap CompanyInfo)
+       -> PathConfig
+       -> SourceTimeConstraint
+       -> IO ()
+runSRL conn apredata netagger (forest,companyMap) cfg (msrc,tc) = do
+  loaded <- listNewDocAnalysisInputs cfg (msrc,tc)
+  let n = length loaded `div` coreN
+  forM_ (chunksOf n loaded) $ \ls ->
+    forkChild (runAnalysisByChunks conn netagger (forest,companyMap) apredata cfg ls)
+
+  waitForChildren
+  refreshChildren

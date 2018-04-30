@@ -74,7 +74,6 @@ library
                   wiki-ner,
                   yayaml
   exposed-modules: Pipeline.App.AnalysisDaemon
-                   Pipeline.App.AnalysisRunner
                    -- Pipeline.App.CoreNLPBatch
                    Pipeline.App.CoreNLPDaemon
                    -- Pipeline.App.CoreNLPRunner
@@ -84,13 +83,13 @@ library
                    Pipeline.Operation.DB
                    Pipeline.Operation.Graph
                    Pipeline.Run
+                   Pipeline.Run.Analysis
                    Pipeline.Run.CoreNLP
                    -- Pipeline.Run.SRL
                    -- Pipeline.Run.WikiEL
                    -- Pipeline.Source.NewsAPI.Analysis
                    -- Pipeline.Source.NewsAPI.Article
                    -- Pipeline.Source.NYT.Article
-                   Pipeline.Source.RSS.Analysis
                    Pipeline.Source.RSS.Article
                    Pipeline.Type
                    Pipeline.Util

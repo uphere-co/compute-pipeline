@@ -100,6 +100,9 @@ preParseRSSArticles pp cfg articles = do
       Right result                -> do
         time <- getCurrentTime
         let rtxt = TE.decodeUtf8 (BL.toStrict (A.encode result))
+        -- TODO: This is to insert if not exist and update if exist.
+        --       We had better refactor this out as a utility.
+        --       Pipeline.Run.Analysis has duplicated code.
         as'  <- runBeamPostgres conn $
                   runSelectReturningList $
                     select $ do
