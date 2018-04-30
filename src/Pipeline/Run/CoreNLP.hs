@@ -120,7 +120,7 @@ preParseRSSArticles pp cfg articles = do
                                          , corenlp^.coreNLPCreated <-. val_ time
                                          ])
                             (\corenlp -> corenlp^.coreNLPHash ==. val_ hsh)
-        updateRSSAnalysisStatus conn hsh (Just True,Nothing,Nothing)
+        -- updateRSSAnalysisStatus conn hsh (Just True,Nothing,Nothing)
   closeConnection conn
 
 
@@ -131,4 +131,5 @@ runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                  -> IO ()
 runCoreNLPforRSS pp cfg sc = do
   articles <- RSS.getUnparsedRSSArticleBy cfg sc
-  preParseRSSArticles pp cfg articles
+  print (length articles)
+  -- preParseRSSArticles pp cfg articles
