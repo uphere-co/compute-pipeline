@@ -35,7 +35,8 @@ import           Pipeline.Load
 import           Pipeline.Operation.Concurrent
 import           Pipeline.Operation.DB
 import           Pipeline.Run.CoreNLP
-import           Pipeline.Source.RSS.Analysis
+import           Pipeline.Source.RSS.Article       (listNewDocAnalysisInputs)
+-- import           Pipeline.Source.RSS.Analysis
 import           Pipeline.Type
 
 
@@ -44,9 +45,11 @@ type Section = String
 type RSSLink = String
 
 
-rssAnalysisList :: [(Source,Section,RSSLink)]
-rssAnalysisList =
-  [ {- ("reuters","companyNews","http://feeds.reuters.com/reuters/companyNews")
+constraint :: SourceTimeConstraint
+constraint = (Just "reuters/Archive",Nothing)
+
+{-
+    {- ("reuters","companyNews","http://feeds.reuters.com/reuters/companyNews")
   , ("reuters","technologyNews","http://feeds.reuters.com/reuters/technologyNews")
   , -} ("reuters","Archive","http://www.reuters.com/resources/archive/us")
   {- , ("cnbc","business","https://www.cnbc.com/id/10001147/device/rss/rss.html")
@@ -56,7 +59,10 @@ rssAnalysisList =
   , ("marketwatch","topstories","http://feeds.marketwatch.com/marketwatch/topstories")
   , ("marketwatch","marketpulse","http://feeds.marketwatch.com/marketwatch/marketpulse") -- Paragraph  -}
   ]
+-}
 
+
+    -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
 
 runDaemon :: PathConfig -> IO ()
 runDaemon cfg = do
@@ -64,11 +70,10 @@ runDaemon cfg = do
   cfgG <- (\ec -> case ec of {Left err -> error err;Right cfg -> return cfg;}) =<< loadLexDataConfig (cfg ^. lexconfigpath)
   (apredata,netagger,forest,companyMap) <- loadConfig (False,False) cfgG
   forever $ do
-    -- forM_ prestigiousNewsSource $ \src -> runSRL conn apredata netagger cfg src
-
-    forM_ rssAnalysisList $ \(src,sec,url) -> do
+    {- forM_ rssAnalysisList $ \(src,sec,url) -> do
       print (src,sec,url)
-      runSRL conn apredata netagger (forest,companyMap) cfg (T.pack (src ++ "/" ++ sec))
+      runSRL conn apredata netagger (forest,companyMap) cfg (T.pack (src ++ "/" ++ sec)) -}
+    runSRL conn apredata netagger (forest,companyMap) cfg constraint
     putStrLn "Waiting next run..."
 
     let sec = 1000000 in threadDelay (60*sec)
@@ -83,20 +88,27 @@ runSRL :: PGS.Connection
        -> ([Sentence] -> [EntityMention T.Text])
        -> (Forest (Either Int Text), IntMap CompanyInfo)
        -> PathConfig
-       -> Text
+       -> SourceTimeConstraint
        -> IO ()
-runSRL conn apredata netagger (forest,companyMap) cfg src = do
-  as1b <- listNewDocAnalysisInputs cfg src
-  -- print as1b
-  let as1 = (take 5000 as1b) -- as1a ++ as1b
-  -- print as1
-
-  loaded1 <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as1
-  let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded1)
-  let (n :: Int) = let n' = ((length loaded) `div` coreN) in if n' >= 1 then n' else 1
-  forM_ (chunksOf n loaded) $ \ls -> do
-    -- print ls
+runSRL conn apredata netagger (forest,companyMap) cfg (msrc,tc) = do
+  loaded <- listNewDocAnalysisInputs cfg (msrc,tc)
+  let n = length loaded `div` coreN
+  forM_ (chunksOf n loaded) $ \ls ->
     forkChild (runAnalysisByChunks conn netagger (forest,companyMap) apredata cfg ls)
 
   waitForChildren
   refreshChildren
+
+
+    -- print ls
+
+
+  -- print as1b
+  -- let as1 = (take 5000 as1b) -- as1a ++ as1b
+  -- print as1
+
+  -- print (length as1)
+  -- mapM_ print as1
+
+  -- loaded1 <- loadCoreNLPResult $ map (\(fp,tm) -> ((cfg ^. corenlpstore) </> fp, tm)) as1
+  -- let loaded = catMaybes $ map (\(a,b,c) -> (,,) <$> Just a <*> Just b <*> c) (catMaybes loaded1)

@@ -40,29 +40,6 @@ getRSSAnalysisFilePathBySource cfg src = do
   pure $ map mkPair as
 
 
--- | list new parsed inputs which is not analyized yet.
---
-listNewDocAnalysisInputs :: PathConfig
-                         -- -> SourceTimeConstraint
-                         -> Text
-                         -- -> IO [DocAnalysisInput]
-                         -> IO [(FilePath,UTCTime)]
-listNewDocAnalysisInputs cfg src = do
-  conn <- getConnection (cfg ^. dbstring)
-  inputs <-
-    runBeamPostgresDebug putStrLn conn $
-      runSelectReturningList $
-        select $ do
-    {-
-          a <- Article.b
-          c <- all_ (_coreNLPs rssDB)
-           -}
-              queryAnalysis $ \a ->     bySource src a
-                                    &&. (a^.rssAnalysisCoreNLP ==. val_ (Just True))
-                                    &&. (    (a^.rssAnalysisSRL ==. val_ Nothing )
-                                         ||. (a^.rssAnalysisSRL ==. val_ (Just False)))
-  pure $ map mkPair inputs
-
 
 
 mkPair :: RSSAnalysis -> (FilePath,UTCTime)

@@ -4,43 +4,42 @@
 
 module Pipeline.App.AnalysisRunner where
 
-import           Control.Exception                      (SomeException,handle)
+import           Control.Exception               (SomeException,handle)
 import           Control.Lens
-import           Control.Monad                          (forM_,when)
-import           Data.Char                              (isSpace)
-import           Data.IntMap                            (IntMap)
-import           Data.List                              (zip6)
+import           Control.Monad                   (forM_,when)
+import qualified Data.ByteString.Char8      as B
+import           Data.Char                       (isSpace)
+import           Data.Foldable                   (traverse_)
+import           Data.IntMap                     (IntMap)
+import           Data.List                       (zip6)
 import           Data.Maybe
-import           Data.Text                              (Text)
+import           Data.Range
+import           Data.Text                       (Text)
 import qualified Data.Text                  as T
-import           Data.Tree                              (Forest)
-import           Database.PostgreSQL.Simple             (Connection)
-import           System.FilePath                        ((</>),takeFileName,takeBaseName)
---
-import           Data.Range                             (Range)
-import           Data.Time.Clock                        (UTCTime,getCurrentTime)
-import           Data.Graph.Algorithm.Basic             (maxConnectedNodes,numberOfIsland)
-import           DB.Operation.RSS.Analysis              (updateRSSAnalysisStatus)
-import           DB.Util                                (b16ToBstrHash)
-import           Lexicon.Data                           (loadLexDataConfig)
-import           MWE.Util                               (mkTextFromToken)
-import           NER.Type                               (CompanyInfo(..))
--- import           NewsAPI.DB
-import           NLP.Shared.Type                        (PathConfig,EventClass(..)
-                                                        ,arbstore,corenlpstore,lexconfigpath
-                                                        ,mgstore,mgdotfigstore)
+import           Data.Tree                       (Forest)
+import           Database.PostgreSQL.Simple      (Connection)
+import           System.FilePath                 ((</>),takeFileName,takeBaseName)
+import           Data.Time.Clock                 (UTCTime,getCurrentTime)
+import           Data.Graph.Algorithm.Basic      (maxConnectedNodes,numberOfIsland)
+import           DB.Operation.RSS.Analysis       (updateRSSAnalysisStatus)
+import           DB.Util                         (b16ToBstrHash)
+import           Lexicon.Data                    (loadLexDataConfig)
+import           MWE.Util                        (mkTextFromToken)
+import           NER.Type                        (CompanyInfo(..))
+import           NLP.Shared.Type                 (PathConfig,EventClass(..)
+                                                 ,arbstore,corenlpstore,lexconfigpath
+                                                 ,mgstore,mgdotfigstore)
 import           NLP.Type.CoreNLP
-import           NLP.Type.NamedEntity                   (NamedEntityClass)
-import           NLP.Type.TagPos                        (leftTagPos)
+import           NLP.Type.NamedEntity            (NamedEntityClass)
+import           NLP.Type.TagPos                 (leftTagPos)
 import           SRL.Analyze
-import           SRL.Analyze.ARB                        (mkARB)
---import           SRL.Analyze.MeaningTree                (mkMeaningTree)
-import           SRL.Analyze.Match.MeaningGraph         (changeMGText,meaningGraph,tagMG)
-import           SRL.Analyze.SentenceStructure          (docStructure,mkWikiList)
+import           SRL.Analyze.ARB                 (mkARB)
+--import           SRL.Analyze.MeaningTree       (mkMeaningTree)
+import           SRL.Analyze.Match.MeaningGraph  (changeMGText,meaningGraph,tagMG)
+import           SRL.Analyze.SentenceStructure   (docStructure,mkWikiList)
 import           SRL.Analyze.Type
--- import qualified SRL.Analyze.WikiEL         as SRLWiki
 import           SRL.Statistics
-import           WikiEL.Type                            (EntityMention)
+import           WikiEL.Type                     (EntityMention)
 --
 import           Pipeline.Load
 import           Pipeline.Run
@@ -81,7 +80,7 @@ listMarketData = ["refinery margin","refinery ultilization","refinery ultilisati
 evtClass :: [Text] -> [EventClass]
 evtClass txts =
   let lowtxt = T.intercalate " " $ map T.toLower txts
-      
+
       isOilDemand  = if (any (\x -> T.toLower x `T.isInfixOf` lowtxt) listOilDemand)  then Just (EventClass "Commodities" "Energy" (Just "OilDemand"))     else Nothing
       isTanker     = if (any (\x -> T.toLower x `T.isInfixOf` lowtxt) listTanker)     then Just (EventClass "Commodities" "Energy" (Just "Tanker"))        else Nothing
       isStockMov   = if (any (\x -> T.toLower x `T.isInfixOf` lowtxt) listStockMov)   then Just (EventClass "Commodities" "Energy" (Just "StockMovement")) else Nothing
@@ -97,13 +96,13 @@ mkMGs :: Connection
       -> ([Sentence] -> [EntityMention Text])
       -> (Forest (Either Int Text),IntMap CompanyInfo)
       -> PathConfig
-      -> FilePath
+      -> B.ByteString
       -> UTCTime
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata netagger (forest,companyMap) cfg fp tm article = do
-  let filename = takeFileName fp
-  dstr <- docStructure apredata netagger (forest,companyMap) article
+mkMGs conn apredata netagger (forest,companyMap) cfg hsh tm input = do
+  -- let filename = takeFileName fp
+  dstr <- docStructure apredata netagger (forest,companyMap) input
   let sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
       netags = leftTagPos (dstr^.ds_mergedtags)
@@ -113,6 +112,8 @@ mkMGs conn apredata netagger (forest,companyMap) cfg fp tm article = do
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs -- map (mkMeaningTree (apredata^.analyze_rolemap)) mgs
       wikilsts = map (mkWikiList companyMap) sstrs
       isNonFilter = True -- False
+  print mgs
+  {-
   putStrLn $ "Analyzing " ++ filename
   saveMGs (cfg ^. mgstore) filename mgs -- Temporary solution
   forM_ (zip6 ([1..] :: [Int]) sstrs mtokss mgs arbs wikilsts) $ \(i,sstr,mtks,mg,arb,wikilst) -> do
@@ -124,6 +125,7 @@ mkMGs conn apredata netagger (forest,companyMap) cfg fp tm article = do
       saveARB (cfg ^. arbstore) filename i (tm,(arb,netags,evtcls))
       putStrLn $ filename ++ ": saving DOT"
       genMGFigs cfg filename i sstr mtks mg wikilst
+  -}
 
 genMGFigs :: PathConfig -> FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
 genMGFigs cfg filename i sstr mtks mg wikilst = do
@@ -139,13 +141,14 @@ runAnalysisByChunks :: Connection
                     -> (Forest (Either Int Text),IntMap CompanyInfo)
                     -> AnalyzePredata
                     -> PathConfig
-                    -> [(FilePath,UTCTime,DocAnalysisInput)]
+                    -> [(B.ByteString,Maybe DocAnalysisInput)]
                     -> IO ()
 runAnalysisByChunks conn netagger (forest,companyMap) apredata cfg loaded = do
-  flip mapM_ loaded $ \(fp,tm,artl) -> do
+  flip mapM_ loaded $ \(hsh,minput) -> do
     handle (\(e :: SomeException) -> print e) $ do
-      updateRSSAnalysisStatus
+      tm <- getCurrentTime
+      {- updateRSSAnalysisStatus
         conn
         (b16ToBstrHash (T.pack (takeBaseName fp)))
-        (Nothing,Just True,Nothing)
-      mkMGs conn apredata netagger (forest,companyMap) cfg fp tm artl
+        (Nothing,Just True,Nothing) -}
+      traverse_ (mkMGs conn apredata netagger (forest,companyMap) cfg hsh tm) minput
