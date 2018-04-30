@@ -15,7 +15,7 @@ import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as TE
 import           Data.Time.Clock                   (UTCTime)
 import           Database.Beam                     (select,runSelectReturningList
-                                                   ,exists_,filter_,guard_
+                                                   ,exists_,filter_,guard_,not_
                                                    ,val_,all_
                                                    ,(&&.),(==.),(/=.))
 import           Database.Beam.Postgres            (runBeamPostgresDebug)
@@ -27,7 +27,7 @@ import qualified DB.Operation.RSS.Analysis  as Analysis
 import qualified DB.Operation.RSS.Article   as Article
 import qualified DB.Operation.RSS.Summary   as Summary
 -- import           DB.Schema.RSS.Analysis            (rssAnalysisHash,rssAnalysisCoreNLP)
-import           DB.Schema.RSS                     (rssDB,_coreNLPs)
+import           DB.Schema.RSS                     (rssDB,_coreNLPs,_summaries)
 import           DB.Schema.RSS.Article             (RSSArticle
                                                    ,rssArticleSource
                                                    ,rssArticleHash,rssArticleHash)
@@ -80,10 +80,8 @@ getUnparsedRSSArticleBy cfg (msrc,tc) = do
            select $ do
              a <- Article.queryArticle (\a -> srcconst a &&. timeconst a)
              let hsh = a^.rssArticleHash
-             s <- Summary.querySummary (\s -> s^.summaryHash ==. hsh{- a^.rssArticleHash -})
-             guard_ (exists_ (filter_ (\c -> c^.coreNLPHash ==. hsh {- a^.rssArticleHash -}) (all_ (_coreNLPs rssDB))))
-             -- an <- Analysis.queryAnalysis (\an -> an^.rssAnalysisHash ==. a^.rssArticleHash)
-             -- guard_ (an^.rssAnalysisCoreNLP /=. val_ (Just True))
+             s <- Summary.querySummary (\s -> (s^.summaryHash ==. hsh))
+             guard_ . not_ . exists_ . filter_ (\c -> c^.coreNLPHash ==. hsh) $ (all_ (_coreNLPs rssDB))
              pure (a,s)
   PGS.close conn
   (return . map (_2 %~ toSummary)) articles

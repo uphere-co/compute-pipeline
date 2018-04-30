@@ -131,5 +131,4 @@ runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                  -> IO ()
 runCoreNLPforRSS pp cfg sc = do
   articles <- RSS.getUnparsedRSSArticleBy cfg sc
-  print (length articles)
-  -- preParseRSSArticles pp cfg articles
+  preParseRSSArticles pp cfg articles
