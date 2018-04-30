@@ -35,8 +35,10 @@ runDaemon cfg = do
                        . (ner .~ True)
                   )
     forever $ do
+      -- TODO: reuters/Archive should be separated out as a configuration
       runCoreNLPforRSS pp cfg (Just "reuters/Archive",Nothing)
       putStrLn "Waiting next run..."
-      let sec = 1000000 in threadDelay (60*sec)
+      -- TODO: this time should be configured.
+      let sec = 1000000 in threadDelay (600*sec)
 
   closeConnection conn

@@ -2,7 +2,7 @@ module Pipeline.Source.RSS.Analysis where
 
 import           Control.Lens                      ((^.),to)
 import qualified Data.ByteString.Base16     as B16
-import qualified Data.ByteString.Lazy.Char8 as BL8  
+import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as TE
@@ -39,18 +39,6 @@ getRSSAnalysisFilePathBySource cfg src = do
               queryAnalysis (bySource src)
   pure $ map mkPair as
 
-
-getNewItemsForSRL :: PathConfig -> Text -> IO [(FilePath,UTCTime)]
-getNewItemsForSRL cfg src = do
-  conn <- getConnection (cfg ^. dbstring)
-  as <- runBeamPostgresDebug putStrLn conn $
-          runSelectReturningList $
-            select $
-              queryAnalysis $ \a ->     bySource src a
-                                    &&. (a^.rssAnalysisCoreNLP ==. val_ (Just True))
-                                    &&. (    (a^.rssAnalysisSRL ==. val_ Nothing )
-                                         ||. (a^.rssAnalysisSRL ==. val_ (Just False)))
-  pure $ map mkPair as
 
 
 

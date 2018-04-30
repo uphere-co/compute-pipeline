@@ -27,10 +27,10 @@ import           Database.Beam                     (select,runSelectReturningLis
                                                    ,guard_,val_,all_
                                                    ,(&&.),(==.),(/=.),(<-.))
 import           Database.Beam.Postgres            (runBeamPostgres)
-import           Language.Java                         as J
-import           System.FilePath                              ((</>))
+import           Language.Java                as J
+import           System.FilePath                   ((</>))
 --
-import           NLP.Shared.Type                              (Summary,PathConfig,corenlpstore,dbstring,errstore,description)
+import           NLP.Shared.Type                   (Summary,PathConfig,corenlpstore,dbstring,errstore,description)
 
 import           DB.Operation.RSS.Analysis
 import           DB.Operation.RSS.Article
@@ -40,10 +40,10 @@ import           DB.Schema.RSS.Analysis
 import           DB.Schema.RSS.Article
 import           DB.Schema.RSS.CoreNLP
 import           DB.Schema.RSS.ErrorArticle
-import           DB.Util                                      (b16ToBstrHash,bstrHashToB16)
-import           SRL.Analyze.CoreNLP                          (runParser)
+import           DB.Util                           (b16ToBstrHash,bstrHashToB16)
+import           SRL.Analyze.CoreNLP               (runParser)
 --
-import qualified Pipeline.Source.RSS.Article           as RSS
+import           Pipeline.Source.RSS.Article       (listNewArticles)
 import           Pipeline.Operation.DB
 import           Pipeline.Type
 import           Pipeline.Util
@@ -100,6 +100,9 @@ preParseRSSArticles pp cfg articles = do
       Right result                -> do
         time <- getCurrentTime
         let rtxt = TE.decodeUtf8 (BL.toStrict (A.encode result))
+        -- TODO: This is to insert if not exist and update if exist.
+        --       We had better refactor this out as a utility.
+        --       Pipeline.Run.Analysis has duplicated code.
         as'  <- runBeamPostgres conn $
                   runSelectReturningList $
                     select $ do
@@ -130,5 +133,5 @@ runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
                  -> SourceTimeConstraint
                  -> IO ()
 runCoreNLPforRSS pp cfg sc = do
-  articles <- RSS.getUnparsedRSSArticleBy cfg sc
+  articles <- listNewArticles cfg sc
   preParseRSSArticles pp cfg articles
