@@ -26,7 +26,6 @@ let
   hsconfig = lib.callPackageWith (pkgs//revision)
                (uphere-nix-overlay + "/nix/haskell-modules/configuration-semantic-parser-api.nix") {
                  inherit corenlp corenlp_models fasttext;
-                 haskellLib = haskell.lib;
                };
 
 
