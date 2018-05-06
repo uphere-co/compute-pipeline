@@ -5,8 +5,17 @@ module CloudHaskell.Util where
 import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar,newTMVarIO, newEmptyTMVarIO, putTMVar)
-import           Control.Distributed.Process.Lifted
+import           Control.Distributed.Process (ProcessId,SendPort,ReceivePort,Process)
+import           Control.Distributed.Process.Internal.CQueue ()
+import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
+import           Control.Distributed.Process.Internal.Types (Message(..))
+import           Control.Distributed.Process.Lifted (spawnLocal,expectTimeout
+                                                    ,getSelfPid,send
+                                                    ,newChan,receiveChan,sendChan
+                                                    ,kill,try,bracket
+                                                    )
 import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
+import           Control.Distributed.Process.Serializable
 import           Control.Exception                 (SomeException)
 import           Control.Monad                     (forever,void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
@@ -20,6 +29,7 @@ import           Data.Typeable                     (Typeable)
 import qualified Network.Simple.TCP          as NS
 import           Network.Transport                 (Transport,closeTransport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
+import           Unsafe.Coerce
 --
 import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
@@ -27,6 +37,23 @@ import           Network.Transport.UpHere          (createTransport
 --
 import           CloudHaskell.QueryQueue           (QQVar)
 
+
+expectSafe :: forall a. (Serializable a) => Process (Either String a)
+expectSafe = receiveWait [matchAny f]
+  where
+    f msg = do
+      -- liftIO $ print (messageFingerprint msg)
+      -- liftIO $ print (fingerprint (undefined :: a))
+      case messageFingerprint msg == fingerprint (undefined :: a) of
+        False -> pure (Left "fingerprint mismatch")
+        True ->
+          case msg of
+            (UnencodedMessage _ m) ->
+              let m' = unsafeCoerce m :: a in pure (Right m')
+            (EncodedMessage _ _) -> pure (Right decoded)
+              where
+                decoded :: a
+                !decoded = decode (messageEncoding msg)
 
 recvAndUnpack :: Binary a => NS.Socket -> IO (Maybe a)
 recvAndUnpack sock = do

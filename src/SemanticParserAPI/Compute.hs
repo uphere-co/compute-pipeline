@@ -14,6 +14,7 @@ import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,R
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import           Control.Monad                             (forever)
 import           Control.Monad.IO.Class                    (liftIO)
+import           Control.Monad.Trans.Class                 (lift)
 import           Network.Transport                         (closeTransport)
 import           System.IO                                 (hPutStrLn,stderr)
 --
@@ -21,26 +22,31 @@ import           Network.Transport.UpHere                  (DualHostPortPair(..)
 --
 import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,singleQuery)
 import           CloudHaskell.Util                         (LogProcess,server,tellLog
-                                                           ,withHeartBeat,tryCreateTransport)
+                                                           ,expectSafe
+                                                           ,withHeartBeat
+                                                           ,tryCreateTransport)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker          (queryWorker)
 
 
 start :: () -> QQVar ComputeQuery ComputeResult -> LogProcess ()
 start () qqvar = do
-  them :: ProcessId <- expect
-  tellLog ("got client pid : " ++ show them)
+  ethem <- lift expectSafe
+  case ethem of
+    Left err -> tellLog err
+    Right them -> do
+      tellLog ("got client pid : " ++ show them)
 
-  withHeartBeat them $ spawnLocal $ do
-    (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
-    send them sc
+      withHeartBeat them $ spawnLocal $ do
+        (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
+        send them sc
 
-    liftIO $ hPutStrLn stderr "connected"
-    forever $ do
-      (q,sc') <- receiveChan rc
-      spawnLocal $ do
-        r <- liftIO $ singleQuery qqvar q
-        r `deepseq` sendChan sc' r
+        liftIO $ hPutStrLn stderr "connected"
+        forever $ do
+          (q,sc') <- receiveChan rc
+          spawnLocal $ do
+            r <- liftIO $ singleQuery qqvar q
+            r `deepseq` sendChan sc' r
 
 
 computeMain :: (Int,String,String)
