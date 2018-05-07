@@ -1,14 +1,16 @@
-{ mkDerivation, aeson, async, attoparsec, base, base16-bytestring
-, beam-core, beam-postgres, binary, bytestring, containers
-, data-default, directory, directory-tree, discrimination, either
-, event-analyzer, filepath, graph-algorithms, haskeline, HCoreNLP
-, HCoreNLP-Proto, HWordNet, jni, jvm, lens, lexicon-builder
-, monad-loops, mtl, multi-word-tagger, nlp-shared-types, nlp-types
+{ mkDerivation, aeson, aeson-pretty, async, attoparsec, base
+, base16-bytestring, beam-core, beam-postgres, binary, bytestring
+, containers, data-default, directory, directory-tree
+, discrimination, errors, event-analyzer, filepath
+, graph-algorithms, haskeline, HCoreNLP, HCoreNLP-Proto, HWordNet
+, inline-java, jni, jvm, lens, lexicon-builder, monad-loops
+, multi-word-tagger, nlp-shared-types, nlp-types
 , optparse-applicative, postgresql-simple, process
 , protocol-buffers, scientific, semantic-role-labeler, split
 , stdenv, stm, syntactic-analysis, text, textview, time
-, time-tagger, transformers, unordered-containers, uphere-db
-, uphere-network-util, vector, wiki-ner, yayaml
+, time-tagger, transformers, transformers-either
+, unordered-containers, uphere-db, uphere-network-util, vector
+, wiki-ner, yayaml
 }:
 mkDerivation {
   pname = "nlp-pipeline";
@@ -17,14 +19,15 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    aeson async attoparsec base base16-bytestring beam-core
-    beam-postgres binary bytestring containers data-default directory
-    directory-tree discrimination either event-analyzer filepath
-    graph-algorithms haskeline HCoreNLP HCoreNLP-Proto HWordNet jni jvm
-    lens lexicon-builder monad-loops mtl multi-word-tagger
-    nlp-shared-types nlp-types optparse-applicative postgresql-simple
-    process protocol-buffers scientific semantic-role-labeler split stm
-    syntactic-analysis text textview time time-tagger transformers
+    aeson aeson-pretty async attoparsec base base16-bytestring
+    beam-core beam-postgres binary bytestring containers data-default
+    directory directory-tree discrimination errors event-analyzer
+    filepath graph-algorithms haskeline HCoreNLP HCoreNLP-Proto
+    HWordNet inline-java jni jvm lens lexicon-builder monad-loops
+    multi-word-tagger nlp-shared-types nlp-types optparse-applicative
+    postgresql-simple process protocol-buffers scientific
+    semantic-role-labeler split stm syntactic-analysis text textview
+    time time-tagger transformers transformers-either
     unordered-containers uphere-db uphere-network-util vector wiki-ner
     yayaml
   ];

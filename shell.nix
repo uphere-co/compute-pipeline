@@ -25,7 +25,6 @@ let
 
   hsconfig = lib.callPackageWith (pkgs//revision) (uphere-nix-overlay + "/nix/haskell-modules/configuration-semantic-parser-api.nix")
                { inherit corenlp corenlp_models fasttext;
-                 haskellLib = haskell.lib;
                };
 
   newHaskellPackages = haskellPackages.override { overrides = hsconfig; };
@@ -42,22 +41,20 @@ let
             directory-tree
             discrimination
             distributed-process distributed-process-lifted
-            either
             haskeline
             hedis
             lens
             monad-loops
-            # opaleye
             optparse-applicative
             postgresql-simple
             servant
             servant-client
             servant-server
             transformers
+            transformers-either
             yaml
             yayaml
             p.event-analyzer
-            #p.newsapi
             p.nlp-types
             p.nlp-shared-types
             p.textview
@@ -68,8 +65,6 @@ let
             p.semantic-role-labeler
             p.wiki-ner
             p.uphere-network-util
-            #p.nyt-scrapper
-            #p.rss-scraper
             p.time-tagger
             p.OntoNotes
             p.multi-word-tagger

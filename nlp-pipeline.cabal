@@ -33,7 +33,6 @@ library
                   directory,
                   directory-tree,
                   discrimination,
-                  either,
                   errors,
                   filepath,
                   haskeline,
@@ -42,7 +41,6 @@ library
                   jvm,
                   lens,
                   monad-loops,
-                  mtl,
                   optparse-applicative,
                   postgresql-simple,
                   process,
@@ -54,6 +52,7 @@ library
                   textview,
                   time,
                   transformers,
+                  transformers-either,
                   vector,
                   --
                   event-analyzer,
