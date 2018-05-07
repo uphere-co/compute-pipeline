@@ -13,7 +13,7 @@ module Pipeline.Util where
 import           Control.Lens
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.Either       (EitherT(runEitherT),hoistEither)
+import           Control.Monad.Trans.Either       (EitherT,runEitherT,hoistEither)
 import           Data.Attoparsec.Text             (parseOnly)
 import           Data.ByteString                  (ByteString)
 import qualified Data.ByteString.Base16     as B16
