@@ -25,6 +25,8 @@ import           Data.Binary                       (Binary,Word32,decode,encode,
 import qualified Data.ByteString             as B
 import qualified Data.ByteString.Char8       as BC
 import qualified Data.ByteString.Lazy        as BL
+import           Data.Text                         (Text)
+import qualified Data.Text                   as T
 import           Data.Typeable                     (Typeable)
 import qualified Network.Simple.TCP          as NS
 import           Network.Transport                 (Transport,closeTransport)
@@ -133,10 +135,10 @@ pingHeartBeat ps them n = do
 
 
 retrieveQueryServerPid :: LogLock
-                       -> (String,Int)   -- ^ (serverid,serverport)
+                       -> (Text,Int)   -- ^ (serverid,serverport)
                        -> IO (Maybe ProcessId)
 retrieveQueryServerPid lock (serverip,serverport) = do
-  NS.connect serverip (show serverport) $ \(sock,addr) -> do
+  NS.connect (T.unpack serverip) (show serverport) $ \(sock,addr) -> do
     atomicLog lock ("connection established to " ++ show addr)
     recvAndUnpack sock
 
@@ -238,9 +240,9 @@ initP process them = do
   process them
 
 
-client :: (Int,String,String,String,Int) -> (ProcessId -> LogProcess ()) -> IO ()
+client :: (Int,Text,Text,Text,Int) -> (ProcessId -> LogProcess ()) -> IO ()
 client (portnum,hostg,hostl,serverip,serverport) process = do
-  let dhpp = DHPP (hostg,show portnum) (hostl,show portnum)
+  let dhpp = DHPP (T.unpack hostg,show portnum) (T.unpack hostl,show portnum)
   bracket (tryCreateTransport dhpp)
           closeTransport
           (\transport -> do
