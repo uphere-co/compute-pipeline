@@ -3,12 +3,33 @@
 module SemanticParserAPI.Compute.Type where
 
 import           Control.DeepSeq                (NFData)
-import           Data.Aeson
+import           Data.Aeson                     (FromJSON,ToJSON)
 import           Data.Binary                    (Binary)
 import           Data.Text                      (Text)
 import           GHC.Generics                   (Generic)
 --
 import           SRL.Analyze.Type               (MeaningGraph)
+
+
+data NetworkConfig = NetworkConfig {
+                       hostg :: Text
+                     , hostl :: Text
+                     , port :: Int
+                     }
+                   deriving (Generic, Show)
+
+instance FromJSON NetworkConfig
+instance ToJSON NetworkConfig
+
+data ComputeConfig = ComputeConfig {
+                       computeServer :: NetworkConfig
+                     , computeClient :: NetworkConfig
+                     }
+                   deriving (Generic,Show)
+
+instance FromJSON ComputeConfig
+instance ToJSON ComputeConfig
+
 
 
 data ComputeQuery = CQ_Sentence Text
