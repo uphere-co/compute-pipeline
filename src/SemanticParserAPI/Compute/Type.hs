@@ -44,6 +44,7 @@ instance NFData   ComputeQuery
 data ResultSentence = ResultSentence { _sentence_query :: Text
                                      , _sentence_token :: [[(Int,Text)]]
                                      , _sentence_meaning_graph :: [MeaningGraph]
+                                     , _sentence_output :: Text
                                      }
                     deriving (Generic,Show)
 

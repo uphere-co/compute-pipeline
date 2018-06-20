@@ -17,6 +17,7 @@ import           Data.IntMap                    (IntMap)
 import qualified Data.IntMap            as IM
 import           Data.Maybe                     (catMaybes)
 import           Data.Text                      (Text)
+import qualified Data.Text              as T
 import           Data.Tree                      (Forest)
 import qualified Language.Java          as J
 import           System.Environment             (getEnv)
@@ -27,7 +28,8 @@ import           CoreNLP.Simple.Type            (tokenizer,words2sentences,posta
 import           Lexicon.Data                   (loadLexDataConfig)
 import           NER.Type                       (CompanyInfo)
 import           NLP.Shared.Type                (PathConfig(..))
-import           NLP.Syntax.Type.XBar           (lemmaList)
+import           NLP.Syntax.Format              (formatX'Tree)
+import           NLP.Syntax.Type.XBar           (SPhase(SPH1),lemmaList)
 import           NLP.Type.CoreNLP               (Sentence)
 import           SRL.Analyze                    (loadConfig)
 import qualified SRL.Analyze.Config as Analyze
@@ -36,6 +38,7 @@ import           SRL.Analyze.Match.MeaningGraph (meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
 import           SRL.Analyze.Type               (AnalyzePredata,DocStructure,MeaningGraph
                                                 ,ds_mtokenss,ds_sentStructures,ss_tagged
+                                                ,ss_x'trs
                                                 )
 import           WikiEL.Type                    (EntityMention)
 --
@@ -67,19 +70,21 @@ allMeaningGraphs apdat cmap dstr =
        in tagMG mg wikilst
 
 
-runSRL :: SRLData -> Text -> IO ([[(Int,Text)]],[MeaningGraph])
+runSRL :: SRLData -> Text -> IO ([[(Int,Text)]],[MeaningGraph],Text)
 runSRL sdat sent = do
   dainput <- runParser (sdat^.pipeline) sent
   dstr <- docStructure (sdat^.apredata) (sdat^.netagger) (sdat^.forest,sdat^.companyMap) dainput
   let sstrs = dstr ^.. ds_sentStructures . traverse . _Just
       tokenss = map (map (\(x,(_,y)) -> (x,y))) $ sstrs ^.. traverse . ss_tagged . lemmaList
       mgs = allMeaningGraphs (sdat^.apredata) (sdat^.companyMap) dstr
-  return (tokenss,mgs)
+      outputtxt = T.intercalate "\n" $  map (formatX'Tree SPH1) (dstr ^.. ds_sentStructures . traverse . _Just . ss_x'trs . traverse)
 
-{- 
+  return (tokenss,mgs,outputtxt)
+
+{-
 runReuters :: Int -> IO [MeaningGraph]
 runReuters n = do
-  
+
   return "no results"
 -}
 
@@ -121,8 +126,8 @@ queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar = do
                      return (i,q)
       case q of
         CQ_Sentence txt -> do
-          (tokenss,mgs) <- runSRL sdat txt
-          let r = CR_Sentence (ResultSentence txt tokenss mgs)
+          (tokenss,mgs,otxt) <- runSRL sdat txt
+          let r = CR_Sentence (ResultSentence txt tokenss mgs otxt)
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
         CQ_Reuters n -> do
           putStrLn ("CQ_Reuters " ++ show n)
