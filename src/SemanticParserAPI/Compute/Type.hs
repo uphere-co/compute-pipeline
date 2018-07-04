@@ -8,8 +8,7 @@ import           Data.Binary                    (Binary)
 import           Data.Text                      (Text)
 import           GHC.Generics                   (Generic)
 --
-import           SRL.Analyze.Type               (MeaningGraph)
-
+import           SRL.Analyze.Type               (MeaningGraph,ConsoleOutput)
 
 data NetworkConfig = NetworkConfig {
                        hostg :: Text
@@ -44,7 +43,7 @@ instance NFData   ComputeQuery
 data ResultSentence = ResultSentence { _sentence_query :: Text
                                      , _sentence_token :: [[(Int,Text)]]
                                      , _sentence_meaning_graph :: [MeaningGraph]
-                                     , _sentence_output :: Text
+                                     , _sentence_output :: ConsoleOutput
                                      }
                     deriving (Generic,Show)
 
