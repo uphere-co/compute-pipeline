@@ -36,7 +36,7 @@ import qualified SRL.Analyze.Config as Analyze
 import           SRL.Analyze.CoreNLP            (runParser)
 import           SRL.Analyze.Match.MeaningGraph (meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
-import           SRL.Analyze.Type               (AnalyzePredata,DocStructure,MeaningGraph
+import           SRL.Analyze.Type               (AnalyzePredata,ConsoleOutput,DocStructure,MeaningGraph
                                                 ,analyze_framedb
                                                 ,ds_mtokenss,ds_sentStructures,ss_tagged
                                                 ,ss_x'trs
@@ -71,16 +71,16 @@ allMeaningGraphs apdat cmap dstr =
        in tagMG mg wikilst
 
 
-runSRL :: SRLData -> Text -> IO ([[(Int,Text)]],[MeaningGraph],Text)
+runSRL :: SRLData -> Text -> IO ([[(Int,Text)]],[MeaningGraph],ConsoleOutput)
 runSRL sdat sent = do
   dainput <- runParser (sdat^.pipeline) sent
   dstr <- docStructure (sdat^.apredata) (sdat^.netagger) (sdat^.forest,sdat^.companyMap) dainput
   let sstrs = dstr ^.. ds_sentStructures . traverse . _Just
       tokenss = map (map (\(x,(_,y)) -> (x,y))) $ sstrs ^.. traverse . ss_tagged . lemmaList
       mgs = allMeaningGraphs (sdat^.apredata) (sdat^.companyMap) dstr
-      outputtxt = consoleOutput (sdat^.apredata.analyze_framedb) dstr
+      cout = consoleOutput (sdat^.apredata.analyze_framedb) dstr
 
-  return (tokenss,mgs,outputtxt)
+  return (tokenss,mgs,cout)
 
 
 {-
@@ -128,8 +128,8 @@ queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar = do
                      return (i,q)
       case q of
         CQ_Sentence txt -> do
-          (tokenss,mgs,otxt) <- runSRL sdat txt
-          let r = CR_Sentence (ResultSentence txt tokenss mgs otxt)
+          (tokenss,mgs,cout) <- runSRL sdat txt
+          let r = CR_Sentence (ResultSentence txt tokenss mgs cout)
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
         CQ_Reuters n -> do
           putStrLn ("CQ_Reuters " ++ show n)
