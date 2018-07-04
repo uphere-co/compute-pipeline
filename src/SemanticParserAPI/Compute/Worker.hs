@@ -31,12 +31,13 @@ import           NLP.Shared.Type                (PathConfig(..))
 import           NLP.Syntax.Format              (formatX'Tree)
 import           NLP.Syntax.Type.XBar           (SPhase(SPH1),lemmaList)
 import           NLP.Type.CoreNLP               (Sentence)
-import           SRL.Analyze                    (loadConfig)
+import           SRL.Analyze                    (loadConfig,consoleOutput)
 import qualified SRL.Analyze.Config as Analyze
 import           SRL.Analyze.CoreNLP            (runParser)
 import           SRL.Analyze.Match.MeaningGraph (meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
 import           SRL.Analyze.Type               (AnalyzePredata,DocStructure,MeaningGraph
+                                                ,analyze_framedb
                                                 ,ds_mtokenss,ds_sentStructures,ss_tagged
                                                 ,ss_x'trs
                                                 )
@@ -77,9 +78,10 @@ runSRL sdat sent = do
   let sstrs = dstr ^.. ds_sentStructures . traverse . _Just
       tokenss = map (map (\(x,(_,y)) -> (x,y))) $ sstrs ^.. traverse . ss_tagged . lemmaList
       mgs = allMeaningGraphs (sdat^.apredata) (sdat^.companyMap) dstr
-      outputtxt = T.intercalate "\n" $  map (formatX'Tree SPH1) (dstr ^.. ds_sentStructures . traverse . _Just . ss_x'trs . traverse)
+      outputtxt = consoleOutput (sdat^.apredata.analyze_framedb) dstr
 
   return (tokenss,mgs,outputtxt)
+
 
 {-
 runReuters :: Int -> IO [MeaningGraph]
