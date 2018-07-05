@@ -1,0 +1,11 @@
+{ "CoreNLPStore"        : "/home/modori/data/newsapianalyzed"
+, "MeaningGraphStore"   : "/home/modori/temp/mgs"
+, "MGDotFigStore"       : "/home/modori/data/meaning_graph"
+, "LexDataConfigPath"   : "/home/modori/repo/src/lexicon-builder/config_global.json"
+, "ARBStore"            : "/home/modori/temp/arb"
+, "ErrorArticleStore"   : "/home/modori/data/newsapierror"
+, "DBString"            : "dbname=mydb host=localhost port=65432 user=modori"   
+, "NewsAPIArticleStore" : "/data/groups/uphere/repo/fetchfin/newsapi/Articles"
+, "NYTArticleStore"     : "/data/groups/uphere/news-archive/fetchfin/nyt/NYTArticles"
+, "RSSArticleStore"     : "/data/groups/uphere/data/news/fetchfin/rss-scraper/RSSArticles"
+}
