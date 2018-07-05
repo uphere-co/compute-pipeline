@@ -20,7 +20,6 @@ import           System.Environment                (getEnv)
 import           System.FilePath                   ((</>),addExtension)
 --
 import           Lexicon.Data                      (loadLexDataConfig)
-import           NER.Load                          (loadCompanies)
 import           NER.Type                          (CompanyInfo,alias)
 import           NLP.Shared.Type                   (PathConfig,corenlpstore,dbstring,lexconfigpath,mgstore)
 import           NLP.Type.CoreNLP
