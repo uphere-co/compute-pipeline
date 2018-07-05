@@ -83,7 +83,7 @@ executable compute-server
   build-depends:       base,
                        optparse-applicative,
                        --
-                       compute-engine
+                       compute-worker
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options: -threaded -Wall-fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2 -rtsopts
@@ -102,7 +102,7 @@ executable compute-client
                        --
                        network-transport-uphere,
                        --
-                       compute-engine
+                       compute-worker
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
