@@ -22,6 +22,7 @@ in
   packages = {
     nlp-pipeline   = ./nlp-pipeline;
     compute-worker = ./compute-worker;
+    uphere-db      = ./uphere-db;
   };
 
 
@@ -80,6 +81,6 @@ in
             in if ghc.ghc.isGhcjs or false then [] else [ corenlpenv ] ;
 
   shells = {
-    ghc8_2_1 = ["nlp-pipeline" "compute-worker" ];
+    ghc8_2_1 = ["nlp-pipeline" "compute-worker" "uphere-db" ];
   };
 })

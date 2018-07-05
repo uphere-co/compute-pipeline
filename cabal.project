@@ -1,3 +1,4 @@
 packages:
   nlp-pipeline/
   compute-worker/
+  uphere-db/
