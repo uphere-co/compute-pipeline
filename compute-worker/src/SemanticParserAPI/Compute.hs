@@ -40,7 +40,7 @@ start () qqvar = do
         (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
         send them sc
 
-        liftIO $ hPutStrLn stderr "connected"
+        tellLog "connected"
         forever $ do
           (q,sc') <- receiveChan rc
           spawnLocal $ do
