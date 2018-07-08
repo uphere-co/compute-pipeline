@@ -1,0 +1,102 @@
+Name:		jobqueue-client
+Version:	0.1.999
+Synopsis:	job scheduler for event generation 
+Description: 	job scheduler for event generation
+License: 	BSD3
+License-file:	LICENSE
+Author:		Ian-Woo Kim
+Maintainer: 	Ian-Woo Kim <ianwookim@gmail.com>
+Build-Type: 	Simple
+Cabal-Version:  >= 1.8
+data-files:     template/*.txt.sample
+
+Executable jobclient 
+  Main-is: jobclient.hs
+  hs-source-dirs: exe
+  Build-Depends: base == 4.*, 
+                 -- 
+                 acid-state,
+                 aeson, 
+                 attoparsec,
+                 bytestring, 
+                 cmdargs, 
+                 containers, 
+                 hslogger,
+                 http-types, 
+                 http-conduit, 
+                 madgraph-auto, 
+                 mtl, 
+                 jobqueue-common, 
+                 parsec, 
+                 pipeline-eventgen, 
+                 safecopy,
+                 -- 
+                 jobqueue-client
+
+
+  ghc-options: 	-Wall -O2 -threaded -funbox-strict-fields -fno-warn-unused-do-bind
+  ghc-prof-options: -caf-all -auto-all
+
+
+Executable MyTest 
+  Main-is: MyTest.hs
+  hs-source-dirs: exe
+  Build-Depends: base == 4.*, 
+                 -- 
+                 acid-state,
+                 aeson, 
+                 attoparsec,
+                 bytestring, 
+                 cmdargs, 
+                 containers, 
+                 hslogger,
+                 http-types, 
+                 http-conduit, 
+                 madgraph-auto, 
+                 mtl, 
+                 jobqueue-common, 
+                 parsec, 
+                 pipeline-eventgen, 
+                 safecopy,
+                 -- 
+                 jobqueue-client
+
+  ghc-options: 	-Wall -O2 -threaded -funbox-strict-fields -fno-warn-unused-do-bind
+  ghc-prof-options: -caf-all -auto-all
+
+
+
+Library
+  hs-source-dirs: lib
+  ghc-options: 	-Wall -O2 -threaded -funbox-strict-fields -fno-warn-unused-do-bind
+  ghc-prof-options: -caf-all -auto-all
+  Build-Depends:   base == 4.*, 
+                   -- 
+                   acid-state, 
+                   aeson, 
+                   attoparsec,
+                   bytestring,  
+                   cmdargs, 
+                   containers, 
+                   either,
+                   filepath, 
+                   hslogger,
+                   http-types, 
+                   http-conduit, 
+                   jobqueue-common, 
+                   madgraph-auto, 
+                   mtl, 
+                   parsec, 
+                   pipeline-eventgen, 
+                   safecopy, 
+                   text,
+                   transformers,
+                   webdav-manager
+
+  Exposed-Modules: 
+                   HEP.Automation.JobQueue.Client.Type 
+                   HEP.Automation.JobQueue.Client.Job
+                   HEP.Automation.JobQueue.Client.Phase
+                   HEP.Automation.JobQueue.Client.Command                 
+
+		 
