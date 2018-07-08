@@ -15,35 +15,29 @@ Library
   hs-source-dirs: lib
   ghc-options: 	-Wall -O2 -threaded -funbox-strict-fields -fno-warn-unused-do-bind
   ghc-prof-options: -caf-all -auto-all
-  Build-Depends: base == 4.*,
+  Build-Depends: base >= 4
                  --
-                 acid-state,
-                 aeson,
-                 bytestring,
-                 conduit,
-                 configurator,
-                 containers,
-                 data-default,
-                 jobqueue-common >= 0.2.999,
-                 madgraph-auto,
-                 mtl,
-                 parsec,
-                 pipeline-eventgen,
-                 safecopy,
-                 shakespeare,
-                 template-haskell,
-                 text,
-                 transformers,
-                 unordered-containers,
-                 wai,
-                 webdav-manager,
-                 yesod,
-                 yesod-form
+               , aeson
+               , bytestring
+               , conduit
+               , containers
+               , data-default
+               , shakespeare
+               , template-haskell
+               , text
+               , transformers
+               , unordered-containers
+               , wai
+               , yesod
+               , yesod-form
+               --
+               , jobqueue-types
+               , storage-manager
 
 
-  Exposed-Modules: HEP.Automation.JobQueue.Server.JobAssign
-                   HEP.Automation.JobQueue.Server.Work
-                   HEP.Automation.JobQueue.Server.Yesod
+  Exposed-Modules: JobQueue.Server.JobAssign
+                   JobQueue.Server.Work
+                   JobQueue.Server.Yesod
   Other-Modules:
                    Import
 
@@ -52,20 +46,18 @@ Library
 Executable jobqueueserver
   Main-is: jobqueueserver.hs
   hs-source-dirs: exe
-  Build-Depends: base == 4.*,
-                 mtl,
-                 bytestring,
-                 wai-extra,
-                 wai,
-                 aeson,
-                 containers,
-                 acid-state,
-                 attoparsec,
-                 yesod,
-                 yesod-core,
-                 --
-                 jobqueue-type,
-                 jobqueue-server
+  Build-Depends: base >= 4
+               , aeson
+               , attoparsec
+               , bytestring
+               , containers
+               , wai-extra
+               , wai
+               , yesod
+               , yesod-core
+               --
+               , jobqueue-type
+               , jobqueue-server
 
 
   ghc-options: 	-Wall -O2 -threaded -funbox-strict-fields -fno-warn-unused-do-bind

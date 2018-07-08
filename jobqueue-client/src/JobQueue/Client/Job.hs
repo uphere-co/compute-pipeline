@@ -1,19 +1,6 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
-
---------------------------------------------------------------------
--- Module       : HEP.Automation.JobQueue.Client.Job
--- Copyright    : Ian-Woo Kim
--- License      : BSD3
--- 
--- Maintainer   : Ian-Woo Kim <ianwookim@gmail.com>
--- Stability    : Experimental
--- Portability  : unknown 
---  
--- main worker for client  
---
----------------------------------------------------------------------
-
-module HEP.Automation.JobQueue.Client.Job where
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+module JobQueue.Client.Job where
 
 import Control.Applicative
 import Control.Monad
@@ -30,11 +17,9 @@ import Network.HTTP.Types hiding (statusCode)
 import Network.HTTP.Conduit
 import System.FilePath
 --
-import HEP.Automation.EventGeneration.Config
-import HEP.Automation.JobQueue.Config
-import HEP.Automation.JobQueue.JobQueue
-import HEP.Automation.JobQueue.JobJson
-import HEP.Storage.WebDAV.Type
+import JobQueue.Config
+import JobQueue.JobQueue
+import Storage.Type
 --
 
 data SendMethod = MethodPUT | MethodPOST 

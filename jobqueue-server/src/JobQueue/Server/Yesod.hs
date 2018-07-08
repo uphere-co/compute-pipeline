@@ -13,7 +13,6 @@ module JobQueue.Server.Yesod where
 
 import           Control.Monad
 import           Control.Monad.Trans.Maybe
-import           Data.Acid
 import           Data.Aeson.Types hiding (parse)
 import qualified Data.Aeson.Generic as G
 import qualified Data.ByteString as S
@@ -28,17 +27,13 @@ import           Text.Hamlet
 import           Yesod hiding (update)
 import           Yesod.Form.Jquery
 --
--- import HEP.Automation.MadGraph.Util
--- import HEP.Automation.EventGeneration.Type
 import JobQueue.JobType
-import JobQueue.JobJson
 import JobQueue.JobQueue
 import JobQueue.Config
-import HEP.Storage.WebDAV.Type
+import Storage.Type
 --
-import HEP.Automation.JobQueue.Server.Type
-import HEP.Automation.JobQueue.Server.JobAssign
-import Import
+import JobQueue.Server.JobAssign
+import JobQueue.Server.Type
 
 data JobQueueServer = JobQueueServer {
   server_acid :: AcidState JobInfoQueue,
