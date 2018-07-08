@@ -39,7 +39,7 @@ import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
 --
-import           CloudHaskell.QueryQueue           (QQVar)
+-- import           CloudHaskell.QueryQueue           (QQVar)
 
 
 expectSafe :: forall a. (Binary a, Typeable a) => Process (Either String a)
@@ -193,15 +193,15 @@ serve pidref action = do
   local incClientNum $ serve pidref action
 
 
-server :: QQVar k v -> String -> (p -> QQVar k v -> LogProcess ()) -> p -> Process ()
-server qqvar port action p = do
+server :: queue -> String -> (state -> queue -> LogProcess ()) -> state -> Process ()
+server queue port action state = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   lock <- newLogLock 0
 
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
   flip runReaderT lock $
-    local incClientNum $ serve pidref (action p qqvar)
+    local incClientNum $ serve pidref (action state queue)
 
 
 queryProcess :: forall query result a.
