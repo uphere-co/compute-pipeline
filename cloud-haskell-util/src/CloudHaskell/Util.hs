@@ -4,7 +4,9 @@ module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically)
-import           Control.Concurrent.STM.TMVar      (TMVar, takeTMVar,newTMVarIO, newEmptyTMVarIO, putTMVar)
+import           Control.Concurrent.STM.TMVar      ( TMVar
+                                                   , takeTMVar,newTMVarIO
+                                                   , newEmptyTMVarIO, putTMVar)
 import           Control.Distributed.Process (ProcessId,SendPort,ReceivePort,Process)
 import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
@@ -37,10 +39,10 @@ import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
 --
-import           CloudHaskell.QueryQueue           (QQVar)
+-- import           CloudHaskell.QueryQueue           (QQVar)
 
 
-expectSafe :: forall a. (Serializable a) => Process (Either String a)
+expectSafe :: forall a. (Binary a, Typeable a) => Process (Either String a)
 expectSafe = receiveWait [matchAny f]
   where
     f msg = do
@@ -124,7 +126,7 @@ pingHeartBeat ps them n = do
   send them (HB n)
   mhb <- expectTimeout (10*onesecond)
   case mhb of
-    Just (HB n') -> do
+    Just (HB _n') -> do
       -- tellLog ("ping-pong received: " ++ show n')
       liftIO (threadDelay (5*onesecond))
       pingHeartBeat ps them (n+1)
@@ -191,15 +193,15 @@ serve pidref action = do
   local incClientNum $ serve pidref action
 
 
-server :: QQVar k v -> String -> (p -> QQVar k v -> LogProcess ()) -> p -> Process ()
-server qqvar port action p = do
+server :: queue -> String -> (state -> queue -> LogProcess ()) -> state -> Process ()
+server queue port action state = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   lock <- newLogLock 0
 
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
   flip runReaderT lock $
-    local incClientNum $ serve pidref (action p qqvar)
+    local incClientNum $ serve pidref (action state queue)
 
 
 queryProcess :: forall query result a.

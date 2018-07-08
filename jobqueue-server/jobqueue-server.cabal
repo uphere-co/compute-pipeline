@@ -22,14 +22,10 @@ Library
                , conduit
                , containers
                , data-default
-               -- , shakespeare
-               -- , template-haskell
+               , distributed-process
                , text
                , transformers
                , unordered-containers
-               -- , wai
-               -- , yesod
-               -- , yesod-form
                --
                , jobqueue-types
                , storage-manager
@@ -49,10 +45,6 @@ Executable jobqueueserver
                , attoparsec
                , bytestring
                , containers
-               -- , wai-extra
-               -- , wai
-               -- , yesod
-               -- , yesod-core
                --
                , jobqueue-types
                , jobqueue-server
