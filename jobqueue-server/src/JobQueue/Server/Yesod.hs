@@ -14,7 +14,7 @@ module JobQueue.Server.Yesod where
 import           Control.Monad
 import           Control.Monad.Trans.Maybe
 import           Data.Aeson.Types hiding (parse)
-import qualified Data.Aeson.Generic as G
+-- import qualified Data.Aeson.Generic as G
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as SC
 import qualified Data.Conduit as C
@@ -22,12 +22,11 @@ import qualified Data.Conduit.List as CL
 import qualified Data.HashMap.Strict as M
 import           Data.List
 import qualified Data.Text as T
-import           Network.Wai
-import           Text.Hamlet
-import           Yesod hiding (update)
-import           Yesod.Form.Jquery
+-- import           Network.Wai
+-- import           Text.Hamlet
+-- import           Yesod hiding (update)
+-- import           Yesod.Form.Jquery
 --
-import JobQueue.JobType
 import JobQueue.JobQueue
 import JobQueue.Config
 import Storage.Type
@@ -35,12 +34,20 @@ import Storage.Type
 import JobQueue.Server.JobAssign
 import JobQueue.Server.Type
 
+
+replaceLst :: (Eq a) => [(a,b)] -> [a] -> Maybe [b]
+replaceLst assoc lst = mapM (\x -> lookup x assoc) lst
+
+
+{-
 data JobQueueServer = JobQueueServer {
   server_acid :: AcidState JobInfoQueue,
   server_conf :: ServerConfig
 }
+-}
 
 
+{-
 mkYesod "JobQueueServer" [parseRoutes|
 / HomeR GET
 /job/#JobNumber JobR
@@ -60,18 +67,20 @@ instance Yesod JobQueueServer where
 
 instance YesodJquery JobQueueServer where
     urlJqueryJs _ = Right "http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"
+-}
 
 
 
-replaceLst :: (Eq a) => [(a,b)] -> [a] -> Maybe [b]
-replaceLst assoc lst = mapM (\x -> lookup x assoc) lst
 
+{-
 makeTypedContentFromHamletJson :: Handler Html -> Value -> Handler TypedContent
 makeTypedContentFromHamletJson hlet j =
   selectRep $ do provideRep $ hlet
                  provideRep $ return j
+-}
 
 
+{-
 postQueueManyR :: Handler TypedContent
 postQueueManyR =do
   liftIO $ putStrLn "postQueueManyR called"
@@ -112,15 +121,17 @@ postQueueManyR =do
           makeTypedContentFromHamletJson (return hlet) $ toJSON ("Success" :: String)
         Nothing -> do
           makeTypedContentFromHamletJson (return [shamlet| this is html found |]) (toJSON ("Failed" :: String))
+-}
 
 
-
-
+{-
 getHomeR :: Handler Html
 getHomeR = do
   liftIO $ putStrLn "getHomeR called"
   return [shamlet|Hello World!|]
+-}
 
+{-
 handleJobR :: JobNumber -> Handler TypedContent
 handleJobR number = do
   r <- getRequest
@@ -130,7 +141,9 @@ handleJobR number = do
     "GET" -> getJobR number
     "PUT" -> putJobR number
     "DELETE" -> deleteJobR number
+-}
 
+{-
 deleteJobR :: Int -> Handler TypedContent
 deleteJobR n = do
   liftIO $ putStrLn "deleteJobR called"
@@ -142,6 +155,9 @@ deleteJobR n = do
       liftIO $ update acid (DeleteJob n) >>= print
       makeTypedContentFromHamletJson (return [shamlet|success|]) (toJSON ("Delete Succeed" :: String))
 
+-}
+
+{-
 getRevertR :: Int -> Handler Html
 getRevertR n = do
   liftIO $ putStrLn "getJobR called"
@@ -183,8 +199,9 @@ getRevertR n = do
             addStylesheetRemote "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css"
             addScriptRemote "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
             $(widgetFile "job")
+-}
 
-
+{-
 getJobR :: Int -> Handler TypedContent
 getJobR n = do
   liftIO $ putStrLn "getJobR called"
@@ -225,7 +242,9 @@ getJobR n = do
                 addScriptRemote "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
                 $(widgetFile "job")
   makeTypedContentFromHamletJson getJobhamlet (toJSON rstr)
+-}
 
+{-
 putJobR :: Int -> Handler TypedContent
 putJobR n = do
   liftIO $ putStrLn "putJobR called"
@@ -238,8 +257,9 @@ putJobR n = do
         putStrLn $ show result
         update acid (UpdateJob n result) >>= print
       makeTypedContentFromHamletJson (return [shamlet| this is html found |]) (toJSON (Right result :: Either String JobInfo))
+-}
 
-
+{-
 postQueueR :: Int -> Handler ()
 postQueueR prior = do
   liftIO $ putStrLn "postQueueR called"
@@ -252,7 +272,9 @@ postQueueR prior = do
                      if prior == 0
                        then update acid (AddJob result) >>= print
                        else update acid (AddJobWithPriority result Urgent) >>= print
+-}
 
+{-
 getQueueListR :: Handler TypedContent
 getQueueListR = do
   liftIO $ putStrLn "getQueueListR called"
@@ -261,7 +283,9 @@ getQueueListR = do
   r <- liftIO $ query acid QueryAll
   let result = snd r
   makeTypedContentFromHamletJson (hamletListJobs url "all" result) (toJSON result)
+-}
 
+{-
 getQueueListUnassignedR :: Handler TypedContent
 getQueueListUnassignedR = do
   liftIO $ putStrLn "getQueueListUnassignedR called"
@@ -271,6 +295,9 @@ getQueueListUnassignedR = do
   let f j = jobinfo_status j == Unassigned
       result = filter f (snd r)
   makeTypedContentFromHamletJson (hamletListJobs url "unassigned" result) (toJSON result)
+-}
+
+{-
 
 getQueueListInprogressR :: Handler TypedContent
 getQueueListInprogressR = do
@@ -285,7 +312,9 @@ getQueueListInprogressR = do
               _ -> False
       result = filter f (snd r)
   makeTypedContentFromHamletJson (hamletListJobs url "inprogress" result) (toJSON result)
+-}
 
+{-
 getQueueListFinishedR :: Handler TypedContent
 getQueueListFinishedR = do
   liftIO $ putStrLn "getQueueListFinishedR called"
@@ -297,7 +326,10 @@ getQueueListFinishedR = do
               _ -> False
       result = filter f (snd r)
   makeTypedContentFromHamletJson (hamletListJobs url "finished" result) (toJSON result)
+-}
 
+
+{-
 hamletListJobs :: String -> String -> [JobInfo] -> Handler Html
 hamletListJobs url str lst =
   let jobname jdet =
@@ -327,33 +359,10 @@ hamletListJobs url str lst =
        addStylesheetRemote "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css"
        addScriptRemote "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
        $(widgetFile "listjob")
-
-{-
-[shamlet|
-    <h1> List #{str}
-    <table>
-      <tr>
-        <td> id
-        <td> name
-        <td> type
-        <td> status
-        <td> client
-        <td> priority
-        <td> dependency
-      $forall job <- lst
-        <tr>
-          <td>
-            <a href=#{url}/job/#{jobinfo_id job}> #{jobinfo_id job}
-          <td> #{jobname (jobinfo_detail job)}
-          <td> #{jobtype job}
-          <td> #{jobstatusshow job}
-          <td> #{assignedclient job}
-          <td> #{show (jobinfo_priority job)}
-          <td> #{show (jobinfo_dependency job)}
-  |]
 -}
 
 
+{-
 postAssignR :: Handler TypedContent
 postAssignR = do
   liftIO $ putStrLn "assignR called"
@@ -371,8 +380,10 @@ postAssignR = do
                      let unassigned = filter (\x->jobinfo_status x == Unassigned) priorityordered
                      let finished = filter (\x->case jobinfo_status x of {Finished _ -> True ; _ -> False }) priorityordered
                      firstJobAssignment cc (unassigned,finished)
+-}
 
 
+{-
 getConfigWebDAVR :: Handler TypedContent
 getConfigWebDAVR = do
   JobQueueServer _ sconf  <- getYesod
@@ -401,7 +412,9 @@ jsonJobInfoQueue (lastid,jobinfos) =
       jobinfosjson = toJSON jobinfos
   in  Object $ M.fromList [ ("lastid", lastidjson)
                           , ("map", jobinfosjson) ]
+-}
 
+{-
 
 firstJobAssignment :: ClientConfiguration -> ([JobInfo],[JobInfo])
                    -> Handler TypedContent
@@ -414,3 +427,4 @@ firstJobAssignment cc (unassigned,finished) = do
 
       makeTypedContentFromHamletJson (return [shamlet| this is html found |])
                                      (toJSON (Right assigned :: Either String JobInfo))
+-}

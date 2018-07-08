@@ -1,6 +1,7 @@
-{-# LANGAUGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric #-}
 module JobQueue.Config where
 
+import Data.Aeson (FromJSON,ToJSON)
 import GHC.Generics (Generic)
 
 data ClientConfiguration = ClientConfiguration { 

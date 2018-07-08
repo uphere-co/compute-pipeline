@@ -2,17 +2,14 @@
 
 module JobQueue.Server.Work where
 
-import Text.Parsec
-import Control.Monad.Identity
 import Control.Monad.Trans.Maybe
 import Control.Exception (bracket)
-import Data.Configurator as C
-import Data.Configurator.Types
 import System.IO
 --
 import Storage.Type
 import JobQueue.Server.Type
 
+{-
 serverConfigParser :: FilePath -> IO ServerConfig
 serverConfigParser fp = do
   config <- load [Required fp]
@@ -23,6 +20,7 @@ serverConfigParser fp = do
   case r of
     Nothing -> error "serverConfigParser configuration failed"
     Just c -> return c
+-}
 
 {-
   putStrLn ("parsing server config file " ++ fp )

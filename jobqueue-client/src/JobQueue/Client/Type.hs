@@ -10,6 +10,7 @@ data JobClient = Get    { jobid :: Int, url  :: String }
                | Delete { jobid :: Int, config :: FilePath }
                deriving (Show)
 
+{-
 get :: JobClient
 get = Get { jobid = 0 &= typ "JOBID" &= argPos 0
           , url = def &= argPos 1}
@@ -35,7 +36,7 @@ finish = Finish { jobid = 0 &= typ "JOBID" &= argPos 0
 delete :: JobClient
 delete = Delete { jobid = 0 &= typ "JOBID" &= argPos 0
                 , config = "test.conf" }
-
+-}
 
 -- mode :: JobClient
 -- mode = modes [get, list, start, starttest, revert, finish, delete]

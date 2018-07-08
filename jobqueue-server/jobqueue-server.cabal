@@ -12,7 +12,7 @@ Cabal-Version:  >= 1.8
 
 
 Library
-  hs-source-dirs: lib
+  hs-source-dirs: src
   ghc-options: 	-Wall -O2 -threaded -funbox-strict-fields -fno-warn-unused-do-bind
   ghc-prof-options: -caf-all -auto-all
   Build-Depends: base >= 4
@@ -22,14 +22,14 @@ Library
                , conduit
                , containers
                , data-default
-               , shakespeare
-               , template-haskell
+               -- , shakespeare
+               -- , template-haskell
                , text
                , transformers
                , unordered-containers
-               , wai
-               , yesod
-               , yesod-form
+               -- , wai
+               -- , yesod
+               -- , yesod-form
                --
                , jobqueue-types
                , storage-manager
@@ -38,8 +38,6 @@ Library
   Exposed-Modules: JobQueue.Server.JobAssign
                    JobQueue.Server.Work
                    JobQueue.Server.Yesod
-  Other-Modules:
-                   Import
 
 
 
@@ -51,12 +49,12 @@ Executable jobqueueserver
                , attoparsec
                , bytestring
                , containers
-               , wai-extra
-               , wai
-               , yesod
-               , yesod-core
+               -- , wai-extra
+               -- , wai
+               -- , yesod
+               -- , yesod-core
                --
-               , jobqueue-type
+               , jobqueue-types
                , jobqueue-server
 
 

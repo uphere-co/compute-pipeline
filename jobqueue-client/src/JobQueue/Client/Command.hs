@@ -16,6 +16,7 @@ import JobQueue.Client.Phase
 import JobQueue.Client.Type
 
 
+{-
 commandLineProcess :: JobClient -> IO ()
 commandLineProcess (Get jid url) = do
     putStrLn "get called"
@@ -39,7 +40,7 @@ commandLineProcess (Finish jid conf) = do
 commandLineProcess (Delete jid conf) = do
   putStrLn $ "delete job " ++ show jid ++ " called"
   -- readConfigFile conf >>= flip startDeletePhase jid
-
+-}
 
 startLog :: String -> IO ()
 startLog logchanname = do

@@ -2,3 +2,7 @@ packages:
   nlp-pipeline/
   compute-worker/
   uphere-db/
+  storage-manager/
+  jobqueue-types/
+  jobqueue-server/
+  jobqueue-client/

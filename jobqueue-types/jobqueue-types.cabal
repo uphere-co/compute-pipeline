@@ -1,4 +1,4 @@
-Name:		jobqueue-type
+Name:		jobqueue-types
 Version:	0.0
 Synopsis:	common library for job scheduler for event generation
 Description: 	common library job scheduler for event generation
