@@ -33,3 +33,27 @@ library
                    JobQueue.Client.Job
                    JobQueue.Client.Phase
                    JobQueue.Client.Command
+
+Executable jobqueueclient
+  Main-is: jobqueueclient.hs
+  hs-source-dirs: app
+  Build-Depends: base >= 4
+               -- , aeson
+               -- , attoparsec
+               -- , bytestring
+               -- , containers
+               , distributed-process
+               , distributed-process-lifted
+               -- , network-transport
+               -- , stm
+               -- , transformers
+               -- --
+               , cloud-haskell-util
+               -- , jobqueue-types
+               -- , network-transport-uphere
+               --
+               , jobqueue-client
+
+
+  ghc-options: 	-Wall -O2 -threaded -funbox-strict-fields -fno-warn-unused-do-bind
+  ghc-prof-options: -caf-all -auto-all

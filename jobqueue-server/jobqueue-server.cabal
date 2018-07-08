@@ -45,8 +45,16 @@ Executable jobqueueserver
                , attoparsec
                , bytestring
                , containers
+               , distributed-process
+               , distributed-process-lifted
+               , network-transport
+               , stm
+               , transformers
                --
+               , cloud-haskell-util
                , jobqueue-types
+               , network-transport-uphere
+               --
                , jobqueue-server
 
 

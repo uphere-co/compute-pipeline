@@ -1,5 +1,5 @@
+{-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
 module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkIO,threadDelay)
@@ -22,7 +22,8 @@ import           Control.Exception                 (SomeException)
 import           Control.Monad                     (forever,void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
-import           Control.Monad.Trans.Reader
+import           Control.Monad.Trans.Class         (lift)
+import           Control.Monad.Trans.Reader        (ReaderT(runReaderT),ask,local)
 import           Data.Binary                       (Binary,Word32,decode,encode,get,put)
 import qualified Data.ByteString             as B
 import qualified Data.ByteString.Char8       as BC
@@ -30,6 +31,7 @@ import qualified Data.ByteString.Lazy        as BL
 import           Data.Text                         (Text)
 import qualified Data.Text                   as T
 import           Data.Typeable                     (Typeable)
+import           GHC.Generics                      (Generic)
 import qualified Network.Simple.TCP          as NS
 import           Network.Transport                 (Transport,closeTransport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
@@ -38,8 +40,6 @@ import           Unsafe.Coerce
 import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
---
--- import           CloudHaskell.QueryQueue           (QQVar)
 
 
 expectSafe :: forall a. (Binary a, Typeable a) => Process (Either String a)
@@ -234,6 +234,25 @@ mainP process them = do
       void $ pingHeartBeat [p1] them 0
 
 
+mainP2 :: forall query result.
+         (Binary query, Binary result, Typeable query, Typeable result) =>
+         ((SendPort query,ReceivePort result) ->  LogProcess ())
+      -> ProcessId
+      -> LogProcess ()
+mainP2 process them = do
+  tellLog "start mainProcess"
+  esq :: Either String (SendPort query) <- lift expectSafe
+  case esq of
+    Left err -> tellLog err
+    Right sq -> do
+      tellLog "received SendPort Q"
+      (sr :: SendPort result, rr :: ReceivePort result) <- newChan
+      send them sr
+      p1 <- spawnLocal (process (sq,rr))
+      void $ pingHeartBeat [p1] them 0
+
+
+
 initP :: (ProcessId -> LogProcess ()) -> ProcessId -> LogProcess ()
 initP process them = do
   us <- getSelfPid
@@ -263,3 +282,12 @@ client (portnum,hostg,hostl,serverip,serverport) process = do
                          atomicLog lock ("server id =" ++ show them)
                          runProcess node (flip runReaderT lock (process them))
                  threadDelay (5*onesecond))
+
+
+data Q = Q deriving (Show,Generic)
+
+instance Binary Q
+
+data R = R deriving (Show,Generic)
+
+instance Binary R
