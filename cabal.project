@@ -1,8 +1,9 @@
 packages:
-  nlp-pipeline/
+  cloud-haskell-util/
   compute-worker/
-  uphere-db/
-  storage-manager/
-  jobqueue-types/
-  jobqueue-server/
   jobqueue-client/
+  jobqueue-server/
+  jobqueue-types/
+  nlp-pipeline/
+  storage-manager/
+  uphere-db/

@@ -8,7 +8,7 @@ version:             0.1.0.0
 -- license:
 license-file:        LICENSE
 author:              UpHere, Inc.
-maintainer:          ianwookim@gmail.com
+maintainer:          Ian-Woo Kim <ianwookim@gmail.com>
 -- copyright:
 -- category:
 build-type:          Simple
@@ -17,55 +17,53 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs: src
-  build-depends:  base,
-                  --
-                  aeson,
-                  binary,
-                  bytestring,
-                  connection,
-                  containers,
-                  data-default,
-                  deepseq,
-                  directory,
-                  distributed-process,
-                  distributed-process-lifted,
-                  filepath,
-                  haskeline,
-                  hashable,
-                  http-client,
-                  http-client-tls,
-                  http-types,
-                  jni,
-                  jvm,
-                  lens,
-                  monad-loops,
-                  network-simple,
-                  network-transport,
-                  optparse-applicative,
-                  process,
-                  stm,
-                  text,
-                  time,
-                  transformers,
-                  unordered-containers,
-                  --
-                  HCoreNLP,
-                  HFrameNet,
-                  lexicon-builder,
-                  network-transport-uphere,
-                  nlp-pipeline,
-                  nlp-shared-types,
-                  nlp-types,
-                  -- rss-scraper,
-                  semantic-role-labeler,
-                  semantic-types,
-                  syntactic-analysis,
-                  uphere-network-util,
-                  wiki-ner
+  build-depends:  base
+                --
+                , aeson
+                , binary
+                , bytestring
+                , connection
+                , containers
+                , data-default
+                , deepseq
+                , directory
+                , distributed-process
+                , distributed-process-lifted
+                , filepath
+                , haskeline
+                , hashable
+                , http-client
+                , http-client-tls
+                , http-types
+                , jni
+                , jvm
+                , lens
+                , monad-loops
+                , network-simple
+                , network-transport
+                , optparse-applicative
+                , process
+                , stm
+                , text
+                , time
+                , transformers
+                , unordered-containers
+                --
+                , cloud-haskell-util
+                , HCoreNLP
+                , HFrameNet
+                , lexicon-builder
+                , network-transport-uphere
+                , nlp-pipeline
+                , nlp-shared-types
+                , nlp-types
+                , semantic-role-labeler
+                , semantic-types
+                , syntactic-analysis
+                , uphere-network-util
+                , wiki-ner
 
   exposed-modules:
-                    CloudHaskell.QueryQueue
-                    CloudHaskell.Util
                     SemanticParserAPI.Compute
                     SemanticParserAPI.Compute.Reuters
                     SemanticParserAPI.Compute.CoreNLP
@@ -80,10 +78,10 @@ library
 
 executable compute-server
   main-is:             compute-server.hs
-  build-depends:       base,
-                       optparse-applicative,
-                       --
-                       compute-worker
+  build-depends:       base
+                     , optparse-applicative
+                     --
+                     , compute-worker
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options: -threaded -Wall-fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2 -rtsopts
@@ -91,19 +89,19 @@ executable compute-server
 
 executable compute-client
   main-is:             compute-client.hs
-  build-depends:       base,
-                       bytestring,
-                       distributed-process,
-                       distributed-process-lifted,
-                       network-transport,
-                       optparse-applicative,
-                       text,
-                       transformers,
-                       --
-                       network-transport-uphere,
-                       --
-                       compute-worker
+  build-depends:       base
+                     , bytestring
+                     , distributed-process
+                     , distributed-process-lifted
+                     , network-transport
+                     , optparse-applicative
+                     , text
+                     , transformers
+                     --
+                     , network-transport-uphere
+                     , cloud-haskell-util
+                     --
+                     , compute-worker
   hs-source-dirs:      app
   default-language:    Haskell2010
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
-

@@ -18,13 +18,14 @@ in
 
 {
   packages = {
-    nlp-pipeline    = ./nlp-pipeline;
+    cloud-haskell-util = ./cloud-haskell-util;
     compute-worker  = ./compute-worker;
-    uphere-db       = ./uphere-db;
-    storage-manager = ./storage-manager;
-    jobqueue-types  = ./jobqueue-types;
-    jobqueue-server = ./jobqueue-server;
     jobqueue-client = ./jobqueue-client;
+    jobqueue-server = ./jobqueue-server;
+    jobqueue-types  = ./jobqueue-types;
+    nlp-pipeline    = ./nlp-pipeline;
+    storage-manager = ./storage-manager;
+    uphere-db       = ./uphere-db;
   };
 
 
@@ -71,13 +72,14 @@ in
 
   shells = {
     ghc8_2_1 = [
-      "nlp-pipeline"
+      "cloud-haskell-util"
       "compute-worker"
-      "uphere-db"
-      "storage-manager"
-      "jobqueue-types"
-      "jobqueue-server"
       "jobqueue-client"
+      "jobqueue-server"
+      "jobqueue-types"
+      "nlp-pipeline"
+      "storage-manager"
+      "uphere-db"
     ];
   };
 })
