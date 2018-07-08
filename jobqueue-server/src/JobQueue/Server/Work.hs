@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module HEP.Automation.JobQueue.Server.Work where
+module JobQueue.Server.Work where
 
 import Text.Parsec 
 import Control.Monad.Identity

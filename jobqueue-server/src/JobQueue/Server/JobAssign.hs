@@ -1,7 +1,7 @@
-module HEP.Automation.JobQueue.Server.JobAssign where
+module JobQueue.Server.JobAssign where
 
-import HEP.Automation.JobQueue.Config
-import HEP.Automation.JobQueue.JobQueue
+import JobQueue.Config
+import JobQueue.JobQueue
 
 import Data.Maybe
 
