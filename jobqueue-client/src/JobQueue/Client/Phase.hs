@@ -1,12 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module HEP.Automation.JobQueue.Client.Phase where
+module JobQueue.Client.Phase where
 
 import Control.Applicative
 import Control.Concurrent (threadDelay)
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Trans
-import Control.Monad.Trans.Either
+-- import Control.Monad.Trans
+-- import Control.Monad.Trans.Either
 import Data.Aeson.Types
 --
 import JobQueue.JobQueue
@@ -14,14 +14,19 @@ import JobQueue.Config
 import JobQueue.Client.Job
 import Storage.Type
 
+{-
 -- |
 guardEither :: (Monad m) => String -> Bool -> EitherT String m () -> EitherT String m ()
 guardEither msg b action = if b then action else left msg
+
 
 -- |
 maybeToEither :: b -> Maybe a -> Either b a
 maybeToEither err = maybe (Left err) Right
 
+-}
+
+{-
 -- |
 startListPhase :: URL -> String -> IO ()
 startListPhase url qtyp = do
@@ -128,3 +133,4 @@ startJobPhase (cc,ec) url jinfo n af = do
                 return ()
               either (\msg -> putStrLn msg >> failureCallback) (const (return ())) r''
   startWaitPhase (cc,ec) url n af
+-}

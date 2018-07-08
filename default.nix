@@ -1,7 +1,5 @@
 { revision }:
 
-
-
 (import ./reflex-platform {}).project ({ pkgs, ... }:
 
 let
@@ -20,9 +18,13 @@ in
 
 {
   packages = {
-    nlp-pipeline   = ./nlp-pipeline;
-    compute-worker = ./compute-worker;
-    uphere-db      = ./uphere-db;
+    nlp-pipeline    = ./nlp-pipeline;
+    compute-worker  = ./compute-worker;
+    uphere-db       = ./uphere-db;
+    storage-manager = ./storage-manager;
+    jobqueue-types  = ./jobqueue-types;
+    jobqueue-server = ./jobqueue-server;
+    jobqueue-client = ./jobqueue-client;
   };
 
 
@@ -59,19 +61,6 @@ in
 
     };
 
-
-  #android.frontend = {
-  #  executableName = "frontend";
-  #  applicationId = "org.example.frontend";
-  #  displayName = "Example Android App";
-  #};
-
-  #ios.frontend = {
-  #  executableName = "frontend";
-  #  bundleIdentifier = "org.example.frontend";
-  #  bundleName = "Example iOS App";
-  #};
-
   tools = ghc:
             # TODO: move this code to uphere-nix-overlay
             let corenlpenv = pkgs.makeSetupHook { }
@@ -81,6 +70,14 @@ in
             in if ghc.ghc.isGhcjs or false then [] else [ corenlpenv ] ;
 
   shells = {
-    ghc8_2_1 = ["nlp-pipeline" "compute-worker" "uphere-db" ];
+    ghc8_2_1 = [
+      "nlp-pipeline"
+      "compute-worker"
+      "uphere-db"
+      "storage-manager"
+      "jobqueue-types"
+      "jobqueue-server"
+      "jobqueue-client"
+    ];
   };
 })

@@ -37,10 +37,10 @@ data JobInfo detail = JobInfo {
   jobinfo_dependency :: [JobNumber]
 } deriving (Show,Eq,Ord,Generic)
 
-instance FromJSON JobInfo
-instance ToJSON JobInfo
+instance (FromJSON detail) => FromJSON (JobInfo detail)
+instance (ToJSON detail) => ToJSON (JobInfo detail)
 
-type ManyJobInfo = [ (Int, JobInfo) ]
+-- type ManyJobInfo detail = [ (Int, JobInfo) ]
 
 data JobStatus = Unassigned
                | Assigned String
@@ -52,14 +52,14 @@ data JobStatus = Unassigned
 instance FromJSON JobStatus
 instance ToJSON JobStatus
 
-data JobInfoQueue = JobInfoQueue {
-                      jobinfoqueue_lastid :: Int,
-                      jobinfoqueue_map    :: M.IntMap JobInfo
-                    }
-                  deriving (Show,Eq,Ord,Generic)
+data JobInfoQueue detail = JobInfoQueue {
+                             jobinfoqueue_lastid :: Int,
+                             jobinfoqueue_map    :: M.IntMap (JobInfo detail)
+                           }
+                         deriving (Show,Eq,Ord,Generic)
 
-instance FromJSON JobInfoQueue
-instance ToJSON JobInfoQueue
+instance FromJSON detail => FromJSON (JobInfoQueue detail)
+instance ToJSON detail => ToJSON (JobInfoQueue detail)
 
 
 {-
