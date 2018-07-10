@@ -54,6 +54,9 @@ singleServerProcess them handle = do
         r <- handle q
         r `deepseq` sendChan sr r
 
+test :: Q -> LogProcess R
+test _ = pure R
+
 start :: () -> QQVar ComputeQuery ComputeResult -> LogProcess ()
 start () qqvar = do
   ethem <- lift expectSafe
@@ -62,8 +65,11 @@ start () qqvar = do
     Right them -> do
       tellLog ("got client pid : " ++ show them)
 
-      withHeartBeat them $
-        spawnLocal $ singleServerProcess them (liftIO . singleQuery qqvar)
+      -- withHeartBeat them $ do
+      void $ spawnLocal $ singleServerProcess them (liftIO . singleQuery qqvar)
+
+        -- spawnLocal $ singleServerProcess them test
+
 
 
 computeMain :: (Int,String,String)

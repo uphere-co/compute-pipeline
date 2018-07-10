@@ -7,7 +7,7 @@ import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      ( TMVar
                                                    , takeTMVar,newTMVarIO
                                                    , newEmptyTMVarIO, putTMVar)
--- import           Control.DeepSeq                   (NFData,deepseq)
+import           Control.DeepSeq                   (NFData)
 import           Control.Distributed.Process (ProcessId,SendPort,ReceivePort,Process)
 import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
@@ -160,8 +160,6 @@ tellLog msg = do
   atomicLog lock msg
 
 
-
-
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
   pid <- action                                -- main process launch
@@ -224,12 +222,12 @@ mainP process them_ping = do
     Left err -> tellLog err
     Right (them,sq) -> do
       tellLog "connected: received SendPort"
-      liftIO $ threadDelay 1000000
       (sr :: SendPort result, rr :: ReceivePort result) <- newChan
       send them sr
       tellLog "sent SendPort"
-      p1 <- spawnLocal (process (sq,rr))
-      void $ pingHeartBeat [p1] them_ping 0
+      -- p1 <-
+      void $ spawnLocal (process (sq,rr))
+      -- void $ pingHeartBeat [p1] them_ping 0
 
 
 initP :: (ProcessId -> LogProcess ()) -> ProcessId -> LogProcess ()
@@ -266,7 +264,9 @@ client (portnum,hostg,hostl,serverip,serverport) process = do
 data Q = Q deriving (Show,Generic)
 
 instance Binary Q
+instance NFData Q
 
 data R = R deriving (Show,Generic)
 
 instance Binary R
+instance NFData R
