@@ -3,7 +3,7 @@
 
 module SemanticParserAPI.CLI.Client where
 
-import           Control.Distributed.Process.Lifted  (Process,SendPort)
+import           Control.Distributed.Process.Lifted  (Process,SendPort,ReceivePort)
 import           Control.Monad                       (join,when)
 import           Control.Monad.IO.Class              (liftIO)
 import           Control.Monad.Loops                 (whileJust_)
@@ -20,16 +20,16 @@ instance MonadException Process where
   controlIO f = join . liftIO $ f (RunIO return)
 
 
-consoleClient :: SendPort (ComputeQuery, SendPort ComputeResult) -> LogProcess ()
-consoleClient sc = do
+consoleClient :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> LogProcess ()
+consoleClient (sq,rr) = do
   runInputT defaultSettings $
     whileJust_ (getInputLine "% ") $ \input' ->
       when (not (null input')) $ do
         let w:ws = words input'
         case w of
           ":v" -> let input = T.pack (intercalate " " ws)
-                  in lift $ queryProcess sc (CQ_Sentence input) (liftIO . print)
-          ":r" -> lift $ queryProcess sc (CQ_Reuters 100) (liftIO . print)
+                  in lift $ queryProcess (sq,rr) (CQ_Sentence input) (liftIO . print)
+          ":r" -> lift $ queryProcess (sq,rr) (CQ_Reuters 100) (liftIO . print)
           _ -> return ()
 
 

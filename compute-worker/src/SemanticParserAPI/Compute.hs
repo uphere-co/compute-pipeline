@@ -22,7 +22,9 @@ import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,single
 import           CloudHaskell.Util                         (LogProcess,server,tellLog
                                                            ,expectSafe
                                                            ,withHeartBeat
-                                                           ,tryCreateTransport)
+                                                           ,tryCreateTransport
+                                                           ,Q(..),R(..)
+                                                           )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker          (queryWorker)
@@ -36,16 +38,32 @@ start () qqvar = do
     Right them -> do
       tellLog ("got client pid : " ++ show them)
 
-      withHeartBeat them $ spawnLocal $ do
-        (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
-        send them sc
+      withHeartBeat them $ do
+        -- this is an old code.
+{-        spawnLocal $ do
+          (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
+          send them sc
 
-        tellLog "connected"
-        forever $ do
-          (q,sc') <- receiveChan rc
-          spawnLocal $ do
-            r <- liftIO $ singleQuery qqvar q
-            r `deepseq` sendChan sc' r
+          tellLog "connected"
+          forever $ do
+            (q,sc') <- receiveChan rc
+            spawnLocal $ do
+              r <- liftIO $ singleQuery qqvar q
+              r `deepseq` sendChan sc' r -}
+       -- this is a new code.
+        spawnLocal $ do
+          (sq :: SendPort ComputeQuery, rq :: ReceivePort ComputeQuery) <- newChan
+          send them sq
+          tellLog "sent SendPort Query"
+          esr <- lift expectSafe
+          case esr of
+            Left err' -> tellLog err'
+            Right (sr :: SendPort ComputeResult) -> do
+              tellLog "receive SendPortResult"
+              forever $ do
+                q <- receiveChan rq
+                r <- liftIO $ singleQuery qqvar q
+                r `deepseq` sendChan sr r
 
 
 computeMain :: (Int,String,String)

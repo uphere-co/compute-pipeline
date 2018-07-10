@@ -6,7 +6,7 @@ import Control.Distributed.Process.Lifted (sendChan,receiveChan)
 --
 import CloudHaskell.Util (LogProcess,Q(..),R(..)
                          ,tellLog
-                         ,initP,mainP2,client)
+                         ,initP,mainP,client)
 
 type QR q r = (q, SendPort r)
 
@@ -30,4 +30,4 @@ main = do
       serverport = 38832
   putStrLn "jobqueueclient"
   client (port,host,host,server,serverport)
-         (initP (mainP2 start))
+         (initP (mainP start))

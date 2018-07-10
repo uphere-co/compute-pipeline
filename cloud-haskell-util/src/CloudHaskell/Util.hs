@@ -206,18 +206,18 @@ server queue port action state = do
 
 queryProcess :: forall query result a.
                 (Binary query,Binary result,Typeable query,Typeable result) =>
-                SendPort (query, SendPort result)
+                (SendPort query, ReceivePort result)
              -> query
              -> (result -> LogProcess a)
              -> LogProcess a
-queryProcess sc q f = do
-  (sc',rc') <- newChan :: LogProcess (SendPort result, ReceivePort result)
-  sendChan sc (q,sc')
-  f =<< receiveChan rc'
+queryProcess (sq,rr) q f = do
+  -- (sc',rc') <- newChan :: LogProcess (SendPort result, ReceivePort result)
+  sendChan sq q
+  f =<< receiveChan rr
 
 
 
-
+{-
 mainP :: forall query result.
          (Binary query, Binary result, Typeable query, Typeable result) =>
          (SendPort (query, SendPort result) -> LogProcess ())
@@ -232,14 +232,14 @@ mainP process them = do
       tellLog "connection established to query server"
       p1 <- spawnLocal (process sc)
       void $ pingHeartBeat [p1] them 0
+-}
 
-
-mainP2 :: forall query result.
+mainP :: forall query result.
          (Binary query, Binary result, Typeable query, Typeable result) =>
          ((SendPort query,ReceivePort result) ->  LogProcess ())
       -> ProcessId
       -> LogProcess ()
-mainP2 process them = do
+mainP process them = do
   tellLog "start mainProcess"
   esq :: Either String (SendPort query) <- lift expectSafe
   case esq of
