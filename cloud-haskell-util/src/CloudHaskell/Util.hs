@@ -7,6 +7,7 @@ import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      ( TMVar
                                                    , takeTMVar,newTMVarIO
                                                    , newEmptyTMVarIO, putTMVar)
+-- import           Control.DeepSeq                   (NFData,deepseq)
 import           Control.Distributed.Process (ProcessId,SendPort,ReceivePort,Process)
 import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
@@ -46,8 +47,6 @@ expectSafe :: forall a. (Binary a, Typeable a) => Process (Either String a)
 expectSafe = receiveWait [matchAny f]
   where
     f msg = do
-      -- liftIO $ print (messageFingerprint msg)
-      -- liftIO $ print (fingerprint (undefined :: a))
       case messageFingerprint msg == fingerprint (undefined :: a) of
         False -> pure (Left "fingerprint mismatch")
         True ->
@@ -165,13 +164,11 @@ tellLog msg = do
 
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
-  pid <- action                                            -- main process launch
-  whileJust_ (expectTimeout (10*onesecond)) $ \(HB n) -> do      -- heartbeating until it fails.
-    -- tellLog ("heartbeat received: " ++ show n)
-    send them (HB n)
-    -- tellLog ("ping-pong sent: " ++ show n)
-  tellLog "heartbeat failed: reload"                       -- when fail, it prints messages
-  kill pid "connection closed"                             -- and start over the whole process.
+  pid <- action                                -- main process launch
+  whileJust_ (expectTimeout (10*onesecond)) $
+    \(HB n) -> send them (HB n)                -- heartbeating until it fails.
+  tellLog "heartbeat failed: reload"           -- when fail, it prints messages
+  kill pid "connection closed"                 -- and start over the whole process.
 
 
 broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
@@ -205,52 +202,34 @@ server queue port action state = do
 
 
 queryProcess :: forall query result a.
-                (Binary query,Binary result,Typeable query,Typeable result) =>
-                SendPort (query, SendPort result)
+                (Binary query, Binary result, Typeable query, Typeable result) =>
+                (SendPort query, ReceivePort result)
              -> query
              -> (result -> LogProcess a)
              -> LogProcess a
-queryProcess sc q f = do
-  (sc',rc') <- newChan :: LogProcess (SendPort result, ReceivePort result)
-  sendChan sc (q,sc')
-  f =<< receiveChan rc'
-
-
+queryProcess (sq,rr) q f = do
+  sendChan sq q
+  f =<< receiveChan rr
 
 
 mainP :: forall query result.
          (Binary query, Binary result, Typeable query, Typeable result) =>
-         (SendPort (query, SendPort result) -> LogProcess ())
-      -> ProcessId
-      -> LogProcess ()
-mainP process them = do
-  tellLog "start mainProcess"
-  msc :: Maybe (SendPort (query,SendPort result)) <- expectTimeout 5000000
-  case msc of
-    Nothing -> tellLog "cannot receive query port"
-    Just sc -> do
-      tellLog "connection established to query server"
-      p1 <- spawnLocal (process sc)
-      void $ pingHeartBeat [p1] them 0
-
-
-mainP2 :: forall query result.
-         (Binary query, Binary result, Typeable query, Typeable result) =>
          ((SendPort query,ReceivePort result) ->  LogProcess ())
       -> ProcessId
       -> LogProcess ()
-mainP2 process them = do
+mainP process them_ping = do
   tellLog "start mainProcess"
-  esq :: Either String (SendPort query) <- lift expectSafe
+  esq :: Either String (ProcessId,SendPort query) <- lift expectSafe
   case esq of
     Left err -> tellLog err
-    Right sq -> do
-      tellLog "received SendPort Q"
+    Right (them,sq) -> do
+      tellLog "connected: received SendPort"
+      liftIO $ threadDelay 1000000
       (sr :: SendPort result, rr :: ReceivePort result) <- newChan
       send them sr
+      tellLog "sent SendPort"
       p1 <- spawnLocal (process (sq,rr))
-      void $ pingHeartBeat [p1] them 0
-
+      void $ pingHeartBeat [p1] them_ping 0
 
 
 initP :: (ProcessId -> LogProcess ()) -> ProcessId -> LogProcess ()
