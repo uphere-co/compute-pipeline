@@ -39,18 +39,6 @@ start () qqvar = do
       tellLog ("got client pid : " ++ show them)
 
       withHeartBeat them $ do
-        -- this is an old code.
-{-        spawnLocal $ do
-          (sc,rc) <- newChan :: LogProcess (SendPort (ComputeQuery, SendPort ComputeResult), ReceivePort (ComputeQuery, SendPort ComputeResult))
-          send them sc
-
-          tellLog "connected"
-          forever $ do
-            (q,sc') <- receiveChan rc
-            spawnLocal $ do
-              r <- liftIO $ singleQuery qqvar q
-              r `deepseq` sendChan sc' r -}
-       -- this is a new code.
         spawnLocal $ do
           (sq :: SendPort ComputeQuery, rq :: ReceivePort ComputeQuery) <- newChan
           send them sq

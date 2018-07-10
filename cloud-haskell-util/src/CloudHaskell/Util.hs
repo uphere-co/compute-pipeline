@@ -46,8 +46,6 @@ expectSafe :: forall a. (Binary a, Typeable a) => Process (Either String a)
 expectSafe = receiveWait [matchAny f]
   where
     f msg = do
-      -- liftIO $ print (messageFingerprint msg)
-      -- liftIO $ print (fingerprint (undefined :: a))
       case messageFingerprint msg == fingerprint (undefined :: a) of
         False -> pure (Left "fingerprint mismatch")
         True ->
@@ -165,13 +163,11 @@ tellLog msg = do
 
 withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
 withHeartBeat them action = do
-  pid <- action                                            -- main process launch
-  whileJust_ (expectTimeout (10*onesecond)) $ \(HB n) -> do      -- heartbeating until it fails.
-    -- tellLog ("heartbeat received: " ++ show n)
-    send them (HB n)
-    -- tellLog ("ping-pong sent: " ++ show n)
-  tellLog "heartbeat failed: reload"                       -- when fail, it prints messages
-  kill pid "connection closed"                             -- and start over the whole process.
+  pid <- action                                -- main process launch
+  whileJust_ (expectTimeout (10*onesecond)) $
+    \(HB n) -> send them (HB n)                -- heartbeating until it fails.
+  tellLog "heartbeat failed: reload"           -- when fail, it prints messages
+  kill pid "connection closed"                 -- and start over the whole process.
 
 
 broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
@@ -211,28 +207,9 @@ queryProcess :: forall query result a.
              -> (result -> LogProcess a)
              -> LogProcess a
 queryProcess (sq,rr) q f = do
-  -- (sc',rc') <- newChan :: LogProcess (SendPort result, ReceivePort result)
   sendChan sq q
   f =<< receiveChan rr
 
-
-
-{-
-mainP :: forall query result.
-         (Binary query, Binary result, Typeable query, Typeable result) =>
-         (SendPort (query, SendPort result) -> LogProcess ())
-      -> ProcessId
-      -> LogProcess ()
-mainP process them = do
-  tellLog "start mainProcess"
-  msc :: Maybe (SendPort (query,SendPort result)) <- expectTimeout 5000000
-  case msc of
-    Nothing -> tellLog "cannot receive query port"
-    Just sc -> do
-      tellLog "connection established to query server"
-      p1 <- spawnLocal (process sc)
-      void $ pingHeartBeat [p1] them 0
--}
 
 mainP :: forall query result.
          (Binary query, Binary result, Typeable query, Typeable result) =>
@@ -250,7 +227,6 @@ mainP process them = do
       send them sr
       p1 <- spawnLocal (process (sq,rr))
       void $ pingHeartBeat [p1] them 0
-
 
 
 initP :: (ProcessId -> LogProcess ()) -> ProcessId -> LogProcess ()
