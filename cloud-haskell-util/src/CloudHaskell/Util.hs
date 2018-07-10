@@ -7,6 +7,7 @@ import           Control.Concurrent.STM            (atomically)
 import           Control.Concurrent.STM.TMVar      ( TMVar
                                                    , takeTMVar,newTMVarIO
                                                    , newEmptyTMVarIO, putTMVar)
+-- import           Control.DeepSeq                   (NFData,deepseq)
 import           Control.Distributed.Process (ProcessId,SendPort,ReceivePort,Process)
 import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
@@ -216,17 +217,19 @@ mainP :: forall query result.
          ((SendPort query,ReceivePort result) ->  LogProcess ())
       -> ProcessId
       -> LogProcess ()
-mainP process them = do
+mainP process them_ping = do
   tellLog "start mainProcess"
-  esq :: Either String (SendPort query) <- lift expectSafe
+  esq :: Either String (ProcessId,SendPort query) <- lift expectSafe
   case esq of
     Left err -> tellLog err
-    Right sq -> do
-      tellLog "received SendPort Q"
+    Right (them,sq) -> do
+      tellLog "connected: received SendPort"
+      liftIO $ threadDelay 1000000
       (sr :: SendPort result, rr :: ReceivePort result) <- newChan
       send them sr
+      tellLog "sent SendPort"
       p1 <- spawnLocal (process (sq,rr))
-      void $ pingHeartBeat [p1] them 0
+      void $ pingHeartBeat [p1] them_ping 0
 
 
 initP :: (ProcessId -> LogProcess ()) -> ProcessId -> LogProcess ()

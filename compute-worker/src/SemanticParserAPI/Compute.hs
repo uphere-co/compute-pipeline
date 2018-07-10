@@ -8,11 +8,12 @@ import           Control.Concurrent.STM                    (newTVarIO)
 import           Control.DeepSeq                           (deepseq)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
                                                            ,expect
+                                                           ,getSelfPid
                                                            ,newChan,sendChan,receiveChan
                                                            ,send,spawnLocal)
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
-import           Control.Monad                             (forever)
+import           Control.Monad                             (forever,void)
 import           Control.Monad.IO.Class                    (liftIO)
 import           Control.Monad.Trans.Class                 (lift)
 import           Network.Transport                         (closeTransport)
@@ -38,10 +39,11 @@ start () qqvar = do
     Right them -> do
       tellLog ("got client pid : " ++ show them)
 
-      withHeartBeat them $ do
+      withHeartBeat them $
         spawnLocal $ do
           (sq :: SendPort ComputeQuery, rq :: ReceivePort ComputeQuery) <- newChan
-          send them sq
+          us <- getSelfPid
+          send them (us,sq)
           tellLog "sent SendPort Query"
           esr <- lift expectSafe
           case esr of
