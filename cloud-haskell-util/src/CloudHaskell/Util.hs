@@ -202,7 +202,7 @@ server queue port action state = do
 
 
 queryProcess :: forall query result a.
-                (Binary query,Binary result,Typeable query,Typeable result) =>
+                (Binary query, Binary result, Typeable query, Typeable result) =>
                 (SendPort query, ReceivePort result)
              -> query
              -> (result -> LogProcess a)
