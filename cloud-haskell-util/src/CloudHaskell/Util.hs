@@ -4,10 +4,11 @@ module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically)
+import           Control.Concurrent.STM.TChan      (readTChan,writeTChan,newTChanIO)
 import           Control.Concurrent.STM.TMVar      ( TMVar
                                                    , takeTMVar,newTMVarIO
                                                    , newEmptyTMVarIO, putTMVar)
--- import           Control.DeepSeq                   (NFData,deepseq)
+import           Control.DeepSeq                   (NFData)
 import           Control.Distributed.Process (ProcessId,SendPort,ReceivePort,Process)
 import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
@@ -16,6 +17,7 @@ import           Control.Distributed.Process.Lifted (spawnLocal,expectTimeout
                                                     ,getSelfPid,send
                                                     ,newChan,receiveChan,sendChan
                                                     ,kill,try,bracket
+                                                    ,expect
                                                     )
 import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
 import           Control.Distributed.Process.Serializable
@@ -121,7 +123,7 @@ onesecond = 1000000
 
 pingHeartBeat :: [ProcessId] -> ProcessId -> Int -> LogProcess ()
 pingHeartBeat ps them n = do
-  -- tellLog ("heart-beat send: " ++ show n)
+  tellLog ("heart-beat send: " ++ show n)
   send them (HB n)
   mhb <- expectTimeout (10*onesecond)
   case mhb of
@@ -160,15 +162,26 @@ tellLog msg = do
   atomicLog lock msg
 
 
-
-
-withHeartBeat :: ProcessId -> LogProcess ProcessId -> LogProcess ()
-withHeartBeat them action = do
-  pid <- action                                -- main process launch
-  whileJust_ (expectTimeout (10*onesecond)) $
-    \(HB n) -> send them (HB n)                -- heartbeating until it fails.
-  tellLog "heartbeat failed: reload"           -- when fail, it prints messages
-  kill pid "connection closed"                 -- and start over the whole process.
+withHeartBeat :: ProcessId -> (ProcessId -> LogProcess ()) -> LogProcess ()
+withHeartBeat them_ping action = do
+  chan <- liftIO newTChanIO
+  us_main <- spawnLocal $ do
+    them_main <- liftIO $ atomically $ readTChan chan
+    action them_main                           -- main process launch
+  send them_ping us_main
+  tellLog ("sent our main pid: " ++ show us_main)
+  ethem_main :: Either String ProcessId <- lift expectSafe
+  case ethem_main of
+    Left err -> tellLog ("withHeartBeat: " ++ err)
+    Right them_main -> do
+      tellLog ("got client main pid : " ++ show them_main)
+      liftIO $ atomically $ writeTChan chan them_main
+      whileJust_ (expectTimeout (10*onesecond)) $
+        \(HB n) -> do
+          tellLog $ "heartbeat: " ++ show n
+          send them_ping (HB n)                -- heartbeating until it fails.
+      tellLog "heartbeat failed: reload"           -- when fail, it prints messages
+      kill us_main "connection closed"                 -- and start over the whole process.
 
 
 broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
@@ -217,27 +230,44 @@ mainP :: forall query result.
          ((SendPort query,ReceivePort result) ->  LogProcess ())
       -> ProcessId
       -> LogProcess ()
-mainP process them_ping = do
+mainP process them = do
   tellLog "start mainProcess"
-  esq :: Either String (ProcessId,SendPort query) <- lift expectSafe
-  case esq of
-    Left err -> tellLog err
-    Right (them,sq) -> do
-      tellLog "connected: received SendPort"
-      liftIO $ threadDelay 1000000
-      (sr :: SendPort result, rr :: ReceivePort result) <- newChan
-      send them sr
-      tellLog "sent SendPort"
-      p1 <- spawnLocal (process (sq,rr))
+  ethem :: Either String ProcessId <- lift expectSafe
+  case ethem of
+    Left err -> tellLog ("mainP: " ++ err)
+    Right them -> do
+      tellLog "connected"
+      esq :: Either String (SendPort query) <- lift expectSafe
+      case esq of
+        Left err' -> tellLog ("mainP2: " ++ err')
+        Right sq -> do
+          tellLog "received SendPort"
+          (sr :: SendPort result, rr :: ReceivePort result) <- newChan
+          send them sr
+          tellLog "sent SendPort"
+          process (sq,rr)
+
+
+heartBeatHandshake :: ProcessId -> (ProcessId -> LogProcess ()) -> LogProcess ()
+heartBeatHandshake them_ping process = do
+  us_ping <- getSelfPid
+  tellLog ("our ping process is " ++ show us_ping)
+  send them_ping us_ping
+  tellLog ("out ping pid is sent")
+  ethem :: Either String ProcessId <- lift expectSafe
+  case ethem of
+    Left err -> tellLog ("heartBeatHandshake: " ++ err)
+    Right them -> do
+      tellLog ("got their pid " ++ show them)
+      lock <- liftIO newEmptyTMVarIO
+      p1 <- spawnLocal $ do
+        us_main <- getSelfPid
+        send them_ping us_main
+        tellLog ("sent our process id " ++ show us_main)
+        liftIO $ atomically (putTMVar lock ())
+        process them
+      void $ liftIO $ atomically $ takeTMVar lock
       void $ pingHeartBeat [p1] them_ping 0
-
-
-initP :: (ProcessId -> LogProcess ()) -> ProcessId -> LogProcess ()
-initP process them = do
-  us <- getSelfPid
-  tellLog ("we are " ++ show us)
-  send them us
-  process them
 
 
 client :: (Int,Text,Text,Text,Int) -> (ProcessId -> LogProcess ()) -> IO ()
@@ -266,7 +296,9 @@ client (portnum,hostg,hostl,serverip,serverport) process = do
 data Q = Q deriving (Show,Generic)
 
 instance Binary Q
+instance NFData Q
 
 data R = R deriving (Show,Generic)
 
 instance Binary R
+instance NFData R

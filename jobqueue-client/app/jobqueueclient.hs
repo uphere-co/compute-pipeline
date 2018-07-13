@@ -6,7 +6,8 @@ import Control.Distributed.Process.Lifted (sendChan,receiveChan)
 --
 import CloudHaskell.Util (LogProcess,Q(..),R(..)
                          ,tellLog
-                         ,initP,mainP,client)
+                         ,heartBeatHandshake
+                         ,mainP,client)
 
 type QR q r = (q, SendPort r)
 
@@ -30,4 +31,4 @@ main = do
       serverport = 38832
   putStrLn "jobqueueclient"
   client (port,host,host,server,serverport)
-         (initP (mainP start))
+         (\them_ping -> heartBeatHandshake them_ping (mainP start))
