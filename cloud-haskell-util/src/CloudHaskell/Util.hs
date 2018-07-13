@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module CloudHaskell.Util where
 
@@ -16,7 +17,6 @@ import           Control.Distributed.Process.Lifted (spawnLocal,expectTimeout
                                                     ,getSelfPid,send
                                                     ,newChan,receiveChan,sendChan
                                                     ,kill,try,bracket
-                                                    ,expect
                                                     )
 import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
 import           Control.Distributed.Process.Serializable
@@ -24,16 +24,17 @@ import           Control.Exception                 (SomeException)
 import           Control.Monad                     (forever,void)
 import           Control.Monad.Loops               (untilJust,whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
+import           Control.Monad.Reader.Class        (MonadReader(ask,local))
 import           Control.Monad.Trans.Class         (lift)
-import           Control.Monad.Trans.Reader        (ReaderT(runReaderT),ask,local)
-import           Data.Binary                       (Binary,Word32,decode,encode,get,put)
+import           Control.Monad.Trans.Except        (ExceptT(..),runExceptT)
+import           Control.Monad.Trans.Reader        (ReaderT(runReaderT))
+import           Data.Binary                       (Binary,Word32,decode,encode)
 import qualified Data.ByteString             as B
 import qualified Data.ByteString.Char8       as BC
 import qualified Data.ByteString.Lazy        as BL
 import           Data.Text                         (Text)
 import qualified Data.Text                   as T
 import           Data.Typeable                     (Typeable)
-import           GHC.Generics                      (Generic)
 import qualified Network.Simple.TCP          as NS
 import           Network.Transport                 (Transport,closeTransport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
@@ -43,14 +44,15 @@ import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
 --
-import           CloudHaskell.Type (LogLock,LogProcess,HeartBeat(..))
+import           CloudHaskell.Type                 (LogLock,Pipeline,PipelineError(..)
+                                                   ,HeartBeat(..))
 
-expectSafe :: forall a. (Binary a, Typeable a) => Process (Either String a)
-expectSafe = receiveWait [matchAny f]
+expectSafe :: forall a. (Binary a, Typeable a) => Pipeline a
+expectSafe = ExceptT $ lift $ receiveWait [matchAny f]
   where
     f msg = do
       case messageFingerprint msg == fingerprint (undefined :: a) of
-        False -> pure (Left "fingerprint mismatch")
+        False -> pure (Left (PipelineError "fingerprint mismatch"))
         True ->
           case msg of
             (UnencodedMessage _ m) ->
@@ -120,7 +122,7 @@ onesecond :: Int
 onesecond = 1000000
 
 
-pingHeartBeat :: [ProcessId] -> ProcessId -> Int -> LogProcess ()
+pingHeartBeat :: [ProcessId] -> ProcessId -> Int -> Pipeline ()
 pingHeartBeat ps them n = do
   tellLog ("heart-beat send: " ++ show n)
   send them (HB n)
@@ -145,13 +147,13 @@ retrieveQueryServerPid lock (serverip,serverport) = do
     recvAndUnpack sock
 
 
-tellLog :: MonadIO m => String -> ReaderT LogLock m ()
+tellLog :: (MonadReader LogLock m, MonadIO m) => String -> m ()
 tellLog msg = do
   lock <- ask
   atomicLog lock msg
 
 
-withHeartBeat :: ProcessId -> (ProcessId -> LogProcess ()) -> LogProcess ()
+withHeartBeat :: ProcessId -> (ProcessId -> Pipeline ()) -> Pipeline ()
 withHeartBeat them_ping action = do
   chan <- liftIO newTChanIO
   us_main <- spawnLocal $ do
@@ -159,18 +161,15 @@ withHeartBeat them_ping action = do
     action them_main                           -- main process launch
   send them_ping us_main
   tellLog ("sent our main pid: " ++ show us_main)
-  ethem_main :: Either String ProcessId <- lift expectSafe
-  case ethem_main of
-    Left err -> tellLog ("withHeartBeat: " ++ err)
-    Right them_main -> do
-      tellLog ("got client main pid : " ++ show them_main)
-      liftIO $ atomically $ writeTChan chan them_main
-      whileJust_ (expectTimeout (10*onesecond)) $
-        \(HB n) -> do
-          tellLog $ "heartbeat: " ++ show n
-          send them_ping (HB n)                -- heartbeating until it fails.
-      tellLog "heartbeat failed: reload"           -- when fail, it prints messages
-      kill us_main "connection closed"                 -- and start over the whole process.
+  them_main :: ProcessId <- expectSafe
+  tellLog ("got client main pid : " ++ show them_main)
+  liftIO $ atomically $ writeTChan chan them_main
+  whileJust_ (expectTimeout (10*onesecond)) $
+    \(HB n) -> do
+      tellLog $ "heartbeat: " ++ show n
+      send them_ping (HB n)                -- heartbeating until it fails.
+  tellLog "heartbeat failed: reload"           -- when fail, it prints messages
+  kill us_main "connection closed"                 -- and start over the whole process.
 
 
 broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
@@ -181,7 +180,7 @@ broadcastProcessId lock pidref port = do
     packAndSend sock pid
 
 
-serve :: TMVar ProcessId -> LogProcess () -> LogProcess ()
+serve :: TMVar ProcessId -> Pipeline () -> Pipeline ()
 serve pidref action = do
   pid <-  spawnLocal $ action >> tellLog "action finished"
 
@@ -192,23 +191,26 @@ serve pidref action = do
   local incClientNum $ serve pidref action
 
 
-server :: queue -> String -> (state -> queue -> LogProcess ()) -> state -> Process ()
+server :: queue -> String -> (state -> queue -> Pipeline ()) -> state -> Process ()
 server queue port action state = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   lock <- newLogLock 0
 
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
-  flip runReaderT lock $
-    local incClientNum $ serve pidref (action state queue)
+  flip runReaderT lock $ do
+    e <- runExceptT $ local incClientNum $ serve pidref (action state queue)
+    case e of
+      Left err -> atomicLog lock (show err)
+      Right _  -> pure ()
 
 
 queryProcess :: forall query result a.
                 (Binary query, Binary result, Typeable query, Typeable result) =>
                 (SendPort query, ReceivePort result)
              -> query
-             -> (result -> LogProcess a)
-             -> LogProcess a
+             -> (result -> Pipeline a)
+             -> Pipeline a
 queryProcess (sq,rr) q f = do
   sendChan sq q
   f =<< receiveChan rr
@@ -216,50 +218,40 @@ queryProcess (sq,rr) q f = do
 
 mainP :: forall query result.
          (Binary query, Binary result, Typeable query, Typeable result) =>
-         ((SendPort query,ReceivePort result) ->  LogProcess ())
-      -> ProcessId
-      -> LogProcess ()
-mainP process them = do
+         ((SendPort query,ReceivePort result) ->  Pipeline ())
+      -> Pipeline ()
+mainP process = do
   tellLog "start mainProcess"
-  ethem :: Either String ProcessId <- lift expectSafe
-  case ethem of
-    Left err -> tellLog ("mainP: " ++ err)
-    Right them -> do
-      tellLog "connected"
-      esq :: Either String (SendPort query) <- lift expectSafe
-      case esq of
-        Left err' -> tellLog ("mainP2: " ++ err')
-        Right sq -> do
-          tellLog "received SendPort"
-          (sr :: SendPort result, rr :: ReceivePort result) <- newChan
-          send them sr
-          tellLog "sent SendPort"
-          process (sq,rr)
+  them :: ProcessId <- expectSafe
+  tellLog "connected"
+  sq :: SendPort query <- expectSafe
+  tellLog "received SendPort"
+  (sr :: SendPort result, rr :: ReceivePort result) <- newChan
+  send them sr
+  tellLog "sent SendPort"
+  process (sq,rr)
 
 
-heartBeatHandshake :: ProcessId -> (ProcessId -> LogProcess ()) -> LogProcess ()
+heartBeatHandshake :: ProcessId -> (ProcessId -> Pipeline ()) -> Pipeline ()
 heartBeatHandshake them_ping process = do
   us_ping <- getSelfPid
   tellLog ("our ping process is " ++ show us_ping)
   send them_ping us_ping
   tellLog ("out ping pid is sent")
-  ethem :: Either String ProcessId <- lift expectSafe
-  case ethem of
-    Left err -> tellLog ("heartBeatHandshake: " ++ err)
-    Right them -> do
-      tellLog ("got their pid " ++ show them)
-      lock <- liftIO newEmptyTMVarIO
-      p1 <- spawnLocal $ do
-        us_main <- getSelfPid
-        send them_ping us_main
-        tellLog ("sent our process id " ++ show us_main)
-        liftIO $ atomically (putTMVar lock ())
-        process them
-      void $ liftIO $ atomically $ takeTMVar lock
-      void $ pingHeartBeat [p1] them_ping 0
+  them :: ProcessId <- expectSafe
+  tellLog ("got their pid " ++ show them)
+  lock <- liftIO newEmptyTMVarIO
+  p1 <- spawnLocal $ do
+    us_main <- getSelfPid
+    send them_ping us_main
+    tellLog ("sent our process id " ++ show us_main)
+    liftIO $ atomically (putTMVar lock ())
+    process them
+  void $ liftIO $ atomically $ takeTMVar lock
+  void $ pingHeartBeat [p1] them_ping 0
 
 
-client :: (Int,Text,Text,Text,Int) -> (ProcessId -> LogProcess ()) -> IO ()
+client :: (Int,Text,Text,Text,Int) -> (ProcessId -> Pipeline ()) -> IO ()
 client (portnum,hostg,hostl,serverip,serverport) process = do
   let dhpp = DHPP (T.unpack hostg,show portnum) (T.unpack hostl,show portnum)
   bracket (tryCreateTransport dhpp)
@@ -278,5 +270,9 @@ client (portnum,hostg,hostl,serverip,serverport) process = do
                        Nothing -> atomicLog lock "no pid"
                        Just them -> do
                          atomicLog lock ("server id =" ++ show them)
-                         runProcess node (flip runReaderT lock (process them))
+                         runProcess node $ flip runReaderT lock $ do
+                           e <- runExceptT (process them)
+                           case e of
+                             Left err -> atomicLog lock (show err)
+                             Right _  -> pure ()
                  threadDelay (5*onesecond))

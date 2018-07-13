@@ -4,14 +4,17 @@ module CloudHaskell.Type where
 import           Control.Concurrent.STM.TMVar (TMVar)
 import           Control.DeepSeq              (NFData)
 import           Control.Distributed.Process  (Process)
+import           Control.Monad.Trans.Except   (ExceptT)
 import           Control.Monad.Trans.Reader   (ReaderT)
 import           Data.Binary                  (Binary(..))
 import           GHC.Generics                 (Generic)
 
+data PipelineError = PipelineError String
+                   deriving (Show)
 
 type LogLock = (TMVar (),Int)
 
-type LogProcess = {- ExceptT WorkerError -} (ReaderT LogLock Process)
+type Pipeline = ExceptT PipelineError (ReaderT LogLock Process)
 
 data HeartBeat = HB { heartBeat :: Int }
 
