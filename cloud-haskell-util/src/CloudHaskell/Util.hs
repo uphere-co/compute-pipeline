@@ -239,14 +239,14 @@ heartBeatHandshake them_ping main = do
   tellLog ("out ping pid is sent")
   them :: ProcessId <- expectSafe
   tellLog ("got their pid " ++ show them)
-  lock <- liftIO newEmptyTMVarIO
+  (slock,rlock) <- newChan
   p1 <- spawnLocal $ do
     us_main <- getSelfPid
     send them_ping us_main
     tellLog ("sent our process id " ++ show us_main)
-    liftIO $ atomically (putTMVar lock ())
+    sendChan slock ()
     main
-  void $ liftIO $ atomically $ takeTMVar lock
+  _ <- receiveChan rlock
   void $ pingHeartBeat [p1] them_ping 0
 
 
