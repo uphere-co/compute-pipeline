@@ -7,19 +7,17 @@ import           Control.Concurrent                        (forkIO)
 import           Control.Concurrent.STM                    (newTVarIO)
 import           Control.DeepSeq                           (NFData,deepseq)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
-                                                           ,expect
                                                            ,getSelfPid
                                                            ,newChan,sendChan,receiveChan
-                                                           ,send,spawnLocal)
+                                                           ,send)
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
-import           Control.Monad                             (forever,void)
+import           Control.Monad                             (forever)
 import           Control.Monad.IO.Class                    (liftIO)
 import           Control.Monad.Trans.Class                 (lift)
 import           Data.Binary                               (Binary)
 import           Data.Typeable                             (Typeable)
 import           Network.Transport                         (closeTransport)
-import           System.IO                                 (hPutStrLn,stderr)
 --
 import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,singleQuery)
 import           CloudHaskell.Util                         (LogProcess,server,tellLog
@@ -34,7 +32,7 @@ import           SemanticParserAPI.Compute.Worker          (queryWorker)
 
 
 singleServerProcess ::
-       forall query result a.
+       forall query result.
        (Binary query, Binary result, Typeable query, Typeable result, NFData result) =>
        ProcessId
     -> (query -> LogProcess result)

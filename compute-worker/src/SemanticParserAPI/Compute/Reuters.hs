@@ -4,36 +4,26 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
-
 module SemanticParserAPI.Compute.Reuters where
 
-import           Control.Concurrent
-import           Control.Concurrent.STM
-import           Control.Exception                 (IOException,try)
 import           Control.Lens                      ((^.),(^..),_1,_2,_Left,_Right,to,traverse)
-import           Control.Monad                     (forever,forM,void,when)
-import           Control.Monad.IO.Class            (liftIO)
+import           Control.Monad                     (forM,when)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as BL
-import           Data.Either                       (rights)
 
 import           Data.Function                     (on)
-import           Data.Hashable
-import           Data.List                         (groupBy,notElem,sortBy,sortOn)
-import           Data.Maybe                        (catMaybes)
+import           Data.List                         (groupBy,sortBy)
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T
-import           Data.Time.Clock                   (NominalDiffTime,UTCTime,addUTCTime,getCurrentTime)
-import           System.FilePath                   (takeExtension, takeBaseName)
-import           System.IO
+import           Data.Time.Clock                   (UTCTime)
 --
 import           NLP.Shared.Type                   (EventClass(..)
                                                    ,PathConfig(..)
                                                    ,Summary
-                                                   ,link,arbstore,mgdotfigstore,mgstore
+                                                   ,mgstore
                                                    )
-import           NLP.Semantics.Type                (ARB(..),PrepOr(..)
+import           NLP.Semantics.Type                (ARB(..)
                                                    ,objectB,predicateR,subjectA,po_main
                                                    )
 import           NLP.Type.TagPos                   (TagPos,TokIdx)
@@ -55,7 +45,7 @@ loadExistingMG :: PathConfig -> Int -> IO [Maybe MeaningGraph]
 loadExistingMG cfg numMG  = do
   fps_mg <- getFileListRecursively (cfg^.mgstore)
   let fps = fps_mg
-  forM (take numMG $ zip [1..] fps) $ \(i,fp) -> do
+  forM (take numMG $ zip [1..] fps) $ \(i :: Int,fp) -> do
     when (i `mod` 1000 == 0) $ do
       putStrLn (show i ++ "th file")
 
@@ -79,16 +69,26 @@ blackList = [ "he", "we", "i", "she", "they", "you", "it"
             ]
 
 
-isWithObjOrWhiteListed x = check x && all isWithObjOrWhiteListed (x^..objectB.traverse._2._Left.po_main)
-  where check x = (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList)
+isWithObjOrWhiteListed :: ARB -> Bool
+isWithObjOrWhiteListed y =
+       check y
+    && all isWithObjOrWhiteListed (y^..objectB.traverse._2._Left.po_main)
+  where
+    check x = (x^.objectB.to (not.null)) || (x^.predicateR._1 `elem` whiteList)
 
 
-haveCommaEntity x = check x || all check (x^..objectB.traverse._2._Left.po_main)
-  where check x = (x^.subjectA._2 == ",") || any (== ",") (x^..objectB.traverse._2._Right.po_main)
+haveCommaEntity :: ARB -> Bool
+haveCommaEntity y =
+       check y
+    || all check (y^..objectB.traverse._2._Left.po_main)
+  where
+    check x = (x^.subjectA._2 == ",") || any (== ",") (x^..objectB.traverse._2._Right.po_main)
 
 
+isSubjectBlackListed :: ARB -> Bool
 isSubjectBlackListed x = x ^.subjectA._2.to T.toLower `elem` blackList
 
+isSubjectEmpty :: ARB -> Bool
 isSubjectEmpty x = T.null (x^.subjectA._2)
 
 
@@ -110,7 +110,7 @@ filterARB n arbs =
   in take n $ sortEventCardByTime arbs2
 
 
-
-sortEventCardBy f ecs = sortBy (flip compare `on` f) ecs
-
+sortEventCardByTime :: [(a, (UTCTime, b), c)] -> [(a, (UTCTime, b), c)]
 sortEventCardByTime = sortEventCardBy (\(_,(ct,_),_) -> ct)
+  where
+    sortEventCardBy f ecs = sortBy (flip compare `on` f) ecs

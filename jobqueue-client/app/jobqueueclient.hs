@@ -31,4 +31,4 @@ main = do
       serverport = 38832
   putStrLn "jobqueueclient"
   client (port,host,host,server,serverport)
-         (heartBeatHandshake (mainP start))
+         (\them_ping -> heartBeatHandshake them_ping (mainP start))

@@ -17,7 +17,6 @@ import           Data.IntMap                    (IntMap)
 import qualified Data.IntMap            as IM
 import           Data.Maybe                     (catMaybes)
 import           Data.Text                      (Text)
-import qualified Data.Text              as T
 import           Data.Tree                      (Forest)
 import qualified Language.Java          as J
 import           System.Environment             (getEnv)
@@ -28,8 +27,7 @@ import           CoreNLP.Simple.Type            (tokenizer,words2sentences,posta
 import           Lexicon.Data                   (loadLexDataConfig)
 import           NER.Type                       (CompanyInfo)
 import           NLP.Shared.Type                (PathConfig(..))
-import           NLP.Syntax.Format              (formatX'Tree)
-import           NLP.Syntax.Type.XBar           (SPhase(SPH1),lemmaList)
+import           NLP.Syntax.Type.XBar           (lemmaList)
 import           NLP.Type.CoreNLP               (Sentence)
 import           SRL.Analyze                    (loadConfig,consoleOutput)
 import qualified SRL.Analyze.Config as Analyze
@@ -39,12 +37,10 @@ import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
 import           SRL.Analyze.Type               (AnalyzePredata,ConsoleOutput,DocStructure,MeaningGraph
                                                 ,analyze_framedb
                                                 ,ds_mtokenss,ds_sentStructures,ss_tagged
-                                                ,ss_x'trs
                                                 )
 import           WikiEL.Type                    (EntityMention)
 --
 import           CloudHaskell.QueryQueue        (QQVar,QueryStatus(..),next)
-import           CloudHaskell.Util              (tellLog)
 import           SemanticParserAPI.Compute.Reuters (loadExistingMG)
 import           SemanticParserAPI.Compute.Type (ComputeQuery(..)
                                                 ,ComputeResult(..)
