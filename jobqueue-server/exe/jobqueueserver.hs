@@ -1,11 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Concurrent                (threadDelay)
-import           Control.Concurrent.STM            (newEmptyTMVarIO)
 import           Control.Distributed.Process       (ProcessId,SendPort,ReceivePort)
-import           Control.Distributed.Process.Lifted (Process
-                                                    ,getSelfPid,send
+import           Control.Distributed.Process.Lifted (getSelfPid,send
                                                     ,newChan,receiveChan,sendChan
                                                     )
 import           Control.Distributed.Process.Node  (initRemoteTable,newLocalNode,runProcess)
@@ -15,20 +12,14 @@ import           Control.Monad.IO.Class            (liftIO)
 import           Control.Monad.Trans.Class         (lift)
 import           Network.Transport                 (closeTransport)
 --
-import           CloudHaskell.Util                 (LogProcess
-                                                   ,Q(..),R(..)
-                                                   ,expectSafe
-                                                   ,newLogLock
+import           CloudHaskell.Type                 (LogProcess,Q(..),R(..))
+import           CloudHaskell.Util                 (expectSafe
                                                    ,server
                                                    ,tellLog
                                                    ,tryCreateTransport)
 import           Network.Transport.UpHere          (DualHostPortPair(..))
-import           JobQueue.Server.Yesod
-import           JobQueue.Server.Work
-import           JobQueue.JobQueue
 
 import qualified Data.IntMap as M
-
 
 -- type QR q r = (q, SendPort r)
 

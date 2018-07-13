@@ -8,7 +8,6 @@ import           Control.Concurrent.STM.TChan      (readTChan,writeTChan,newTCha
 import           Control.Concurrent.STM.TMVar      ( TMVar
                                                    , takeTMVar,newTMVarIO
                                                    , newEmptyTMVarIO, putTMVar)
-import           Control.DeepSeq                   (NFData)
 import           Control.Distributed.Process (ProcessId,SendPort,ReceivePort,Process)
 import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
@@ -43,7 +42,8 @@ import           Unsafe.Coerce
 import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
-
+--
+import           CloudHaskell.Type (LogLock,LogProcess,HeartBeat(..))
 
 expectSafe :: forall a. (Binary a, Typeable a) => Process (Either String a)
 expectSafe = receiveWait [matchAny f]
@@ -87,7 +87,6 @@ packAndSend sock x = do
 
 
 
-type LogLock = (TMVar (),Int)
 
 newLogLock :: (MonadIO m) => Int -> m LogLock
 newLogLock n = liftIO $ (,) <$> newTMVarIO () <*> pure n
@@ -144,16 +143,6 @@ retrieveQueryServerPid lock (serverip,serverport) = do
   NS.connect (T.unpack serverip) (show serverport) $ \(sock,addr) -> do
     atomicLog lock ("connection established to " ++ show addr)
     recvAndUnpack sock
-
-
-
-data HeartBeat = HB { heartBeat :: Int }
-
-instance Binary HeartBeat where
-  put (HB n) = put n
-  get = HB <$> get
-
-type LogProcess = ReaderT LogLock Process
 
 
 tellLog :: MonadIO m => String -> ReaderT LogLock m ()
@@ -291,14 +280,3 @@ client (portnum,hostg,hostl,serverip,serverport) process = do
                          atomicLog lock ("server id =" ++ show them)
                          runProcess node (flip runReaderT lock (process them))
                  threadDelay (5*onesecond))
-
-
-data Q = Q deriving (Show,Generic)
-
-instance Binary Q
-instance NFData Q
-
-data R = R deriving (Show,Generic)
-
-instance Binary R
-instance NFData R

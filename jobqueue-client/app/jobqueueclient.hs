@@ -4,12 +4,12 @@ module Main where
 import Control.Distributed.Process (SendPort,ReceivePort)
 import Control.Distributed.Process.Lifted (sendChan,receiveChan)
 --
-import CloudHaskell.Util (LogProcess,Q(..),R(..)
-                         ,tellLog
+import CloudHaskell.Type (LogProcess,Q(..),R(..))
+import CloudHaskell.Util (tellLog
                          ,heartBeatHandshake
-                         ,mainP,client)
+                         ,mainP
+                         ,client)
 
-type QR q r = (q, SendPort r)
 
 start :: (SendPort Q,ReceivePort R) -> LogProcess ()
 start (sq,rr) = do

@@ -17,7 +17,8 @@ import           System.Console.Haskeline            (runInputT,getInputLine,def
 import           System.Console.Haskeline.MonadException (MonadException(controlIO),RunIO(..))
 --
 import           CloudHaskell.QueryQueue             (QueryStatus(..),QQVar,next)
-import           CloudHaskell.Util                   (LogProcess,queryProcess,tellLog)
+import           CloudHaskell.Type                   (LogProcess)
+import           CloudHaskell.Util                   (queryProcess,tellLog)
 import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
 
 instance MonadException Process where

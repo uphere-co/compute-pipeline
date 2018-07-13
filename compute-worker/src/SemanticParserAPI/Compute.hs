@@ -20,11 +20,11 @@ import           Data.Typeable                             (Typeable)
 import           Network.Transport                         (closeTransport)
 --
 import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,singleQuery)
-import           CloudHaskell.Util                         (LogProcess,server,tellLog
+import           CloudHaskell.Type                         (LogProcess,Q(..),R(..))
+import           CloudHaskell.Util                         (server,tellLog
                                                            ,expectSafe
                                                            ,withHeartBeat
                                                            ,tryCreateTransport
-                                                           ,Q(..),R(..)
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
