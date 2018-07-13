@@ -6,7 +6,7 @@ module Main where
 import           Data.Maybe                   (fromMaybe)
 import           Options.Applicative
 --
-import           CloudHaskell.Util            (initP,mainP,client)
+import           CloudHaskell.Util            (heartBeatHandshake,mainP,client)
 import           SemanticParserAPI.CLI.Client (consoleClient)
 import           SemanticParserAPI.CLI.Type   (clientOption,hostg,hostl,port,serverip,serverport)
 
@@ -21,4 +21,4 @@ main = do
          ,fromMaybe "127.0.0.1" (hostl opt)
          ,fromMaybe "127.0.0.1" (serverip opt)
          ,serverport opt)
-         (initP (mainP consoleClient))
+         (\them_ping -> heartBeatHandshake them_ping (mainP consoleClient))

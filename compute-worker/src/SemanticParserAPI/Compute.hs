@@ -42,7 +42,10 @@ singleServerProcess ::
 singleServerProcess them handle = do
   (sq :: SendPort q, rq :: ReceivePort q) <- newChan
   us <- getSelfPid
-  send them (us,sq)
+  send them us
+  tellLog "sent our main pid"
+  send them sq
+  -- send them (us,sq)
   tellLog "sent SendPort Query"
   esr <- lift expectSafe
   case esr of
@@ -57,19 +60,16 @@ singleServerProcess them handle = do
 test :: Q -> LogProcess R
 test _ = pure R
 
+
 start :: () -> QQVar ComputeQuery ComputeResult -> LogProcess ()
 start () qqvar = do
-  ethem <- lift expectSafe
-  case ethem of
+  ethem_ping <- lift expectSafe
+  case ethem_ping of
     Left err -> tellLog err
-    Right them -> do
-      tellLog ("got client pid : " ++ show them)
-
-      -- withHeartBeat them $ do
-      void $ spawnLocal $ singleServerProcess them (liftIO . singleQuery qqvar)
-
-        -- spawnLocal $ singleServerProcess them test
-
+    Right them_ping -> do
+      tellLog ("got client ping pid : " ++ show them_ping)
+      withHeartBeat them_ping $ \them_main -> do
+        singleServerProcess them_main (liftIO . singleQuery qqvar)
 
 
 computeMain :: (Int,String,String)
