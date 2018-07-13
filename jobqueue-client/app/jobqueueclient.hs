@@ -4,14 +4,14 @@ module Main where
 import Control.Distributed.Process (SendPort,ReceivePort)
 import Control.Distributed.Process.Lifted (sendChan,receiveChan)
 --
-import CloudHaskell.Util (LogProcess,Q(..),R(..)
-                         ,tellLog
+import CloudHaskell.Type (Pipeline,Q(..),R(..))
+import CloudHaskell.Util (tellLog
                          ,heartBeatHandshake
-                         ,mainP,client)
+                         ,mainP
+                         ,client)
 
-type QR q r = (q, SendPort r)
-
-start :: (SendPort Q,ReceivePort R) -> LogProcess ()
+{- 
+start :: (SendPort Q,ReceivePort R) -> Pipeline ()
 start (sq,rr) = do
   tellLog "received"
   let single = do
@@ -21,10 +21,12 @@ start (sq,rr) = do
   single
   single
   single
-
+-}
 
 main :: IO ()
 main = do
+  putStrLn "jobqueueclient"
+{-
   let port = 10290
       host = "127.0.0.1"
       server = "127.0.0.1"
@@ -32,3 +34,4 @@ main = do
   putStrLn "jobqueueclient"
   client (port,host,host,server,serverport)
          (\them_ping -> heartBeatHandshake them_ping (mainP start))
+-}

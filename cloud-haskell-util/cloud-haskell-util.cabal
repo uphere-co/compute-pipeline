@@ -26,6 +26,7 @@ library
                    , distributed-process
                    , distributed-process-lifted
                    , monad-loops
+                   , mtl
                    , network-simple
                    , network-transport
                    , stm
@@ -36,11 +37,13 @@ library
 
   exposed-modules:
                      CloudHaskell.QueryQueue
+                     CloudHaskell.Type
                      CloudHaskell.Util
   other-extensions:  TemplateHaskell
   ghc-prof-options:  -fprof-auto
   ghc-options:       -threaded
                      -Wall
+                     -Werror
                      -fno-warn-unused-do-bind
                      -fwarn-tabs
                      -funbox-strict-fields
