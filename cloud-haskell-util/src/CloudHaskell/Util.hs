@@ -5,7 +5,6 @@ module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically)
-import           Control.Concurrent.STM.TChan      (readTChan,writeTChan,newTChanIO)
 import           Control.Concurrent.STM.TMVar      ( TMVar
                                                    , takeTMVar,newTMVarIO
                                                    , newEmptyTMVarIO, putTMVar)
@@ -155,15 +154,15 @@ tellLog msg = do
 
 withHeartBeat :: ProcessId -> (ProcessId -> Pipeline ()) -> Pipeline ()
 withHeartBeat them_ping action = do
-  chan <- liftIO newTChanIO
+  (sthem_main,rthem_main) <- newChan
   us_main <- spawnLocal $ do
-    them_main <- liftIO $ atomically $ readTChan chan
+    them_main <- receiveChan rthem_main
     action them_main                           -- main process launch
   send them_ping us_main
   tellLog ("sent our main pid: " ++ show us_main)
   them_main :: ProcessId <- expectSafe
   tellLog ("got client main pid : " ++ show them_main)
-  liftIO $ atomically $ writeTChan chan them_main
+  sendChan sthem_main them_main
   whileJust_ (expectTimeout (10*onesecond)) $
     \(HB n) -> do
       tellLog $ "heartbeat: " ++ show n
