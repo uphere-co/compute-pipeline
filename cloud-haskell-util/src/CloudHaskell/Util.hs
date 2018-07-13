@@ -232,8 +232,8 @@ mainP process = do
   process (sq,rr)
 
 
-heartBeatHandshake :: ProcessId -> (ProcessId -> Pipeline ()) -> Pipeline ()
-heartBeatHandshake them_ping process = do
+heartBeatHandshake :: ProcessId -> Pipeline () -> Pipeline ()
+heartBeatHandshake them_ping main = do
   us_ping <- getSelfPid
   tellLog ("our ping process is " ++ show us_ping)
   send them_ping us_ping
@@ -246,7 +246,7 @@ heartBeatHandshake them_ping process = do
     send them_ping us_main
     tellLog ("sent our process id " ++ show us_main)
     liftIO $ atomically (putTMVar lock ())
-    process them
+    main
   void $ liftIO $ atomically $ takeTMVar lock
   void $ pingHeartBeat [p1] them_ping 0
 

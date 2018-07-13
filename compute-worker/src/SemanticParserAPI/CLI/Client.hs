@@ -1,6 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module SemanticParserAPI.CLI.Client where
 
 import           Control.Concurrent.STM              (atomically,retry
@@ -17,15 +18,21 @@ import           System.Console.Haskeline            (runInputT,getInputLine,def
 import           System.Console.Haskeline.MonadException (MonadException(controlIO),RunIO(..))
 --
 import           CloudHaskell.QueryQueue             (QueryStatus(..),QQVar,next)
-import           CloudHaskell.Type                   (LogProcess)
+import           CloudHaskell.Type                   (Pipeline)
 import           CloudHaskell.Util                   (queryProcess,tellLog)
 import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
+
+
 
 instance MonadException Process where
   controlIO f = join . liftIO $ f (RunIO return)
 
 
-consoleClient :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> LogProcess ()
+instance MonadException Pipeline where
+  controlIO f = join . liftIO $ f (RunIO return)
+
+
+consoleClient :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
 consoleClient (sq,rr) = do
   runInputT defaultSettings $
     whileJust_ (getInputLine "% ") $ \input' ->
@@ -41,7 +48,7 @@ consoleClient (sq,rr) = do
 
 webClient :: QQVar ComputeQuery ComputeResult
           -> (SendPort ComputeQuery, ReceivePort ComputeResult)
-          -> LogProcess ()
+          -> Pipeline ()
 webClient qqvar (sq,rr) = do
   forever $ do
     (i,q) <- liftIO $ atomically $ do

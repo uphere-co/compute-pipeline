@@ -12,7 +12,7 @@ import           Control.Monad.IO.Class            (liftIO)
 import           Control.Monad.Trans.Class         (lift)
 import           Network.Transport                 (closeTransport)
 --
-import           CloudHaskell.Type                 (LogProcess,Q(..),R(..))
+import           CloudHaskell.Type                 (Pipeline,Q(..),R(..))
 import           CloudHaskell.Util                 (expectSafe
                                                    ,server
                                                    ,tellLog
@@ -20,10 +20,8 @@ import           CloudHaskell.Util                 (expectSafe
 import           Network.Transport.UpHere          (DualHostPortPair(..))
 
 import qualified Data.IntMap as M
-
--- type QR q r = (q, SendPort r)
-
-start :: () -> () -> LogProcess ()
+{- 
+start :: () -> () -> Pipeline ()
 start () () = do
   pid <- getSelfPid
   liftIO $ print pid
@@ -44,14 +42,12 @@ start () () = do
             q <- receiveChan rq
             tellLog (show q)
             sendChan sr R
-            -- ((),sc') <- receiveChan rc
-            -- tellLog "received"
-            -- sendChan sc' ()
+-}
 
 main :: IO ()
 main = do
   putStrLn "jobqueueserver"
-  let host = "127.0.0.1"
+{-  let host = "127.0.0.1"
       port = "38833"
       port_broadcast = "38832"
   let dhpp = DHPP (host,port) (host,port)
@@ -61,9 +57,4 @@ main = do
                  newLocalNode transport initRemoteTable
              >>= \node -> runProcess node (server () port_broadcast start ())
           )
-
-  -- acid <- openLocalState (JobInfoQueue 0 M.empty)
-  -- sconf <- serverConfigParser "test.conf"
-  -- warpDebug 3600 (JobQueueServer acid sconf)
-
-  -- createCheckpoint acid
+-}

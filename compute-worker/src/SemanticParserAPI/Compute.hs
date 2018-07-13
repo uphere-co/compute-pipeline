@@ -14,13 +14,12 @@ import           Control.Distributed.Process.Node          (initRemoteTable,newL
 import           Control.Exception                         (bracket)
 import           Control.Monad                             (forever)
 import           Control.Monad.IO.Class                    (liftIO)
-import           Control.Monad.Trans.Class                 (lift)
 import           Data.Binary                               (Binary)
 import           Data.Typeable                             (Typeable)
 import           Network.Transport                         (closeTransport)
 --
 import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,singleQuery)
-import           CloudHaskell.Type                         (LogProcess,Q(..),R(..))
+import           CloudHaskell.Type                         (Pipeline,Q(..),R(..))
 import           CloudHaskell.Util                         (server,tellLog
                                                            ,expectSafe
                                                            ,withHeartBeat
@@ -35,8 +34,8 @@ singleServerProcess ::
        forall query result.
        (Binary query, Binary result, Typeable query, Typeable result, NFData result) =>
        ProcessId
-    -> (query -> LogProcess result)
-    -> LogProcess ()
+    -> (query -> Pipeline result)
+    -> Pipeline ()
 singleServerProcess them handle = do
   (sq :: SendPort q, rq :: ReceivePort q) <- newChan
   us <- getSelfPid
@@ -45,29 +44,23 @@ singleServerProcess them handle = do
   send them sq
   -- send them (us,sq)
   tellLog "sent SendPort Query"
-  esr <- lift expectSafe
-  case esr of
-    Left err' -> tellLog err'
-    Right (sr :: SendPort r) -> do
-      tellLog "receive SendPortResult"
-      forever $ do
-        q <- receiveChan rq
-        r <- handle q
-        r `deepseq` sendChan sr r
+  sr :: SendPort r <- expectSafe
+  tellLog "receive SendPortResult"
+  forever $ do
+    q <- receiveChan rq
+    r <- handle q
+    r `deepseq` sendChan sr r
 
-test :: Q -> LogProcess R
+test :: Q -> Pipeline R
 test _ = pure R
 
 
-start :: () -> QQVar ComputeQuery ComputeResult -> LogProcess ()
+start :: () -> QQVar ComputeQuery ComputeResult -> Pipeline ()
 start () qqvar = do
-  ethem_ping <- lift expectSafe
-  case ethem_ping of
-    Left err -> tellLog err
-    Right them_ping -> do
-      tellLog ("got client ping pid : " ++ show them_ping)
-      withHeartBeat them_ping $ \them_main -> do
-        singleServerProcess them_main (liftIO . singleQuery qqvar)
+  them_ping :: ProcessId <- expectSafe
+  tellLog ("got client ping pid : " ++ show them_ping)
+  withHeartBeat them_ping $ \them_main -> do
+    singleServerProcess them_main (liftIO . singleQuery qqvar)
 
 
 computeMain :: (Int,String,String)
