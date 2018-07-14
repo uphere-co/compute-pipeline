@@ -14,7 +14,6 @@ import           Network.Transport                 (closeTransport)
 --
 import           CloudHaskell.Type                 (Pipeline,Q(..),R(..))
 import           CloudHaskell.Util                 (expectSafe
-                                                   ,server
                                                    ,tellLog
                                                    ,tryCreateTransport)
 import           Network.Transport.UpHere          (DualHostPortPair(..))
