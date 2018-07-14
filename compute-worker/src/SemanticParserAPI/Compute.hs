@@ -82,14 +82,12 @@ computeMain (portnum,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
     let port = show portnum
         port' = show (portnum+1)
         dhpp = DHPP (hostg,port') (hostl,port')
-    -- qqvar <- liftIO (newTVarIO emptyQQ)
-    -- forkIO$
     bracket
             (tryCreateTransport dhpp)
             closeTransport
             (\transport ->
                     newLocalNode transport initRemoteTable
-                >>= \node -> runProcess node -- (server qqvar port start ())
+                >>= \node -> runProcess node
                                (serverInit port (bypassNER,bypassTEXTNER) lcfg)
             )
-    -- queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar
+

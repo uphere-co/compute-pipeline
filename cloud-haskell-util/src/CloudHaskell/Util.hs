@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE MonoLocalBinds      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module CloudHaskell.Util where
 
@@ -151,11 +152,24 @@ tellLog msg = do
   lock <- ask
   atomicLog lock msg
 
+spawnChannelLocalSend :: Serializable a => (ReceivePort a -> Pipeline ()) -> Pipeline (SendPort a, ProcessId)
+spawnChannelLocalSend process = do
+  (schan,rchan) <- newChan
+  pid <- spawnLocal (process rchan)
+  pure (schan, pid)
+
+spawnChannelLocalReceive :: Serializable a => (SendPort a -> Pipeline ()) -> Pipeline (ReceivePort a, ProcessId)
+spawnChannelLocalReceive process = do
+  (schan,rchan) <- newChan
+  pid <- spawnLocal (process schan)
+  pure (rchan, pid)
+
+
 
 withHeartBeat :: ProcessId -> (ProcessId -> Pipeline ()) -> Pipeline ()
 withHeartBeat them_ping action = do
-  (sthem_main,rthem_main) <- newChan
-  us_main <- spawnLocal $ do
+  -- (sthem_main,rthem_main) <- newChan
+  (sthem_main,us_main) <- spawnChannelLocalSend $ \rthem_main -> do
     them_main <- receiveChan rthem_main
     action them_main                           -- main process launch
   send them_ping us_main
@@ -239,14 +253,13 @@ heartBeatHandshake them_ping main = do
   tellLog ("out ping pid is sent")
   them :: ProcessId <- expectSafe
   tellLog ("got their pid " ++ show them)
-  (slock,rlock) <- newChan
-  p1 <- spawnLocal $ do
+  (rchan,p1) <- spawnChannelLocalReceive $ \schan -> do
     us_main <- getSelfPid
     send them_ping us_main
     tellLog ("sent our process id " ++ show us_main)
-    sendChan slock ()
+    sendChan schan ()
     main
-  _ <- receiveChan rlock
+  _ <- receiveChan rchan
   void $ pingHeartBeat [p1] them_ping 0
 
 
