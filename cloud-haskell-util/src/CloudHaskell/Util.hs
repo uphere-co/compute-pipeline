@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE MonoLocalBinds      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkIO,threadDelay)
 import           Control.Concurrent.STM            (atomically)
-import           Control.Concurrent.STM.TChan      (readTChan,writeTChan,newTChanIO)
 import           Control.Concurrent.STM.TMVar      ( TMVar
                                                    , takeTMVar,newTMVarIO
                                                    , newEmptyTMVarIO, putTMVar)
@@ -152,18 +152,31 @@ tellLog msg = do
   lock <- ask
   atomicLog lock msg
 
+spawnChannelLocalSend :: Serializable a => (ReceivePort a -> Pipeline ()) -> Pipeline (SendPort a, ProcessId)
+spawnChannelLocalSend process = do
+  (schan,rchan) <- newChan
+  pid <- spawnLocal (process rchan)
+  pure (schan, pid)
+
+spawnChannelLocalReceive :: Serializable a => (SendPort a -> Pipeline ()) -> Pipeline (ReceivePort a, ProcessId)
+spawnChannelLocalReceive process = do
+  (schan,rchan) <- newChan
+  pid <- spawnLocal (process schan)
+  pure (rchan, pid)
+
+
 
 withHeartBeat :: ProcessId -> (ProcessId -> Pipeline ()) -> Pipeline ()
 withHeartBeat them_ping action = do
-  chan <- liftIO newTChanIO
-  us_main <- spawnLocal $ do
-    them_main <- liftIO $ atomically $ readTChan chan
+  -- (sthem_main,rthem_main) <- newChan
+  (sthem_main,us_main) <- spawnChannelLocalSend $ \rthem_main -> do
+    them_main <- receiveChan rthem_main
     action them_main                           -- main process launch
   send them_ping us_main
   tellLog ("sent our main pid: " ++ show us_main)
   them_main :: ProcessId <- expectSafe
   tellLog ("got client main pid : " ++ show them_main)
-  liftIO $ atomically $ writeTChan chan them_main
+  sendChan sthem_main them_main
   whileJust_ (expectTimeout (10*onesecond)) $
     \(HB n) -> do
       tellLog $ "heartbeat: " ++ show n
@@ -240,14 +253,13 @@ heartBeatHandshake them_ping main = do
   tellLog ("out ping pid is sent")
   them :: ProcessId <- expectSafe
   tellLog ("got their pid " ++ show them)
-  lock <- liftIO newEmptyTMVarIO
-  p1 <- spawnLocal $ do
+  (rchan,p1) <- spawnChannelLocalReceive $ \schan -> do
     us_main <- getSelfPid
     send them_ping us_main
     tellLog ("sent our process id " ++ show us_main)
-    liftIO $ atomically (putTMVar lock ())
+    sendChan schan ()
     main
-  void $ liftIO $ atomically $ takeTMVar lock
+  _ <- receiveChan rchan
   void $ pingHeartBeat [p1] them_ping 0
 
 
