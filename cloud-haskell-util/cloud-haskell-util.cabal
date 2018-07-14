@@ -37,6 +37,7 @@ library
 
   exposed-modules:
                      CloudHaskell.QueryQueue
+                     CloudHaskell.Socket
                      CloudHaskell.Type
                      CloudHaskell.Util
   other-extensions:  TemplateHaskell
