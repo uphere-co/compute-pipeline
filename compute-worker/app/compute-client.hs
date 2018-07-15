@@ -6,7 +6,7 @@ module Main where
 import           Data.Maybe                   (fromMaybe)
 import           Options.Applicative
 --
-import           CloudHaskell.Util            (heartBeatHandshake,mainP,client)
+import           CloudHaskell.Client          (heartBeatHandshake,client,mainP)
 import           SemanticParserAPI.CLI.Client (consoleClient)
 import           SemanticParserAPI.CLI.Type   (clientOption,hostg,hostl,port,serverip,serverport)
 
