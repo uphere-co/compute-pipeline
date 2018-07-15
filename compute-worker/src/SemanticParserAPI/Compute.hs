@@ -25,11 +25,13 @@ import           CloudHaskell.Server                       (server,withHeartBeat
 import           CloudHaskell.Type                         (Pipeline,Q(..),R(..))
 import           CloudHaskell.Util                         (tellLog
                                                            ,expectSafe
+                                                           ,ioWorker
                                                            ,tryCreateTransport
+                                                           ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
-import           SemanticParserAPI.Compute.Worker          (queryWorker)
+import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
 singleServerProcess ::
@@ -57,21 +59,23 @@ test :: Q -> Pipeline R
 test _ = pure R
 
 
-start :: () -> QQVar ComputeQuery ComputeResult -> Pipeline ()
-start () qqvar = do
+
+
+start :: () -> (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
+start () (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
-  withHeartBeat them_ping $ \them_main -> do
-    singleServerProcess them_main (liftIO . singleQuery qqvar)
-
+  withHeartBeat them_ping $ \them_main ->
+    singleServerProcess them_main $ \q -> do
+      sendChan sq q
+      receiveChan rr
 
 
 serverInit :: String -> (Bool,Bool) -> FilePath -> Process ()
 serverInit port (bypassNER,bypassTEXTNER) lcfg = do
-  qqvar <- liftIO (newTVarIO emptyQQ)
-  void $ liftIO $ forkOS $
-    queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar
-  server qqvar port start ()
+  ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
+    ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+  server (sq,rr) port start ()
 
 
 computeMain :: (Int,String,String)
@@ -90,4 +94,3 @@ computeMain (portnum,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
                 >>= \node -> runProcess node
                                (serverInit port (bypassNER,bypassTEXTNER) lcfg)
             )
-

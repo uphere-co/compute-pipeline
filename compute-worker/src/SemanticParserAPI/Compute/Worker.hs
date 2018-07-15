@@ -79,18 +79,12 @@ runSRL sdat sent = do
   return (tokenss,mgs,cout)
 
 
-{-
-runReuters :: Int -> IO [MeaningGraph]
-runReuters n = do
-
-  return "no results"
--}
-
-queryWorker :: (Bool,Bool)
-            -> FilePath
-            -> QQVar ComputeQuery ComputeResult
-            -> IO ()
-queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar = do
+runSRLQueryDaemon ::
+      (Bool,Bool)
+    -> FilePath
+    -> QQVar ComputeQuery ComputeResult
+    -> IO ()
+runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
   let acfg  = Analyze.Config False False bypassNER bypassTEXTNER lcfg
   cfg <- loadLexDataConfig (acfg^. Analyze.configFile) >>= \case Left err -> error err
                                                                  Right x  -> return x
