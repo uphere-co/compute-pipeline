@@ -4,16 +4,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module CloudHaskell.Util where
 
-import           Control.Concurrent                (threadDelay)
-import           Control.Concurrent.STM            (atomically)
+import           Control.Concurrent                (forkOS,threadDelay)
+import           Control.Concurrent.STM            (atomically,newTVarIO)
 import           Control.Concurrent.STM.TMVar      (takeTMVar,newTMVarIO,putTMVar)
 import           Control.Distributed.Process       (ProcessId,SendPort,ReceivePort)
 import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
 import           Control.Distributed.Process.Internal.Types (Message(..))
-import           Control.Distributed.Process.Lifted(spawnLocal,newChan)
+import           Control.Distributed.Process.Lifted(spawnLocal,newChan,sendChan,receiveChan)
 import           Control.Distributed.Process.Lifted.Class (MonadProcessBase)
 import           Control.Distributed.Process.Serializable
+import           Control.Monad                     (forever,void)
 import           Control.Monad.Loops               (untilJust)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
 import           Control.Monad.Reader.Class        (MonadReader(ask))
@@ -30,6 +31,7 @@ import           Network.Transport.UpHere          (createTransport
                                                    ,defaultTCPParameters
                                                    ,DualHostPortPair(..))
 --
+import           CloudHaskell.QueryQueue           (QQVar,singleQuery,emptyQQ)
 import           CloudHaskell.Type                 (LogLock,Pipeline,PipelineError(..))
 
 
@@ -104,9 +106,31 @@ spawnChannelLocalReceive process = do
   pid <- spawnLocal (process schan)
   pure (rchan, pid)
 
-{-
+
+type RequestDuplex q r = (SendPort q, ReceivePort r)
+type RespondDuplex q r = (ReceivePort q, SendPort r)
+
 spawnChannelLocalDuplex ::
-       (Serializable q,Serializable r, MonadProcess m) =>
-   -> (RequestDuplex q r -> m ())
-   -> m (RespondDuplex q r, ProcessId)
--}
+      (Serializable q,Serializable r, MonadProcessBase m) =>
+      (RespondDuplex q r -> m ())
+   -> m (RequestDuplex q r, ProcessId)
+spawnChannelLocalDuplex process = do
+  (sq,rq) <- newChan
+  (sr,rr) <- newChan
+  pid <- spawnLocal $ process (rq,sr)
+  pure ((sq,rr),pid)
+
+
+ioWorker ::
+       (Serializable q, Serializable r, MonadProcessBase m) =>
+       (ReceivePort q, SendPort r)
+    -> (QQVar q r -> IO ())
+    -> m ()
+ioWorker (rq,sr) daemon = do
+  qqvar <- liftIO (newTVarIO emptyQQ)
+  void $ liftIO $ forkOS $ daemon qqvar
+  forever $ do
+    q <- receiveChan rq
+    r <- liftIO $ singleQuery qqvar q
+    sendChan sr r
+    liftIO $ putStrLn "query served"

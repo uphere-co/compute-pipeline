@@ -25,7 +25,9 @@ import           CloudHaskell.Server                       (server,withHeartBeat
 import           CloudHaskell.Type                         (Pipeline,Q(..),R(..))
 import           CloudHaskell.Util                         (tellLog
                                                            ,expectSafe
+                                                           ,ioWorker
                                                            ,tryCreateTransport
+                                                           ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
@@ -68,28 +70,11 @@ start () (sq,rr) = do
       sendChan sq q
       receiveChan rr
 
-worker ::
-       (Binary q, Typeable q, Binary r, Typeable r) =>
-       (ReceivePort q, SendPort r)
-    -> (QQVar q r -> IO ())
-    -> Process ()
-worker (rq,sr) daemon = do
-  qqvar <- liftIO (newTVarIO emptyQQ)
-  void $ liftIO $ forkOS $ daemon qqvar
-  forever $ do
-    q <- receiveChan rq
-    r <- liftIO $ singleQuery qqvar q
-    sendChan sr r
-    liftIO $ putStrLn "query served"
 
 serverInit :: String -> (Bool,Bool) -> FilePath -> Process ()
 serverInit port (bypassNER,bypassTEXTNER) lcfg = do
-  (sq,rq) <- newChan
-  (sr,rr) <- newChan
-
-  spawnLocal $
-    worker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-
+  ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
+    ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
   server (sq,rr) port start ()
 
 
