@@ -12,6 +12,7 @@ import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
 import           Control.Distributed.Process.Internal.Types (Message(..))
 import           Control.Distributed.Process.Lifted(spawnLocal,newChan)
+import           Control.Distributed.Process.Lifted.Class (MonadProcessBase)
 import           Control.Distributed.Process.Serializable
 import           Control.Monad.Loops               (untilJust)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
@@ -85,14 +86,27 @@ tellLog msg = do
   lock <- ask
   atomicLog lock msg
 
-spawnChannelLocalSend :: Serializable a => (ReceivePort a -> Pipeline ()) -> Pipeline (SendPort a, ProcessId)
+spawnChannelLocalSend ::
+       (Serializable a, MonadProcessBase m) =>
+       (ReceivePort a -> m ())
+    -> m (SendPort a, ProcessId)
 spawnChannelLocalSend process = do
   (schan,rchan) <- newChan
   pid <- spawnLocal (process rchan)
   pure (schan, pid)
 
-spawnChannelLocalReceive :: Serializable a => (SendPort a -> Pipeline ()) -> Pipeline (ReceivePort a, ProcessId)
+spawnChannelLocalReceive ::
+       (Serializable a, MonadProcessBase m) =>
+       (SendPort a -> m ())
+    -> m (ReceivePort a, ProcessId)
 spawnChannelLocalReceive process = do
   (schan,rchan) <- newChan
   pid <- spawnLocal (process schan)
   pure (rchan, pid)
+
+{-
+spawnChannelLocalDuplex ::
+       (Serializable q,Serializable r, MonadProcess m) =>
+   -> (RequestDuplex q r -> m ())
+   -> m (RespondDuplex q r, ProcessId)
+-}
