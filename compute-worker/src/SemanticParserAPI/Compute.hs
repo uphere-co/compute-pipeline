@@ -29,7 +29,7 @@ import           CloudHaskell.Util                         (tellLog
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
-import           SemanticParserAPI.Compute.Worker          (queryWorker)
+import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
 singleServerProcess ::
@@ -57,21 +57,40 @@ test :: Q -> Pipeline R
 test _ = pure R
 
 
-start :: () -> QQVar ComputeQuery ComputeResult -> Pipeline ()
-start () qqvar = do
+
+
+start :: () -> (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
+start () (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
-  withHeartBeat them_ping $ \them_main -> do
-    singleServerProcess them_main (liftIO . singleQuery qqvar)
+  withHeartBeat them_ping $ \them_main ->
+    singleServerProcess them_main $ \q -> do
+      sendChan sq q
+      receiveChan rr
 
-
+worker ::
+       (Binary q, Typeable q, Binary r, Typeable r) =>
+       (ReceivePort q, SendPort r)
+    -> (QQVar q r -> IO ())
+    -> Process ()
+worker (rq,sr) daemon = do
+  qqvar <- liftIO (newTVarIO emptyQQ)
+  void $ liftIO $ forkOS $ daemon qqvar
+  forever $ do
+    q <- receiveChan rq
+    r <- liftIO $ singleQuery qqvar q
+    sendChan sr r
+    liftIO $ putStrLn "query served"
 
 serverInit :: String -> (Bool,Bool) -> FilePath -> Process ()
 serverInit port (bypassNER,bypassTEXTNER) lcfg = do
-  qqvar <- liftIO (newTVarIO emptyQQ)
-  void $ liftIO $ forkOS $
-    queryWorker (bypassNER,bypassTEXTNER) lcfg qqvar
-  server qqvar port start ()
+  (sq,rq) <- newChan
+  (sr,rr) <- newChan
+
+  spawnLocal $
+    worker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+
+  server (sq,rr) port start ()
 
 
 computeMain :: (Int,String,String)
@@ -90,4 +109,3 @@ computeMain (portnum,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
                 >>= \node -> runProcess node
                                (serverInit port (bypassNER,bypassTEXTNER) lcfg)
             )
-
