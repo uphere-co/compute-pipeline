@@ -54,12 +54,12 @@ library
                 , HFrameNet
                 , lexicon-builder
                 , network-transport-uphere
-                , nlp-pipeline
                 , nlp-shared-types
                 , nlp-types
                 , semantic-role-labeler
                 , semantic-types
                 , syntactic-analysis
+                , task-reuters
                 , uphere-network-util
                 , wiki-ner
 
