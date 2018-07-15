@@ -23,8 +23,8 @@ in
     jobqueue-client = ./jobqueue-client;
     jobqueue-server = ./jobqueue-server;
     jobqueue-types  = ./jobqueue-types;
-    nlp-pipeline    = ./nlp-pipeline;
     storage-manager = ./storage-manager;
+    task-reuters    = ./task-reuters;
     uphere-db       = ./uphere-db;
   };
 
@@ -77,8 +77,8 @@ in
       "jobqueue-client"
       "jobqueue-server"
       "jobqueue-types"
-      "nlp-pipeline"
       "storage-manager"
+      "task-reuters"
       "uphere-db"
     ];
   };

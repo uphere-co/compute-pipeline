@@ -1,0 +1,105 @@
+name:                task-reuters
+version:             0.1.0.0
+synopsis:            Reuters-specific tasks
+-- description:
+-- license:
+license-file:        LICENSE
+author:              Ian-Woo Kim
+maintainer:          ianwookim@gmail.com
+-- copyright:
+-- category:
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs: src
+  build-depends:  base
+                  --
+                , aeson
+                , base16-bytestring
+                , beam-core
+                , beam-postgres
+                , bytestring
+                , containers
+                , data-default
+                , directory
+                , directory-tree
+                , filepath
+                , jvm
+                , lens
+                , optparse-applicative
+                , postgresql-simple
+                , process
+                , split
+                , text
+                , textview
+                , time
+                --
+                , graph-algorithms
+                , HCoreNLP
+                , HCoreNLP-Proto
+                , lexicon-builder
+                , multi-word-tagger
+                , nlp-shared-types
+                , nlp-types
+                , semantic-role-labeler
+                , uphere-db
+                , wiki-ner
+                , yayaml
+  exposed-modules: Pipeline.App.AnalysisDaemon
+                   Pipeline.App.CoreNLPDaemon
+                   Pipeline.Load
+                   Pipeline.Operation.Concurrent
+                   Pipeline.Operation.DB
+                   Pipeline.Operation.Graph
+                   Pipeline.Run
+                   Pipeline.Run.Analysis
+                   Pipeline.Run.CoreNLP
+                   Pipeline.Source.RSS.Article
+                   Pipeline.Type
+                   Pipeline.Util
+                   Pipeline.View.YAML.YAYAML
+  other-extensions: TemplateHaskell
+  ghc-prof-options: -fprof-auto
+  ghc-options:     -Wall
+                   -Werror
+                   -fno-warn-unused-do-bind
+                   -fwarn-tabs
+                   -funbox-strict-fields
+                   -fno-warn-orphans
+                   -O2
+
+
+executable corenlp-daemon
+  hs-source-dirs:      app
+  main-is:             corenlp-daemon.hs
+  -- other-modules:
+  build-depends:       base,
+                       --
+                       lens,
+                       optparse-applicative,
+                       --
+                       task-reuters
+  ghc-options:         -threaded
+                       -Wall
+                       -fno-warn-unused-do-bind
+                       -fwarn-tabs
+                       -funbox-strict-fields
+                       -O2
+  default-language:    Haskell2010
+
+
+
+executable analysis-daemon
+  hs-source-dirs:      app
+  main-is:             analysis-daemon.hs
+  -- other-modules:
+  build-depends:       base,
+                       --
+                       lens,
+                       optparse-applicative,
+                       --
+                       task-reuters
+  ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
+  default-language:    Haskell2010

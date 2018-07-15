@@ -6,14 +6,12 @@ module Pipeline.Run.Analysis where
 
 import           Control.Exception               (SomeException,handle)
 import           Control.Lens
-import           Control.Monad                   (forM_,when)
+import           Control.Monad                   (forM_)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
 import qualified Data.ByteString.Lazy       as BL
-import           Data.Char                       (isSpace)
 import           Data.Foldable                   (traverse_)
 import           Data.IntMap                     (IntMap)
-import           Data.List                       (zip6)
 import           Data.List.Split                   (chunksOf)
 import           Data.Maybe
 import           Data.Range
@@ -25,45 +23,35 @@ import           Data.Tree                       (Forest)
 import           Database.Beam
 import           Database.Beam.Postgres
 import           Database.PostgreSQL.Simple      (Connection)
-import           System.FilePath                 ((</>),takeFileName,takeBaseName)
 --
 import           Data.Graph.Algorithm.Basic      (maxConnectedNodes,numberOfIsland)
-import           DB.Operation.RSS.Analysis       (updateRSSAnalysisStatus)
 import           DB.Schema.RSS
 import           DB.Schema.RSS.SRL
-import           DB.Util                         (b16ToBstrHash)
-import           Lexicon.Data                    (loadLexDataConfig)
-import           MWE.Util                        (mkTextFromToken)
 import           NER.Type                        (CompanyInfo(..))
-import           NLP.Shared.Type                 (PathConfig,EventClass(..)
-                                                 ,arbstore,corenlpstore,lexconfigpath
-                                                 ,mgstore,mgdotfigstore)
+import           NLP.Shared.Type                 (PathConfig,EventClass(..),mgdotfigstore)
 import           NLP.Type.CoreNLP
-import           NLP.Type.NamedEntity            (NamedEntityClass)
 import           NLP.Type.TagPos                 (leftTagPos)
-import           SRL.Analyze
 import           SRL.Analyze.ARB                 (mkARB)
---import           SRL.Analyze.MeaningTree       (mkMeaningTree)
-import           SRL.Analyze.Match.MeaningGraph  (changeMGText,meaningGraph,tagMG)
+import           SRL.Analyze.Match.MeaningGraph  (meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure   (docStructure,mkWikiList)
 import           SRL.Analyze.Type
 import           SRL.Statistics
 import           WikiEL.Type                     (EntityMention)
 --
-import           Pipeline.Load
 import           Pipeline.Operation.Concurrent (forkChild,refreshChildren,waitForChildren)
 import           Pipeline.Run
 import           Pipeline.Source.RSS.Article       (listNewDocAnalysisInputs)
 import           Pipeline.Type
-import           Pipeline.Util
+
 
 -- | this should be dynamically determined.
-coreN = 15 :: Int
+coreN :: Int
+coreN = 15
 
-
-isSRLFiltered sstr mg =
-  let a = numberOfPredicate sstr
-      b = numberOfMGVerbPredicate mg
+isSRLFiltered :: SentStructure -> MeaningGraph -> Bool
+isSRLFiltered _sstr mg =
+  let -- a = numberOfPredicate sstr
+      -- b = numberOfMGVerbPredicate mg
       mgraph = getGraphFromMG mg
       (c,d) = case mgraph of
                 Nothing -> (-1,-1)
@@ -71,6 +59,9 @@ isSRLFiltered sstr mg =
   in ({- (a == b) &&  -}(c >=4) && (d < 3))
 
 
+
+listPoliticalEvent,listCentralBanks,listAccidentAndTension,listOilDemand :: [Text]
+listTanker,listStockMov,listOilTrade,listShaleOil,listOPEC,listMarketData :: [Text]
 
 --listPoliticalEvent = ["Brexit","lust belt","sanction","doctrine","deplomatic","deplomat","embassy","missle","bureaucracy","dictator","dictatorship","communism","capitalism","monarchy","nationalism","sovereign"]
 listPoliticalEvent = ["presidential election","republican","GOP","Grand Old Party","Democratic","White House","Blue House","congress","senate","concurrent resolution","organization"]
@@ -113,18 +104,18 @@ mkMGs :: Connection
       -> UTCTime
       -> DocAnalysisInput
       -> IO ()
-mkMGs conn apredata netagger (forest,companyMap) cfg hsh time input = do
+mkMGs conn apredata netagger (forest,companyMap) _cfg hsh time input = do
   -- let filename = takeFileName fp
   dstr <- docStructure apredata netagger (forest,companyMap) input
   let sstrs = catMaybes (dstr ^. ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
-      netags = leftTagPos (dstr^.ds_mergedtags)
+      _netags = leftTagPos (dstr^.ds_mergedtags)
       texttoken = map (_token_text) ((catMaybes . concat) mtokss)
-      evtcls = evtClass texttoken
+      _evtcls = evtClass texttoken
       mgs = map (meaningGraph apredata) sstrs
       arbs = map (mkARB (apredata^.analyze_rolemap)) mgs -- map (mkMeaningTree (apredata^.analyze_rolemap)) mgs
-      wikilsts = map (mkWikiList companyMap) sstrs
-      isNonFilter = True -- False
+      _wikilsts = map (mkWikiList companyMap) sstrs
+      _isNonFilter = True -- False
   let result = (mgs,arbs)
   let rtxt = (TE.decodeUtf8 . BL.toStrict . A.encode) result
   runBeamPostgres conn $
@@ -164,11 +155,11 @@ mkMGs conn apredata netagger (forest,companyMap) cfg hsh time input = do
   -}
 
 genMGFigs :: PathConfig -> FilePath -> Int -> SentStructure -> [Maybe Token] -> MeaningGraph -> [(Range, Text)] -> IO ()
-genMGFigs cfg filename i sstr mtks mg wikilst = do
+genMGFigs cfg filename i _sstr mtks mg wikilst = do
   let mgraph = getGraphFromMG mg
   case mgraph of
     Nothing -> return ()
-    Just graph -> do
+    Just _graph -> do
       let mg' = tagMG mg wikilst
       mkMGDotFigs (cfg ^. mgdotfigstore) i filename mtks mg'
 

@@ -17,7 +17,6 @@ import           NLP.Shared.Type                (PathConfig)
 import           SRL.Analyze.Type
 import           WikiEL.Type                    (EntityMention)
 --
-import           Pipeline.Type
 
 loadCoreNLPResult :: [(FilePath,UTCTime)]
                   -> IO [Maybe (FilePath,UTCTime,Maybe DocAnalysisInput)]
@@ -45,5 +44,5 @@ loadConfigFile :: FilePath -> IO (PathConfig)
 loadConfigFile fp = do
   epc <- A.eitherDecode' <$> BL.readFile fp
   case epc of
-    Left err -> error err;
-    Right pc -> return pc;
+    Left e -> error e
+    Right pc -> return pc
