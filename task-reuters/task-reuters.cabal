@@ -14,49 +14,39 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs: src
-  build-depends:  base,
+  build-depends:  base
                   --
-                  aeson,
-                  aeson-pretty,
-                  attoparsec,
-                  base16-bytestring,
-                  beam-core,
-                  beam-postgres,
-                  bytestring,
-                  containers,
-                  data-default,
-                  directory,
-                  directory-tree,
-                  discrimination,
-                  errors,
-                  filepath,
-                  haskeline,
-                  jvm,
-                  lens,
-                  optparse-applicative,
-                  postgresql-simple,
-                  process,
-                  protocol-buffers,
-                  split,
-                  text,
-                  textview,
-                  time,
-                  transformers,
-                  transformers-either,
-                  --
-                  graph-algorithms,
-                  HCoreNLP,
-                  HCoreNLP-Proto,
-                  HWordNet,
-                  lexicon-builder,
-                  multi-word-tagger,
-                  nlp-shared-types,
-                  nlp-types,
-                  semantic-role-labeler,
-                  syntactic-analysis,
-                  uphere-db,
-                  wiki-ner,
-                  yayaml
+                , aeson
+                , base16-bytestring
+                , beam-core
+                , beam-postgres
+                , bytestring
+                , containers
+                , data-default
+                , directory
+                , directory-tree
+                , filepath
+                , jvm
+                , lens
+                , optparse-applicative
+                , postgresql-simple
+                , process
+                , split
+                , text
+                , textview
+                , time
+                --
+                , graph-algorithms
+                , HCoreNLP
+                , HCoreNLP-Proto
+                , lexicon-builder
+                , multi-word-tagger
+                , nlp-shared-types
+                , nlp-types
+                , semantic-role-labeler
+                , uphere-db
+                , wiki-ner
+                , yayaml
   exposed-modules: Pipeline.App.AnalysisDaemon
                    Pipeline.App.CoreNLPDaemon
                    Pipeline.Load
