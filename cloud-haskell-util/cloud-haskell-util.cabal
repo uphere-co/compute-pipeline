@@ -36,7 +36,10 @@ library
                    , network-transport-uphere
 
   exposed-modules:
+                     CloudHaskell.Client
                      CloudHaskell.QueryQueue
+                     CloudHaskell.Server
+                     CloudHaskell.Socket
                      CloudHaskell.Type
                      CloudHaskell.Util
   other-extensions:  TemplateHaskell

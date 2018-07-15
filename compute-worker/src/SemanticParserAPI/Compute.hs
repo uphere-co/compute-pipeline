@@ -21,10 +21,10 @@ import           Data.Typeable                             (Typeable)
 import           Network.Transport                         (closeTransport)
 --
 import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,singleQuery)
+import           CloudHaskell.Server                       (server,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,Q(..),R(..))
-import           CloudHaskell.Util                         (server,tellLog
+import           CloudHaskell.Util                         (tellLog
                                                            ,expectSafe
-                                                           ,withHeartBeat
                                                            ,tryCreateTransport
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))

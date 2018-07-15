@@ -17,9 +17,10 @@ import qualified Data.Text                     as T
 import           System.Console.Haskeline            (runInputT,getInputLine,defaultSettings)
 import           System.Console.Haskeline.MonadException (MonadException(controlIO),RunIO(..))
 --
+import           CloudHaskell.Client                 (queryProcess)
 import           CloudHaskell.QueryQueue             (QueryStatus(..),QQVar,next)
 import           CloudHaskell.Type                   (Pipeline)
-import           CloudHaskell.Util                   (queryProcess,tellLog)
+import           CloudHaskell.Util                   (tellLog)
 import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
 
 
