@@ -10,10 +10,9 @@
 module Pipeline.Run.CoreNLP where
 
 import           Control.Exception                            (SomeException,try)
-import           Control.Lens                                 ((^.),_1,_2,set,to)
-import           Control.Monad                                (forM_,join,when)
+import           Control.Lens                                 ((^.),set)
+import           Control.Monad                                (forM_)
 import qualified Data.Aeson                            as A
-import           Data.Aeson.Encode.Pretty                     (encodePretty)
 import qualified Data.ByteString.Lazy.Char8            as BL
 import           Data.List                                    (foldl')
 import           Data.Maybe
@@ -25,30 +24,24 @@ import           Database.Beam                     (select,runSelectReturningLis
                                                    ,update,runUpdate
                                                    ,insert,runInsert,insertValues
                                                    ,guard_,val_,all_
-                                                   ,(&&.),(==.),(/=.),(<-.))
+                                                   ,(==.),(<-.))
 import           Database.Beam.Postgres            (runBeamPostgres)
 import           Language.Java                as J
-import           System.FilePath                   ((</>))
 --
-import           NLP.Shared.Type                   (Summary,PathConfig,corenlpstore,dbstring,errstore,description)
-
-import           DB.Operation.RSS.Analysis
-import           DB.Operation.RSS.Article
+import           NLP.Shared.Type                   (Summary,PathConfig,dbstring,description)
 import           DB.Operation.RSS.ErrorArticle
 import           DB.Schema.RSS
-import           DB.Schema.RSS.Analysis
 import           DB.Schema.RSS.Article
 import           DB.Schema.RSS.CoreNLP
 import           DB.Schema.RSS.ErrorArticle
-import           DB.Util                           (b16ToBstrHash,bstrHashToB16)
 import           SRL.Analyze.CoreNLP               (runParser)
 --
 import           Pipeline.Source.RSS.Article       (listNewArticles)
 import           Pipeline.Operation.DB
 import           Pipeline.Type
-import           Pipeline.Util
 
 -- this is only for market pulse source
+noisyTextClips :: [Text]
 noisyTextClips =
   [ "Market Pulse Stories are Rapid-fire, short news bursts on stocks and markets as they move. Visit MarketWatch.com for more information on this news."
   ]

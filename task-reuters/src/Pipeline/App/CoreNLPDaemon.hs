@@ -3,10 +3,9 @@ module Pipeline.App.CoreNLPDaemon where
 
 import           Control.Concurrent                (threadDelay)
 import           Control.Lens                      ((&),(^.),(.~))
-import           Control.Monad                     (forever,forM_)
+import           Control.Monad                     (forever)
 import qualified Data.ByteString.Char8 as B
 import           Data.Default                      (def)
-import qualified Data.Text             as T
 import           Language.Java         as J
 import           System.Environment                (getEnv)
 --
@@ -16,8 +15,6 @@ import           NLP.Shared.Type                   (PathConfig,dbstring)
 --
 import           Pipeline.Operation.DB             (closeConnection,getConnection)
 import           Pipeline.Run.CoreNLP              (runCoreNLPforRSS)
-import           Pipeline.Type                     (SourceTimeConstraint(..))
-import           Pipeline.Util                     (digitsToUTC)
 
 
 runDaemon :: PathConfig -> IO ()

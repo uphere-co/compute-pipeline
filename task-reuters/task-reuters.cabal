@@ -72,7 +72,13 @@ library
                    Pipeline.View.YAML.YAYAML
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
-  ghc-options: -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -fno-warn-orphans -O2
+  ghc-options:     -Wall
+                   -Werror
+                   -fno-warn-unused-do-bind
+                   -fwarn-tabs
+                   -funbox-strict-fields
+                   -fno-warn-orphans
+                   -O2
 
 
 executable corenlp-daemon
@@ -107,4 +113,3 @@ executable analysis-daemon
                        task-reuters
   ghc-options: -threaded -Wall -fno-warn-unused-do-bind -fwarn-tabs -funbox-strict-fields -O2
   default-language:    Haskell2010
-
