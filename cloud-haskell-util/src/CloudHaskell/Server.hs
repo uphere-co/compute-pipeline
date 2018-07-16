@@ -75,7 +75,6 @@ serverUnit them handle = do
   send them us
   tellLog "sent our main pid"
   send them sq
-  -- send them (us,sq)
   tellLog "sent SendPort Query"
   sr :: SendPort r <- expectSafe
   tellLog "receive SendPortResult"

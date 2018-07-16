@@ -99,11 +99,11 @@ clientUnit qqvar (sq,rr) = do
       tellLog (show test)
 
 
-mainP :: forall query result.
-         (Binary query, Binary result, Typeable query, Typeable result) =>
-         ((SendPort query,ReceivePort result) ->  Pipeline ())
-      -> Pipeline ()
-mainP process = do
+serviceHandshake ::
+     forall query result. (Serializable query, Serializable result) =>
+     ((SendPort query,ReceivePort result) ->  Pipeline ())
+  -> Pipeline ()
+serviceHandshake process = do
   tellLog "start mainProcess"
   them :: ProcessId <- expectSafe
   tellLog "connected"
