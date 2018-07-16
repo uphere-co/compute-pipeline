@@ -59,15 +59,15 @@ serve pidref action = do
   local incClientNum $ serve pidref action
 
 
-server :: queue -> String -> (state -> queue -> Pipeline ()) -> state -> Process ()
-server queue port action state = do
+server :: String -> Pipeline () -> Process ()
+server port action = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   lock <- newLogLock 0
 
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
   flip runReaderT lock $ do
-    e <- runExceptT $ local incClientNum $ serve pidref (action state queue)
+    e <- runExceptT $ local incClientNum $ serve pidref action
     case e of
       Left err -> atomicLog lock (show err)
       Right _  -> pure ()

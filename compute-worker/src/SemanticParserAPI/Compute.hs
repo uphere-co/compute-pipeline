@@ -61,8 +61,8 @@ test _ = pure R
 
 
 
-start :: () -> (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
-start () (sq,rr) = do
+start :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
+start (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
   withHeartBeat them_ping $ \them_main ->
@@ -75,7 +75,7 @@ serverInit :: String -> (Bool,Bool) -> FilePath -> Process ()
 serverInit port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server (sq,rr) port start ()
+  server port (start (sq,rr))
 
 
 computeMain :: (Int,String,String)
