@@ -54,7 +54,6 @@ library
                    Pipeline.Operation.DB
                    Pipeline.Operation.Graph
                    Pipeline.Run
-                   Pipeline.Run.CoreNLP
                    Pipeline.Source.RSS.Article
                    Pipeline.Type
                    Pipeline.Util
