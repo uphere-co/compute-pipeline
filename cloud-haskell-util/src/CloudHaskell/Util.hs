@@ -1,12 +1,14 @@
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE MonoLocalBinds      #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MonoLocalBinds             #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 module CloudHaskell.Util where
 
 import           Control.Concurrent                (forkOS,threadDelay)
 import           Control.Concurrent.STM            (atomically,newTVarIO)
 import           Control.Concurrent.STM.TMVar      (takeTMVar,newTMVarIO,putTMVar)
+import           Control.Error.Safe                (justErr)
 import           Control.Distributed.Process       (ProcessId,SendPort,ReceivePort)
 import           Control.Distributed.Process.Internal.CQueue ()
 import           Control.Distributed.Process.Internal.Primitives (matchAny,receiveWait)
@@ -22,6 +24,8 @@ import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Except        (ExceptT(..))
 import           Data.Binary                       (Binary,decode)
 import qualified Data.ByteString.Char8       as BC
+import           Data.IntMap                       (IntMap)
+import qualified Data.IntMap                 as IM
 import           Data.Typeable                     (Typeable)
 import           Network.Transport                 (Transport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
@@ -134,3 +138,13 @@ ioWorker (rq,sr) daemon = do
     r <- liftIO $ singleQuery qqvar q
     sendChan sr r
     liftIO $ putStrLn "query served"
+
+newtype Router = Router { unRouter :: IntMap ProcessId }
+               deriving (Show,Binary,Typeable)
+
+
+lookupRouter :: Int -> Router -> Pipeline ProcessId
+lookupRouter n router =
+  ExceptT $ pure $
+    justErr (RouteError ("no such route:" ++ show n)) $
+      IM.lookup n (unRouter router)

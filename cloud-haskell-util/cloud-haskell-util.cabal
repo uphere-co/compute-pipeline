@@ -25,6 +25,7 @@ library
                    , deepseq
                    , distributed-process
                    , distributed-process-lifted
+                   , errors
                    , monad-loops
                    , mtl
                    , network-simple

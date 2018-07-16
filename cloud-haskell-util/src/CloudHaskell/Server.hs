@@ -8,7 +8,7 @@ import           Control.Concurrent.STM.TMVar      (TMVar,takeTMVar,newEmptyTMVa
 import           Control.DeepSeq                   (NFData,deepseq)
 import           Control.Distributed.Process       (ProcessId,Process
                                                    ,SendPort,ReceivePort)
-import           Control.Distributed.Process.Lifted(spawnLocal,expectTimeout,getSelfPid
+import           Control.Distributed.Process.Lifted(spawnLocal,expectTimeout
                                                    ,send,receiveChan
                                                    ,newChan,sendChan,kill)
 import           Control.Distributed.Process.Serializable (Serializable)
@@ -52,6 +52,32 @@ broadcastProcessId lock pidref port = do
     packAndSend sock pid
 
 
+serverUnit ::
+       forall query result.
+       (Serializable query, Serializable result, NFData result) =>
+       ReceivePort ()
+    -> (query -> Pipeline result)
+    -> Pipeline ()
+serverUnit lock handle = do
+  -- wait initialization
+  () <- receiveChan lock
+  tellLog "serverUnit started. wait for client pid"
+  them <- expectSafe
+  tellLog ("received client pid : " ++ show them)
+  (sq :: SendPort q, rq :: ReceivePort q) <- newChan
+  tellLog "now we send query SendPort"
+  send them sq
+  tellLog "sent. now we wait for result SendPort"
+  sr :: SendPort r <- expectSafe
+  tellLog "receive SendPortResult, Handshake done!"
+  forever $ do
+    q <- receiveChan rq
+    r <- handle q
+    -- NOTE: result must be fully evaluated before sending.
+    r `deepseq` sendChan sr r
+
+
+
 serve :: TMVar ProcessId -> Pipeline () -> Pipeline ()
 serve pidref action = do
   pid <-  spawnLocal $ action >> tellLog "action finished"
@@ -62,26 +88,6 @@ serve pidref action = do
   tellLog "wait mode"
   local incClientNum $ serve pidref action
 
-
-serverUnit ::
-       forall query result.
-       (Serializable query, Serializable result, NFData result) =>
-       ProcessId
-    -> (query -> Pipeline result)
-    -> Pipeline ()
-serverUnit them handle = do
-  (sq :: SendPort q, rq :: ReceivePort q) <- newChan
-  us <- getSelfPid
-  send them us
-  tellLog "sent our main pid"
-  send them sq
-  tellLog "sent SendPort Query"
-  sr :: SendPort r <- expectSafe
-  tellLog "receive SendPortResult"
-  forever $ do
-    q <- receiveChan rq
-    r <- handle q
-    r `deepseq` sendChan sr r
 
 
 server :: String -> Pipeline () -> Process ()
