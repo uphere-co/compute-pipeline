@@ -6,10 +6,10 @@ module Pipeline.App.Analysis where
 import           Control.Concurrent                (threadDelay)
 import           Control.Exception                 (SomeException,handle)
 import           Control.Lens                      ((^.))
-import           Control.Monad                     (forever,forM_)
+import           Control.Monad                     (forever,forM_,void)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B
-import qualified Data.ByteString.Lazy       as BL
+import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Foldable                     (traverse_)
 import           Data.IntMap                       (IntMap)
 import           Data.List.Split                   (chunksOf)
@@ -23,30 +23,42 @@ import           Data.Tree                         (Forest)
 import           Database.Beam
 import           Database.Beam.Postgres
 import           Database.PostgreSQL.Simple        (Connection)
-
+import           System.Directory                       (getCurrentDirectory,setCurrentDirectory)
+import           System.FilePath                        ((</>),(<.>),addExtension,takeBaseName)
+import           System.Process                         (readProcess)
 --
 import           Data.Graph.Algorithm.Basic        (maxConnectedNodes,numberOfIsland)
 import           DB.Schema.RSS
 import           DB.Schema.RSS.SRL
 import           Lexicon.Data                      (loadLexDataConfig)
+import           MWE.Util                               (mkTextFromToken)
 import           NER.Type                          (CompanyInfo(..))
 import           NLP.Shared.Type                   (PathConfig,EventClass(..)
                                                    ,dbstring,lexconfigpath,mgdotfigstore)
-import           NLP.Type.CoreNLP
+import           NLP.Type.CoreNLP                  (Sentence,Token(..))
 import           NLP.Type.TagPos                   (leftTagPos)
 import           SRL.Analyze                       (loadConfig)
 import           SRL.Analyze.ARB                   (mkARB)
+import           SRL.Analyze.Format                (dotMeaningGraph)
 import           SRL.Analyze.Match.MeaningGraph    (meaningGraph,tagMG)
 import           SRL.Analyze.SentenceStructure     (docStructure,mkWikiList)
-import           SRL.Analyze.Type
-import           SRL.Statistics
+import           SRL.Analyze.Type                  (MeaningGraph,DocAnalysisInput
+                                                   ,AnalyzePredata,SentStructure
+                                                   ,analyze_rolemap
+                                                   ,ds_mergedtags
+                                                   ,ds_mtokenss
+                                                   ,ds_sentStructures
+                                                   )
+import           SRL.Statistics                    (getGraphFromMG)
+import           Text.Format.Dot                   (mkLabelText)
 import           WikiEL.Type                       (EntityMention)
 --
 import           Pipeline.Operation.Concurrent     (forkChild,refreshChildren,waitForChildren)
-import           Pipeline.Operation.DB
-import           Pipeline.Run
+import           Pipeline.Operation.DB             (closeConnection,getConnection)
 import           Pipeline.Source.RSS.Article       (listNewDocAnalysisInputs)
 import           Pipeline.Type                     (SourceTimeConstraint)
+import           Pipeline.Util                     (saveHashNameBSFileInPrefixSubDirs,splitPrefixSubDirs)
+
 
 -- | this should be dynamically determined.
 coreN :: Int
@@ -201,6 +213,44 @@ runSRL conn apredata netagger (forest,companyMap) cfg (msrc,tc) = do
 
   waitForChildren
   refreshChildren
+
+-- -----------------------------------------------------------------
+
+mkMGDotFigs :: (Show a) => FilePath -> a -> FilePath -> [Maybe Token] -> MeaningGraph -> IO ()
+mkMGDotFigs savedir i filename mtks mg = do
+  let title = mkTextFromToken mtks
+      dottxt = dotMeaningGraph (Just (mkLabelText title)) mg
+      filepath = (savedir </> filename) ++ "_" ++ (show i) ++ ".dot"
+
+  saveHashNameBSFileInPrefixSubDirs filepath (TE.encodeUtf8 dottxt)
+  let fname = takeBaseName filepath
+  let (_hsh,storepath,prefix) = splitPrefixSubDirs filepath
+  dir <- getCurrentDirectory
+  setCurrentDirectory (storepath </> prefix)
+  void $ readProcess "dot" ["-Tpng",fname <.> "dot","-o",fname <.>"png"] ""
+  setCurrentDirectory dir
+
+
+saveJSON :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
+saveJSON savedir filename jsondata =
+  saveHashNameBSFileInPrefixSubDirs
+    (savedir </> filename)
+    (BL.toStrict (A.encode jsondata))
+
+saveMGs :: A.ToJSON a => FilePath -> FilePath -> a -> IO ()
+saveMGs savedir filename mgs =
+  saveJSON savedir (addExtension filename "mgs") mgs
+
+saveMG :: A.ToJSON a => FilePath -> FilePath -> Int -> a -> IO ()
+saveMG savedir filename i mg =
+  saveJSON savedir (addExtension (filename ++ "_" ++ (show i)) "mgs") mg
+
+saveARB :: A.ToJSON a => FilePath -> FilePath -> Int -> a -> IO ()
+saveARB savedir filename i arb =
+  saveJSON savedir (addExtension (filename ++ "_" ++ (show i)) "arb") arb
+
+saveWikiEL :: A.ToJSON a => FilePath -> a -> IO ()
+saveWikiEL fp wikiel = B.writeFile (fp ++ ".wiki") (BL.toStrict $ A.encode wikiel)
 
 -- -----------------------------------------------------------------
 
