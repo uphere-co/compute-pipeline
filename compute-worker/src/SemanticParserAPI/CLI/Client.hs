@@ -4,23 +4,19 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module SemanticParserAPI.CLI.Client where
 
-import           Control.Concurrent.STM              (atomically,retry
-                                                     ,modifyTVar',readTVar,writeTVar)
-import           Control.Distributed.Process.Lifted  (Process,SendPort,ReceivePort,spawnLocal)
-import           Control.Monad                       (forever,join,when)
+import           Control.Distributed.Process.Lifted  (Process,SendPort,ReceivePort)
+import           Control.Monad                       (join,when)
 import           Control.Monad.IO.Class              (liftIO)
 import           Control.Monad.Loops                 (whileJust_)
 import           Control.Monad.Trans.Class           (lift)
-import qualified Data.IntMap                   as IM
 import           Data.List                           (intercalate)
 import qualified Data.Text                     as T
 import           System.Console.Haskeline            (runInputT,getInputLine,defaultSettings)
 import           System.Console.Haskeline.MonadException (MonadException(controlIO),RunIO(..))
 --
-import           CloudHaskell.Client                 (queryProcess)
-import           CloudHaskell.QueryQueue             (QueryStatus(..),QQVar,next)
+import           CloudHaskell.Client                 (queryProcess,clientUnit)
+import           CloudHaskell.QueryQueue             (QQVar)
 import           CloudHaskell.Type                   (Pipeline)
-import           CloudHaskell.Util                   (tellLog)
 import           SemanticParserAPI.Compute.Type      (ComputeQuery(..),ComputeResult(..))
 
 
@@ -50,19 +46,4 @@ consoleClient (sq,rr) = do
 webClient :: QQVar ComputeQuery ComputeResult
           -> (SendPort ComputeQuery, ReceivePort ComputeResult)
           -> Pipeline ()
-webClient qqvar (sq,rr) = do
-  forever $ do
-    (i,q) <- liftIO $ atomically $ do
-               qq <- readTVar qqvar
-               case next qq of
-                 Nothing -> retry
-                 Just (i,q) -> do
-                   let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
-                   writeTVar qqvar qq'
-                   return (i,q)
-    tellLog ("query start: " ++ show (i,q))
-    spawnLocal $ do
-      r <- queryProcess (sq,rr) q return
-      liftIO $ atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
-      test <- liftIO $ atomically $ readTVar qqvar
-      tellLog (show test)
+webClient = clientUnit

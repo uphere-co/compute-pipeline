@@ -1,20 +1,25 @@
+{-# LANGUAGE MonoLocalBinds      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module CloudHaskell.Client where
 
 import           Control.Concurrent                (threadDelay)
+import           Control.Concurrent.STM            (atomically,retry
+                                                   ,readTVar,writeTVar,modifyTVar')
 import           Control.Distributed.Process       (ProcessId,SendPort,ReceivePort)
-import           Control.Distributed.Process.Lifted(expectTimeout
+import           Control.Distributed.Process.Lifted(expectTimeout,spawnLocal
                                                    ,getSelfPid,send
                                                    ,newChan,receiveChan,sendChan
                                                    ,kill,try,bracket
                                                    )
 import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
+import           Control.Distributed.Process.Serializable (Serializable)
 import           Control.Exception                 (SomeException)
 import           Control.Monad                     (forever,void)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
 import           Control.Monad.Trans.Except        (runExceptT)
 import           Control.Monad.Trans.Reader        (ReaderT(runReaderT))
 import           Data.Binary                       (Binary)
+import qualified Data.IntMap                 as IM
 import           Data.Text                         (Text)
 import qualified Data.Text                   as T
 import           Data.Typeable                     (Typeable)
@@ -23,6 +28,7 @@ import           Network.Transport                 (closeTransport)
 --
 import           Network.Transport.UpHere          (DualHostPortPair(..))
 --
+import           CloudHaskell.QueryQueue           (QQVar,QueryStatus(..),next)
 import           CloudHaskell.Socket               (recvAndUnpack)
 import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..))
 import           CloudHaskell.Util                 (tellLog,atomicLog,newLogLock
@@ -69,6 +75,29 @@ queryProcess :: forall query result a.
 queryProcess (sq,rr) q f = do
   sendChan sq q
   f =<< receiveChan rr
+
+
+clientUnit :: (Serializable query, Serializable result,Show query, Show result) =>
+              QQVar query result
+          -> (SendPort query, ReceivePort result)
+          -> Pipeline ()
+clientUnit qqvar (sq,rr) = do
+  forever $ do
+    (i,q) <- liftIO $ atomically $ do
+               qq <- readTVar qqvar
+               case next qq of
+                 Nothing -> retry
+                 Just (i,q) -> do
+                   let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
+                   writeTVar qqvar qq'
+                   return (i,q)
+    tellLog ("query start: " ++ show (i,q))
+    spawnLocal $ do
+      r <- queryProcess (sq,rr) q return
+      liftIO $ atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+      test <- liftIO $ atomically $ readTVar qqvar
+      tellLog (show test)
+
 
 mainP :: forall query result.
          (Binary query, Binary result, Typeable query, Typeable result) =>

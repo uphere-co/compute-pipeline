@@ -44,13 +44,21 @@ start (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
   withHeartBeat them_ping $ \them_main ->
-    serverUnit them_main $ \q -> do
+    -- client1 <- expectSafe
+    -- client2 <- expectSafe
+    serverUnit them_main {- client1 -} $ \q -> do
       sendChan sq q
       receiveChan rr
+    {-
+    serverUnit client2 $ test
+    -- \_q -> do
+    --  pure R
+    -}
 
 
-serverInit :: String -> (Bool,Bool) -> FilePath -> Process ()
-serverInit port (bypassNER,bypassTEXTNER) lcfg = do
+
+initDaemonAndServer :: String -> (Bool,Bool) -> FilePath -> Process ()
+initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
   server port (start (sq,rr))
@@ -70,5 +78,5 @@ computeMain (portnum,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
             (\transport ->
                     newLocalNode transport initRemoteTable
                 >>= \node -> runProcess node
-                               (serverInit port (bypassNER,bypassTEXTNER) lcfg)
+                               (initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg)
             )
