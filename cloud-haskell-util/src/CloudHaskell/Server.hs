@@ -30,7 +30,8 @@ withHeartBeat :: ProcessId -> (ProcessId -> Pipeline ()) -> Pipeline ()
 withHeartBeat them_ping action = do
   (sthem_main,us_main) <- spawnChannelLocalSend $ \rthem_main -> do
     them_main <- receiveChan rthem_main
-    action them_main                           -- main process launch
+    -- NOTE: main process launch
+    action them_main
   send them_ping us_main
   tellLog ("sent our main pid: " ++ show us_main)
   them_main :: ProcessId <- expectSafe
@@ -39,9 +40,13 @@ withHeartBeat them_ping action = do
   whileJust_ (expectTimeout (10*onesecond)) $
     \(HB n) -> do
       tellLog $ "heartbeat: " ++ show n
-      send them_ping (HB n)                -- heartbeating until it fails.
-  tellLog "heartbeat failed: reload"           -- when fail, it prints messages
-  kill us_main "connection closed"                 -- and start over the whole process.
+      -- NOTE: heartbeating until it fails.
+      send them_ping (HB n)
+  -- NOTE: when fail, it prints messages
+  tellLog "heartbeat failed: reload"
+  -- NOTE: and kill the spawned process.
+  --       An enclosing process may restart the whole process.
+  kill us_main "connection closed"
 
 
 broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
@@ -59,7 +64,7 @@ serverUnit ::
     -> (query -> Pipeline result)
     -> Pipeline ()
 serverUnit lock handle = do
-  -- wait initialization
+  -- NOTE: wait initialization
   () <- receiveChan lock
   tellLog "serverUnit started. wait for client pid"
   them <- expectSafe
