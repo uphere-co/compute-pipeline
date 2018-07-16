@@ -1,13 +1,18 @@
+{-# LANGUAGE MonoLocalBinds      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module CloudHaskell.Server where
 
-import           Control.Concurrent                 (forkIO)
-import           Control.Concurrent.STM             (atomically)
-import           Control.Concurrent.STM.TMVar       (TMVar,takeTMVar,newEmptyTMVarIO,putTMVar)
-import           Control.Distributed.Process        (ProcessId,Process)
-import           Control.Distributed.Process.Lifted (spawnLocal,expectTimeout
-                                                    ,send,receiveChan,sendChan,kill)
-import           Control.Monad                     (void)
+import           Control.Concurrent                (forkIO)
+import           Control.Concurrent.STM            (atomically)
+import           Control.Concurrent.STM.TMVar      (TMVar,takeTMVar,newEmptyTMVarIO,putTMVar)
+import           Control.DeepSeq                   (NFData,deepseq)
+import           Control.Distributed.Process       (ProcessId,Process
+                                                   ,SendPort,ReceivePort)
+import           Control.Distributed.Process.Lifted(spawnLocal,expectTimeout,getSelfPid
+                                                   ,send,receiveChan
+                                                   ,newChan,sendChan,kill)
+import           Control.Distributed.Process.Serializable (Serializable)
+import           Control.Monad                     (forever,void)
 import           Control.Monad.Loops               (whileJust_)
 import           Control.Monad.IO.Class            (MonadIO(liftIO))
 import           Control.Monad.Reader.Class        (MonadReader(local))
@@ -17,7 +22,6 @@ import qualified Network.Simple.TCP          as NS
 --
 import           CloudHaskell.Socket               (packAndSend)
 import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..))
-
 import           CloudHaskell.Util                 (expectSafe,spawnChannelLocalSend
                                                    ,newLogLock,atomicLog
                                                    ,tellLog,onesecond,incClientNum)
@@ -59,15 +63,36 @@ serve pidref action = do
   local incClientNum $ serve pidref action
 
 
-server :: queue -> String -> (state -> queue -> Pipeline ()) -> state -> Process ()
-server queue port action state = do
+serverUnit ::
+       forall query result.
+       (Serializable query, Serializable result, NFData result) =>
+       ProcessId
+    -> (query -> Pipeline result)
+    -> Pipeline ()
+serverUnit them handle = do
+  (sq :: SendPort q, rq :: ReceivePort q) <- newChan
+  us <- getSelfPid
+  send them us
+  tellLog "sent our main pid"
+  send them sq
+  tellLog "sent SendPort Query"
+  sr :: SendPort r <- expectSafe
+  tellLog "receive SendPortResult"
+  forever $ do
+    q <- receiveChan rq
+    r <- handle q
+    r `deepseq` sendChan sr r
+
+
+server :: String -> Pipeline () -> Process ()
+server port action = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   lock <- newLogLock 0
 
   void . liftIO $ forkIO (broadcastProcessId lock pidref port)
   flip runReaderT lock $ do
-    e <- runExceptT $ local incClientNum $ serve pidref (action state queue)
+    e <- runExceptT $ local incClientNum $ serve pidref action
     case e of
       Left err -> atomicLog lock (show err)
       Right _  -> pure ()
