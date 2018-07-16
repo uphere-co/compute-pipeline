@@ -21,7 +21,7 @@ import           Data.Typeable                             (Typeable)
 import           Network.Transport                         (closeTransport)
 --
 import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,singleQuery)
-import           CloudHaskell.Server                       (server,withHeartBeat)
+import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,Q(..),R(..))
 import           CloudHaskell.Util                         (tellLog
                                                            ,expectSafe
@@ -34,31 +34,9 @@ import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),Com
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
-singleServerProcess ::
-       forall query result.
-       (Binary query, Binary result, Typeable query, Typeable result, NFData result) =>
-       ProcessId
-    -> (query -> Pipeline result)
-    -> Pipeline ()
-singleServerProcess them handle = do
-  (sq :: SendPort q, rq :: ReceivePort q) <- newChan
-  us <- getSelfPid
-  send them us
-  tellLog "sent our main pid"
-  send them sq
-  -- send them (us,sq)
-  tellLog "sent SendPort Query"
-  sr :: SendPort r <- expectSafe
-  tellLog "receive SendPortResult"
-  forever $ do
-    q <- receiveChan rq
-    r <- handle q
-    r `deepseq` sendChan sr r
 
 test :: Q -> Pipeline R
 test _ = pure R
-
-
 
 
 start :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
@@ -66,7 +44,7 @@ start (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
   withHeartBeat them_ping $ \them_main ->
-    singleServerProcess them_main $ \q -> do
+    serverUnit them_main $ \q -> do
       sendChan sq q
       receiveChan rr
 
