@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Pipeline.App.CoreNLPDaemon where
+module Pipeline.App.CoreNLP where
 
 import           Control.Concurrent                (threadDelay)
 import           Control.Lens                      ((&),(^.),(.~))

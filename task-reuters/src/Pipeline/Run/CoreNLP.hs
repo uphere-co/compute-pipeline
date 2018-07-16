@@ -50,6 +50,7 @@ noisyTextClips =
 tameDescription :: Text -> Text
 tameDescription txt = snd $ T.breakOnEnd "(Reuters) - " $ txt
 
+
 cleanNoiseText :: Text -> Text
 cleanNoiseText txt0 = let txt1 = tameDescription txt0
                           txt2 = foldl' (\(!txt) clip -> T.replace clip "" txt) txt1 noisyTextClips
