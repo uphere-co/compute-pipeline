@@ -1,44 +1,59 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE MultiWayIf          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell     #-}
-{-# LANGUAGE TupleSections       #-}
+module Pipeline.App.CoreNLP where
 
-module Pipeline.Run.CoreNLP where
+import           Control.Concurrent                (threadDelay)
+import           Control.Exception                 (SomeException,try)
 
-import           Control.Exception                            (SomeException,try)
-import           Control.Lens                                 ((^.),set)
-import           Control.Monad                                (forM_)
-import qualified Data.Aeson                            as A
-import qualified Data.ByteString.Lazy.Char8            as BL
-import           Data.List                                    (foldl')
+import           Control.Lens                      ((&),(^.),(.~),set)
+import           Control.Monad                     (forever,forM_)
+import qualified Data.Aeson            as A
+import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as BL
+
+import           Data.Default                      (def)
+import           Data.List                         (foldl')
 import           Data.Maybe
-import           Data.Text                                    (Text)
-import qualified Data.Text                             as T
-import qualified Data.Text.Encoding                    as TE
-import           Data.Time.Clock                              (getCurrentTime)
+import           Data.Text                         (Text)
+import qualified Data.Text             as T
+import qualified Data.Text.Encoding    as TE
+import           Data.Time.Clock                   (getCurrentTime)
 import           Database.Beam                     (select,runSelectReturningList
                                                    ,update,runUpdate
                                                    ,insert,runInsert,insertValues
                                                    ,guard_,val_,all_
                                                    ,(==.),(<-.))
 import           Database.Beam.Postgres            (runBeamPostgres)
-import           Language.Java                as J
+
+import           Language.Java         as J
+import           System.Environment                (getEnv)
 --
-import           NLP.Shared.Type                   (Summary,PathConfig,dbstring,description)
+import           CoreNLP.Simple                    (prepare)
+import           CoreNLP.Simple.Type               (constituency,lemma,ner,postagger
+                                                   ,sutime,tokenizer,words2sentences)
 import           DB.Operation.RSS.ErrorArticle
 import           DB.Schema.RSS
 import           DB.Schema.RSS.Article
 import           DB.Schema.RSS.CoreNLP
 import           DB.Schema.RSS.ErrorArticle
+import           NLP.Shared.Type                   (Summary,PathConfig,dbstring,description)
 import           SRL.Analyze.CoreNLP               (runParser)
 --
+import           Pipeline.Operation.DB             (closeConnection,getConnection)
 import           Pipeline.Source.RSS.Article       (listNewArticles)
-import           Pipeline.Operation.DB
-import           Pipeline.Type
+import           Pipeline.Type                     (SourceTimeConstraint)
+
+
+
+
+
+--
+--
+-- import           Pipeline.Operation.DB
+
 
 -- this is only for market pulse source
 noisyTextClips :: [Text]
@@ -49,6 +64,7 @@ noisyTextClips =
 -- this is only for Reuters
 tameDescription :: Text -> Text
 tameDescription txt = snd $ T.breakOnEnd "(Reuters) - " $ txt
+
 
 cleanNoiseText :: Text -> Text
 cleanNoiseText txt0 = let txt1 = tameDescription txt0
@@ -88,7 +104,7 @@ preParseRSSArticles pp cfg articles = do
     case eresult of
       Left  (e :: SomeException) -> do
         let errmsg = T.pack (show e)
-        let err = RSSErrorArticle hsh src errmsg (article^.rssArticleCreated) 
+        let err = RSSErrorArticle hsh src errmsg (article^.rssArticleCreated)
         uploadRSSErrorArticleIfMissing conn err
       Right result                -> do
         time <- getCurrentTime
@@ -103,7 +119,7 @@ preParseRSSArticles pp cfg articles = do
                       guard_ (c^.coreNLPHash ==. val_ hsh)
                       pure c
         case as' of
-          []  -> let corenlp :: AnalysisCoreNLP 
+          []  -> let corenlp :: AnalysisCoreNLP
                      corenlp = AnalysisCoreNLP hsh (Just rtxt) time
                  in runBeamPostgres conn $
                       runInsert $
@@ -128,3 +144,28 @@ runCoreNLPforRSS :: J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
 runCoreNLPforRSS pp cfg sc = do
   articles <- listNewArticles cfg sc
   preParseRSSArticles pp cfg articles
+
+
+-- ------------------------------------------------------------------------
+
+runDaemon :: PathConfig -> IO ()
+runDaemon cfg = do
+  clspath <- getEnv "CLASSPATH"
+  conn <- getConnection (cfg ^. dbstring)
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    pp <- prepare (def & (tokenizer .~ True)
+                       . (words2sentences .~ True)
+                       . (postagger .~ True)
+                       . (lemma .~ True)
+                       . (sutime .~ True)
+                       . (constituency .~ True)
+                       . (ner .~ True)
+                  )
+    forever $ do
+      -- TODO: reuters/Archive should be separated out as a configuration
+      runCoreNLPforRSS pp cfg (Just "reuters/Archive",Nothing)
+      putStrLn "Waiting next run..."
+      -- TODO: this time should be configured.
+      let sec = 1000000 in threadDelay (600*sec)
+
+  closeConnection conn
