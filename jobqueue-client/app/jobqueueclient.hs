@@ -4,7 +4,7 @@ module Main where
 import Control.Distributed.Process (SendPort,ReceivePort)
 import Control.Distributed.Process.Lifted (sendChan,receiveChan)
 --
-import CloudHaskell.Client (heartBeatHandshake,client,mainP)
+-- import CloudHaskell.Client (heartBeatHandshake,client,mainP)
 import CloudHaskell.Type (Pipeline,Q(..),R(..))
 import CloudHaskell.Util (tellLog)
 

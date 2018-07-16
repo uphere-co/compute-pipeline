@@ -31,7 +31,8 @@ import           Network.Transport.UpHere          (DualHostPortPair(..))
 import           CloudHaskell.QueryQueue           (QQVar,QueryStatus(..),next)
 import           CloudHaskell.Socket               (recvAndUnpack)
 import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..))
-import           CloudHaskell.Util                 (tellLog,atomicLog,newLogLock
+import           CloudHaskell.Util                 (Router(..)
+                                                   ,tellLog,atomicLog,newLogLock
                                                    ,onesecond,expectSafe
                                                    ,spawnChannelLocalReceive
                                                    ,tryCreateTransport
@@ -101,18 +102,29 @@ clientUnit qqvar (sq,rr) = do
 
 serviceHandshake ::
      forall query result. (Serializable query, Serializable result) =>
-     ((SendPort query,ReceivePort result) ->  Pipeline ())
+     ProcessId
+  -> ((SendPort query,ReceivePort result) ->  Pipeline ())
   -> Pipeline ()
-serviceHandshake process = do
-  tellLog "start mainProcess"
-  them :: ProcessId <- expectSafe
-  tellLog "connected"
+serviceHandshake them process = do
+  tellLog "service handshake process started"
+  us <- getSelfPid
+  tellLog ("send our pid: " ++ show us)
+  send them us
+  tellLog "sent. now waiting for their SendPort"
   sq :: SendPort query <- expectSafe
   tellLog "received SendPort"
   (sr :: SendPort result, rr :: ReceivePort result) <- newChan
   send them sr
   tellLog "sent SendPort"
   process (sq,rr)
+
+
+routerHandshake :: (Router -> Pipeline ()) -> Pipeline ()
+routerHandshake process = do
+  tellLog "expecting router"
+  router :: Router <- expectSafe
+  tellLog "got router"
+  process router
 
 
 heartBeatHandshake :: ProcessId -> Pipeline () -> Pipeline ()

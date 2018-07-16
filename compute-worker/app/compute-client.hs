@@ -21,4 +21,5 @@ main = do
          ,fromMaybe "127.0.0.1" (hostl opt)
          ,fromMaybe "127.0.0.1" (serverip opt)
          ,serverport opt)
-         (\them_ping -> heartBeatHandshake them_ping (serviceHandshake consoleClient))
+         -- TODO: this is not a correct implementation. we should change it.
+         (\them_ping -> heartBeatHandshake them_ping (serviceHandshake them_ping consoleClient))

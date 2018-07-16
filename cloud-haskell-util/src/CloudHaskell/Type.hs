@@ -10,6 +10,7 @@ import           Data.Binary                  (Binary(..))
 import           GHC.Generics                 (Generic)
 
 data PipelineError = PipelineError String
+                   | RouteError String
                    deriving (Show)
 
 type LogLock = (TMVar (),Int)
