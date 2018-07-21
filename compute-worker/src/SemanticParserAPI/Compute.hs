@@ -13,7 +13,8 @@ import qualified Data.HashMap.Strict                 as HM
 import           Network.Transport                         (closeTransport)
 --
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
-import           CloudHaskell.Type                         (Pipeline,Q(..),R(..),Router(..))
+import           CloudHaskell.Type                         (Pipeline,Q(..),R(..)
+                                                           ,TCPPort(..),Router(..))
 import           CloudHaskell.Util                         (tellLog
                                                            ,expectSafe
                                                            ,ioWorker
@@ -58,26 +59,25 @@ start (sq,rr) = do
     pure ()
 
 
-initDaemonAndServer :: Int -> (Bool,Bool) -> FilePath -> Process ()
+initDaemonAndServer :: TCPPort -> (Bool,Bool) -> FilePath -> Process ()
 initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
   server port (start (sq,rr))
 
 
-computeMain :: (Int,String,String)
+computeMain :: (TCPPort,String,String)
             -> (Bool,Bool)  -- ^ (bypassNER, bypassTEXTNER)
             -> FilePath -- ^ configjson "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
             -> IO ()
-computeMain (portnum,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
-    let port = portnum
-        port' = show (portnum+1)
-        dhpp = DHPP (hostg,port') (hostl,port')
+computeMain (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
+    let chport = show (unTCPPort (bcastport+1))
+        dhpp = DHPP (hostg,chport) (hostl,chport)
     bracket
             (tryCreateTransport dhpp)
             closeTransport
             (\transport ->
                     newLocalNode transport initRemoteTable
                 >>= \node -> runProcess node
-                               (initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg)
+                               (initDaemonAndServer bcastport (bypassNER,bypassTEXTNER) lcfg)
             )

@@ -22,7 +22,8 @@ import           Data.Binary                       (Binary)
 import qualified Network.Simple.TCP          as NS
 --
 import           CloudHaskell.Socket               (packAndSend)
-import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..))
+import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..)
+                                                   ,TCPPort(..))
 import           CloudHaskell.Util                 (expectSafe,spawnChannelLocalSend
                                                    ,newLogLock,atomicLog
                                                    ,tellLog,onesecond,incClientNum)
@@ -55,10 +56,10 @@ bcastService ::
      (Binary info) =>
      LogLock      -- ^ lock for log
   -> TMVar info   -- ^ broadcasting information
-  -> Int          -- ^ port number
+  -> TCPPort      -- ^ port number
   -> IO ()
 bcastService lock ref port = do
-  NS.serve NS.HostAny (show port) $ \(sock,addr) -> do
+  NS.serve NS.HostAny (show (unTCPPort port)) $ \(sock,addr) -> do
     atomicLog lock ("TCP connection established from " ++ show addr)
     info <- atomically (takeTMVar ref)
     packAndSend sock info
@@ -102,7 +103,7 @@ serve pidref action = do
 
 
 
-server :: Int -> Pipeline () -> Process ()
+server :: TCPPort -> Pipeline () -> Process ()
 server port action = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"

@@ -9,6 +9,8 @@ import           Data.Maybe                (fromMaybe)
 import           Data.Monoid               ((<>))
 import           Options.Applicative
 --
+import           CloudHaskell.Type         (TCPPort(..))
+--
 import           SemanticParserAPI.Compute (computeMain)
 
 
@@ -18,8 +20,6 @@ data ComputeServerOption = ComputeServerOption { _port :: Int
                                                , _bypassNER :: Bool
                                                , _bypassTEXTNER :: Bool
                                                , _lcfg :: FilePath
-                                               -- , _config :: String
-                                               -- , _corenlp :: String
                                                }
 
 
@@ -31,8 +31,6 @@ pOptions = ComputeServerOption
            <*> switch (long "bypassner" <> short 'n' <> help "bypass NER")
            <*> switch (long "bypasstextner" <> short 't' <> help "bypass TEXTNER")
            <*> strOption (long "lexiconconfig" <> short 'c' <> help "lexicon config")
-           --  <*> strOption (long "config-file" <> short 'c' <> help "Config file")
-           --  <*> strOption (long "corenlp" <> short 'n' <> help "CoreNLP server address")
 
 computeServerOption :: ParserInfo ComputeServerOption
 computeServerOption = info pOptions ( fullDesc <>
@@ -44,7 +42,7 @@ main :: IO ()
 main = do
   opt <- execParser computeServerOption
   computeMain
-    (_port opt,fromMaybe "127.0.0.1" (_hostg opt),fromMaybe "127.0.0.1" (_hostl opt))
+    (TCPPort (_port opt),fromMaybe "127.0.0.1" (_hostg opt),fromMaybe "127.0.0.1" (_hostl opt))
     (_bypassNER opt,_bypassTEXTNER opt)
     (_lcfg opt)
 

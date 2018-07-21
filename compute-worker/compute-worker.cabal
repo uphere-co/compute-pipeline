@@ -87,6 +87,8 @@ executable compute-server
   build-depends:       base
                      , optparse-applicative
                      --
+                     , cloud-haskell-util
+                     --
                      , compute-worker
   hs-source-dirs:      app
   default-language:    Haskell2010
