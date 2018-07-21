@@ -58,7 +58,7 @@ start (sq,rr) = do
     pure ()
 
 
-initDaemonAndServer :: String -> (Bool,Bool) -> FilePath -> Process ()
+initDaemonAndServer :: Int -> (Bool,Bool) -> FilePath -> Process ()
 initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
@@ -70,7 +70,7 @@ computeMain :: (Int,String,String)
             -> FilePath -- ^ configjson "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
             -> IO ()
 computeMain (portnum,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
-    let port = show portnum
+    let port = portnum
         port' = show (portnum+1)
         dhpp = DHPP (hostg,port') (hostl,port')
     bracket

@@ -18,6 +18,7 @@ import           Control.Monad.IO.Class            (MonadIO(liftIO))
 import           Control.Monad.Reader.Class        (MonadReader(local))
 import           Control.Monad.Trans.Except        (runExceptT)
 import           Control.Monad.Trans.Reader        (ReaderT(runReaderT))
+import           Data.Binary                       (Binary)
 import qualified Network.Simple.TCP          as NS
 --
 import           CloudHaskell.Socket               (packAndSend)
@@ -49,12 +50,18 @@ withHeartBeat them_ping action = do
   kill us_main "connection closed"
 
 
-broadcastProcessId :: LogLock -> TMVar ProcessId -> String -> IO ()
-broadcastProcessId lock pidref port = do
-  NS.serve NS.HostAny port $ \(sock,addr) -> do
+-- | broadcast service information
+bcastService ::
+     (Binary info) =>
+     LogLock      -- ^ lock for log
+  -> TMVar info   -- ^ broadcasting information
+  -> Int          -- ^ port number
+  -> IO ()
+bcastService lock ref port = do
+  NS.serve NS.HostAny (show port) $ \(sock,addr) -> do
     atomicLog lock ("TCP connection established from " ++ show addr)
-    pid <- atomically (takeTMVar pidref)
-    packAndSend sock pid
+    info <- atomically (takeTMVar ref)
+    packAndSend sock info
 
 
 serverUnit ::
@@ -95,13 +102,13 @@ serve pidref action = do
 
 
 
-server :: String -> Pipeline () -> Process ()
+server :: Int -> Pipeline () -> Process ()
 server port action = do
   pidref <- liftIO newEmptyTMVarIO
   liftIO $ putStrLn "server started"
   lock <- newLogLock 0
 
-  void . liftIO $ forkIO (broadcastProcessId lock pidref port)
+  void . liftIO $ forkIO (bcastService lock pidref port)
   flip runReaderT lock $ do
     e <- runExceptT $ local incClientNum $ serve pidref action
     case e of
