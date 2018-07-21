@@ -24,8 +24,6 @@ import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Except        (ExceptT(..))
 import           Data.Binary                       (Binary,decode)
 import qualified Data.ByteString.Char8       as BC
--- import           Data.IntMap                       (IntMap)
--- import qualified Data.IntMap                 as IM
 import qualified Data.HashMap.Strict         as HM
 import           Data.Text                         (Text)
 import qualified Data.Text                   as T
