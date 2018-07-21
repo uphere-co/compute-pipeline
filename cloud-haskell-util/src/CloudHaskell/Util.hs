@@ -24,8 +24,11 @@ import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Except        (ExceptT(..))
 import           Data.Binary                       (Binary,decode)
 import qualified Data.ByteString.Char8       as BC
-import           Data.IntMap                       (IntMap)
-import qualified Data.IntMap                 as IM
+-- import           Data.IntMap                       (IntMap)
+-- import qualified Data.IntMap                 as IM
+import qualified Data.HashMap.Strict         as HM
+import           Data.Text                         (Text)
+import qualified Data.Text                   as T
 import           Data.Typeable                     (Typeable)
 import           Network.Transport                 (Transport)
 import           System.IO                         (hFlush,hPutStrLn,stderr)
@@ -36,7 +39,8 @@ import           Network.Transport.UpHere          (createTransport
                                                    ,DualHostPortPair(..))
 --
 import           CloudHaskell.QueryQueue           (QQVar,singleQuery,emptyQQ)
-import           CloudHaskell.Type                 (LogLock,Pipeline,PipelineError(..))
+import           CloudHaskell.Type                 (LogLock,Pipeline,PipelineError(..)
+                                                   ,Router(..))
 
 
 expectSafe :: forall a. (Binary a, Typeable a) => Pipeline a
@@ -139,12 +143,9 @@ ioWorker (rq,sr) daemon = do
     sendChan sr r
     liftIO $ putStrLn "query served"
 
-newtype Router = Router { unRouter :: IntMap ProcessId }
-               deriving (Show,Binary,Typeable)
 
-
-lookupRouter :: Int -> Router -> Pipeline ProcessId
-lookupRouter n router =
+lookupRouter :: Text -> Router -> Pipeline ProcessId
+lookupRouter key router =
   ExceptT $ pure $
-    justErr (RouteError ("no such route:" ++ show n)) $
-      IM.lookup n (unRouter router)
+    justErr (RouteError ("no such route:" ++ T.unpack key)) $
+      HM.lookup key (unRouter router)

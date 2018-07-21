@@ -30,13 +30,11 @@ import           Network.Transport.UpHere          (DualHostPortPair(..))
 --
 import           CloudHaskell.QueryQueue           (QQVar,QueryStatus(..),next)
 import           CloudHaskell.Socket               (recvAndUnpack)
-import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..))
-import           CloudHaskell.Util                 (Router(..)
-                                                   ,tellLog,atomicLog,newLogLock
+import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..),Router(..))
+import           CloudHaskell.Util                 (tellLog,atomicLog,newLogLock
                                                    ,onesecond,expectSafe
                                                    ,spawnChannelLocalReceive
-                                                   ,tryCreateTransport
-                                                   )
+                                                   ,tryCreateTransport)
 
 pingHeartBeat :: [ProcessId] -> ProcessId -> Int -> Pipeline ()
 pingHeartBeat ps them n = do
