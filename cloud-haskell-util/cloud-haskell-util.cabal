@@ -26,6 +26,7 @@ library
                    , distributed-process
                    , distributed-process-lifted
                    , errors
+                   , hashable
                    , monad-loops
                    , mtl
                    , network-simple
@@ -33,6 +34,7 @@ library
                    , stm
                    , text
                    , transformers
+                   , unordered-containers
                    --
                    , network-transport-uphere
 

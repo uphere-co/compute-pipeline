@@ -1,31 +1,20 @@
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute where
 
-import           Control.Concurrent                        (forkIO,forkOn,forkOS)
-import           Control.Concurrent.STM                    (newTVarIO)
-import           Control.DeepSeq                           (NFData,deepseq)
 import           Control.Distributed.Process               (Process)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
-                                                           ,expect,getSelfPid
-                                                           ,newChan,sendChan,receiveChan
-                                                           ,spawnLocal
+                                                           ,expect,sendChan,receiveChan
                                                            ,send)
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
-import           Control.Monad                             (forever,void)
-import           Control.Monad.IO.Class                    (liftIO)
-import           Data.Binary                               (Binary)
-import qualified Data.IntMap                        as IM
-import           Data.Typeable                             (Typeable)
+import qualified Data.HashMap.Strict                 as HM
 import           Network.Transport                         (closeTransport)
 --
-import           CloudHaskell.QueryQueue                   (QQVar,emptyQQ,singleQuery)
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
-import           CloudHaskell.Type                         (Pipeline,Q(..),R(..))
-import           CloudHaskell.Util                         (Router(..)
-                                                           ,tellLog
+import           CloudHaskell.Type                         (Pipeline,Q(..),R(..),Router(..))
+import           CloudHaskell.Util                         (tellLog
                                                            ,expectSafe
                                                            ,ioWorker
                                                            ,tryCreateTransport
@@ -58,7 +47,10 @@ start (sq,rr) = do
         serverUnit rlock1 dummyProcess
 
 
-    let router = Router $ IM.insert 1 pid1 $ IM.insert 0 pid0 $  IM.empty
+    let router = Router $
+                   HM.insert "test"  pid1 $
+                   HM.insert "query" pid0 $
+                   HM.empty
     send them_main router
     sendChan slock0 ()
     sendChan slock1 ()
