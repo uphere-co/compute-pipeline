@@ -1,15 +1,12 @@
-{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-matches #-}
 module SemanticParserAPI.Compute where
 
 import           Control.Distributed.Process               (Closure,Process,processNodeId)
-import           Control.Distributed.Process.Closure       (mkClosure,mkStatic)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
                                                            ,expect,getSelfPid
                                                            ,newChan,sendChan,receiveChan
@@ -25,6 +22,7 @@ import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
 --
+import           CloudHaskell.Closure                      ((@<))
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,Q(..),R(..)
                                                            ,TCPPort(..),Router(..))
@@ -36,53 +34,13 @@ import           CloudHaskell.Util                         (tellLog
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import           SemanticParserAPI.Compute.Task       {-     (rtable
-                                                           ,sdictInt
-                                                           ,sdictInt__static
-                                                           ,holdState
-                                                           ,holdState__sdict
-                                                           ,holdState__static) -}
+import           SemanticParserAPI.Compute.Task            (rtable
+                                                           ,holdState__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
-import           Data.Binary
-import           Control.Distributed.Process.Internal.Closure.BuiltIn
 
-{-
--- NOTE: This should not be type-checked! it's Int -> Closure (Process ())
-test3 :: String -> Closure (Process ())
-test3 = (closure (holdState__static `staticCompose` staticDecode holdState__sdict)) . encode --  @ Int
-
-test4 :: Static (BL.ByteString -> Process ())
-test4 = holdState__static `staticCompose` staticDecode holdState__sdict
-
-test :: Static (SerializableDict Int)
-test = holdState__sdict
-
-
-test' :: Static (BL.ByteString -> Int)
-test' = staticDecode test
--}
-
-class Capture a where
-  capture :: a -> Closure a
-
-instance Capture String where
-  capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
-
-instance Capture Int where
-  capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
-
-
-(@@) :: Closure (a -> b) -> Closure a -> Closure b
-(@@) = closureApply
-
-(@<) :: (Capture a) => Closure (a -> b) -> a -> Closure b
-(@<) c = closureApply c . capture
-
-holdState__closure :: Closure (String -> Int -> Process ())
-holdState__closure = staticClosure $(mkStatic 'holdState)
 
 
 test__closure :: Closure (Int -> Process ())

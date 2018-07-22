@@ -25,6 +25,7 @@ library
                    , deepseq
                    , distributed-process
                    , distributed-process-lifted
+                   , distributed-static
                    , errors
                    , hashable
                    , monad-loops
@@ -40,6 +41,7 @@ library
 
   exposed-modules:
                      CloudHaskell.Client
+                     CloudHaskell.Closure
                      CloudHaskell.QueryQueue
                      CloudHaskell.Server
                      CloudHaskell.Socket

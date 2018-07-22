@@ -1,17 +1,20 @@
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Task where
 
-import           Control.Distributed.Process.Closure (remotable)
-import           Control.Distributed.Process         (Process,ProcessId,RemoteTable
+import           Control.Distributed.Process.Closure (remotable,mkStatic)
+import           Control.Distributed.Process         (Closure,Process,ProcessId,RemoteTable
                                                      ,SendPort,ReceivePort
                                                      ,send,sendChan,receiveChan)
--- import           Control.Distributed.Process.Node    (initRemoteTable)
+import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
+import           Control.Distributed.Static (closure,staticClosure,initRemoteTable)
 import           Control.Monad.IO.Class (liftIO)
-
-import Control.Distributed.Static
-
+import           Data.Binary (encode)
+--
+import           CloudHaskell.Closure (Capture(..),(@<))
 
 sdictInt :: SerializableDict Int
 sdictInt = SerializableDict
@@ -19,13 +22,6 @@ sdictInt = SerializableDict
 sdictString :: SerializableDict String
 sdictString = SerializableDict
 
-
-{-
-launchMissile :: ProcessId -> Process ()
-launchMissile pid = do
-  liftIO $ putStrLn "nuclear launch detected!"
-  send pid (3 :: Int)
--}
 
 holdState :: String -> Int {- -> ReceivePort Int -} -> Process ()
 holdState p sr {- rq  -} = do
@@ -36,9 +32,6 @@ holdState p sr {- rq  -} = do
   -- pure "Abc"
 
 
-
--- remotable ['launchMissile]
-
 remotable [ 'holdState
           , 'sdictInt
           , 'sdictString
@@ -46,3 +39,14 @@ remotable [ 'holdState
 
 rtable :: RemoteTable
 rtable = __remoteTable initRemoteTable
+
+
+instance Capture String where
+  capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
+
+instance Capture Int where
+  capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
+
+
+holdState__closure :: Closure (String -> Int -> Process ())
+holdState__closure = staticClosure $(mkStatic 'holdState)
