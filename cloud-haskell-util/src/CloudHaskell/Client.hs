@@ -5,13 +5,14 @@ module CloudHaskell.Client where
 import           Control.Concurrent                (threadDelay)
 import           Control.Concurrent.STM            (atomically,retry
                                                    ,readTVar,writeTVar,modifyTVar')
-import           Control.Distributed.Process       (ProcessId,SendPort,ReceivePort)
+import           Control.Distributed.Process       (ProcessId,SendPort,ReceivePort
+                                                   ,RemoteTable)
 import           Control.Distributed.Process.Lifted(expectTimeout,spawnLocal
                                                    ,getSelfPid,send
                                                    ,newChan,receiveChan,sendChan
                                                    ,kill,try,bracket
                                                    )
-import           Control.Distributed.Process.Node  (newLocalNode,initRemoteTable,runProcess)
+import           Control.Distributed.Process.Node  (newLocalNode,runProcess)
 import           Control.Distributed.Process.Serializable (Serializable)
 import           Control.Exception                 (SomeException)
 import           Control.Monad                     (forever,void)
@@ -61,10 +62,6 @@ acquireGatewayInfo lock (serverip,serverport) = do
   NS.connect (T.unpack serverip) (show (unTCPPort serverport)) $ \(sock,addr) -> do
     atomicLog lock ("connection established to " ++ show addr)
     recvAndUnpack sock
-
-
-
-
 
 
 queryProcess :: forall query result a.
@@ -145,30 +142,34 @@ heartBeatHandshake them_ping main = do
   void $ pingHeartBeat [p1] them_ping 0
 
 
-client :: (Int,Text,Text,Text,TCPPort) -> (Gateway -> Pipeline ()) -> IO ()
-client (portnum,hostg,hostl,serverip,serverport) process = do
+client ::
+     RemoteTable                  -- ^ remote table
+  -> (Int,Text,Text,Text,TCPPort) -- ^ network info
+  -> (Gateway -> Pipeline ())     -- ^ client process
+  -> IO ()
+client rtable (portnum,hostg,hostl,serverip,serverport) process = do
   let dhpp = DHPP (T.unpack hostg,show portnum) (T.unpack hostl,show portnum)
-  bracket (tryCreateTransport dhpp)
-          closeTransport
-          (\transport -> do
-               node <- newLocalNode transport initRemoteTable
-               lock <- newLogLock 0
-               forever $ do
-                 -- TODO: reorganize this cascade with ExceptT.
-                 emgw <- try (acquireGatewayInfo lock (serverip,serverport))
-                 case emgw of
-                   Left (e :: SomeException) -> do
-                     atomicLog lock "exception caught"
-                     atomicLog lock (show e)
-                   Right mgw ->
-                     case mgw of
-                       Nothing -> atomicLog lock "no gateway"
-                       Just gw -> do
-                         atomicLog lock ("gateway =" ++ show gw)
-                         -- let web = gatewayWeb gw
-                         runProcess node $ flip runReaderT lock $ do
-                           e <- runExceptT (process gw)
-                           case e of
-                             Left err -> atomicLog lock (show err)
-                             Right _  -> pure ()
-                 threadDelay (5*onesecond))
+  bracket
+    (tryCreateTransport dhpp)
+    closeTransport
+    (\transport -> do
+         node <- newLocalNode transport rtable
+         lock <- newLogLock 0
+         forever $ do
+           -- TODO: reorganize this cascade with ExceptT.
+           emgw <- try (acquireGatewayInfo lock (serverip,serverport))
+           case emgw of
+             Left (e :: SomeException) -> do
+               atomicLog lock "exception caught"
+               atomicLog lock (show e)
+             Right mgw ->
+               case mgw of
+                 Nothing -> atomicLog lock "no gateway"
+                 Just gw -> do
+                   atomicLog lock ("gateway =" ++ show gw)
+                   runProcess node $ flip runReaderT lock $ do
+                     e <- runExceptT (process gw)
+                     case e of
+                       Left err -> atomicLog lock (show err)
+                       Right _  -> pure ()
+           threadDelay (5*onesecond))

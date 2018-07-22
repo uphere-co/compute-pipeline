@@ -67,6 +67,7 @@ library
                     SemanticParserAPI.Compute
                     SemanticParserAPI.Compute.Reuters
                     SemanticParserAPI.Compute.Network
+                    SemanticParserAPI.Compute.Task
                     SemanticParserAPI.Compute.Type
                     SemanticParserAPI.Compute.Worker
                     SemanticParserAPI.CLI.Client
