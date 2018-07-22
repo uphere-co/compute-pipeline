@@ -65,7 +65,7 @@ initDaemonAndServer :: TCPPort -> (Bool,Bool) -> FilePath -> Process ()
 initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (start (sq,rr))
+  server port (start (sq,rr)) (pure ())
 
 
 computeMain :: (TCPPort,Text,Text)
