@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-matches #-}
 module SemanticParserAPI.Compute where
 
@@ -12,9 +13,11 @@ import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,R
                                                            ,newChan,sendChan,receiveChan
                                                            ,spawnChannel,spawn,send)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
+import           Control.Distributed.Process.Serializable  (SerializableDict(..))
 import           Control.Distributed.Static
 import           Control.Exception                         (bracket)
 import           Control.Monad.IO.Class                    (liftIO)
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
@@ -44,14 +47,41 @@ import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 import           Data.Binary
 import           Control.Distributed.Process.Internal.Closure.BuiltIn
 
+{-
 -- NOTE: This should not be type-checked! it's Int -> Closure (Process ())
 test3 :: String -> Closure (Process ())
-test3 = (closure (holdState__static `staticCompose` staticDecode holdState__sdict)) . encode
+test3 = (closure (holdState__static `staticCompose` staticDecode holdState__sdict)) . encode --  @ Int
+
+test4 :: Static (BL.ByteString -> Process ())
+test4 = holdState__static `staticCompose` staticDecode holdState__sdict
+
+test :: Static (SerializableDict Int)
+test = holdState__sdict
+
+
+test' :: Static (BL.ByteString -> Int)
+test' = staticDecode test
+-}
+
+test :: Closure (String -> Int -> Process ())
+test = staticClosure $(mkStatic 'holdState)
+
+captureS :: String -> Closure String
+captureS = closure (staticDecode $(mkStatic 'sdictString)) . encode
+  -- NOTE: you cannot do the following. v__static must exist.
+  -- staticClosure $(mkStatic 'v)
+
+captureI :: Int -> Closure Int
+captureI = closure (staticDecode $(mkStatic 'sdictInt)) . encode
+
+
+test2 :: Closure (Int -> Process ())
+test2 = closureApply test (captureS "abc")
+
+-- test2 :: Double
+-- test2 = holdState__static
 
 {-
-test2 :: Double
-test2 = holdState__static
-
 test :: Double -- String -> Closure (Process ())
 test = $(mkClosure 'holdState)
 -}
@@ -103,7 +133,7 @@ taskManager = do
     -- sendChan sq 100
     -- n <- receiveChan rr
 
-    spawn nid (($(mkClosure 'holdState)) ("3" :: String))
+    spawn nid (closureApply test2 (captureI 3))
     -- n :: Int <- expect
     -- liftIO $ print n
     () <- expect

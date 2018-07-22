@@ -6,12 +6,18 @@ import           Control.Distributed.Process.Closure (remotable)
 import           Control.Distributed.Process         (Process,ProcessId,RemoteTable
                                                      ,SendPort,ReceivePort
                                                      ,send,sendChan,receiveChan)
-import           Control.Distributed.Process.Node    (initRemoteTable)
+-- import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
 import           Control.Monad.IO.Class (liftIO)
 
+import Control.Distributed.Static
+
+
 sdictInt :: SerializableDict Int
 sdictInt = SerializableDict
+
+sdictString :: SerializableDict String
+sdictString = SerializableDict
 
 
 {-
@@ -21,12 +27,13 @@ launchMissile pid = do
   send pid (3 :: Int)
 -}
 
-holdState :: Int {- -> ReceivePort Int -} -> Process ()
-holdState sr {- rq  -} = do
+holdState :: String -> Int {- -> ReceivePort Int -} -> Process ()
+holdState p sr {- rq  -} = do
+  liftIO $ putStrLn p
   -- i <- receiveChan rq
   -- sendChan sr (i+1)
   liftIO $ print sr
-  pure ()
+  -- pure "Abc"
 
 
 
@@ -34,6 +41,7 @@ holdState sr {- rq  -} = do
 
 remotable [ 'holdState
           , 'sdictInt
+          , 'sdictString
           ]
 
 rtable :: RemoteTable

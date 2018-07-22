@@ -82,6 +82,7 @@ library
                     -funbox-strict-fields
                     -fno-warn-orphans
                     -O2
+                    -ddump-splices
 
 executable compute-server
   main-is:             compute-server.hs
