@@ -29,6 +29,7 @@ library
                 , directory
                 , distributed-process
                 , distributed-process-lifted
+                , distributed-static
                 , filepath
                 , haskeline
                 , hashable

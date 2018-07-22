@@ -2,15 +2,17 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-matches #-}
 module SemanticParserAPI.Compute where
 
-import           Control.Distributed.Process               (Process,processNodeId)
+import           Control.Distributed.Process               (Closure,Process,processNodeId)
+import           Control.Distributed.Process.Closure       (mkClosure,mkStatic)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
                                                            ,expect,getSelfPid
-                                                           ,sendChan,receiveChan
-                                                           ,send,spawn)
-import           Control.Distributed.Process.Closure       (mkClosure)
+                                                           ,newChan,sendChan,receiveChan
+                                                           ,spawnChannel,spawn,send)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
+import           Control.Distributed.Static
 import           Control.Exception                         (bracket)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
@@ -29,13 +31,30 @@ import           CloudHaskell.Util                         (tellLog
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import           SemanticParserAPI.Compute.Task            (rtable -- __remoteTable
-                                                           ,launchMissile
-                                                           ,launchMissile__sdict
-                                                           ,launchMissile__static)
+import           SemanticParserAPI.Compute.Task       {-     (rtable
+                                                           ,sdictInt
+                                                           ,sdictInt__static
+                                                           ,holdState
+                                                           ,holdState__sdict
+                                                           ,holdState__static) -}
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
+
+import           Data.Binary
+import           Control.Distributed.Process.Internal.Closure.BuiltIn
+
+-- NOTE: This should not be type-checked! it's Int -> Closure (Process ())
+test3 :: String -> Closure (Process ())
+test3 = (closure (holdState__static `staticCompose` staticDecode holdState__sdict)) . encode
+
+{-
+test2 :: Double
+test2 = holdState__static
+
+test :: Double -- String -> Closure (Process ())
+test = $(mkClosure 'holdState)
+-}
 
 dummyProcess :: Q -> Pipeline R
 dummyProcess _ = pure R
@@ -76,10 +95,17 @@ taskManager = do
     tellLog "taskManager: inside heartbeat"
     let nid = processNodeId them_main
     tellLog $ "node id = " ++ show nid
-    us <- getSelfPid
-    spawn nid ($(mkClosure 'launchMissile) us)
-    n :: Int <- expect
-    liftIO $ print n
+    -- us <- getSelfPid
+    -- (sr :: SendPort Int,rr :: ReceivePort Int) <- newChan
+    -- (sr,rr) <- newChan
+    -- sq <- spawnChannel ($(mkStatic 'sdictInt)) nid ($(mkClosure 'holdState) ("3" :: String))
+
+    -- sendChan sq 100
+    -- n <- receiveChan rr
+
+    spawn nid (($(mkClosure 'holdState)) ("3" :: String))
+    -- n :: Int <- expect
+    -- liftIO $ print n
     () <- expect
     pure ()
 
@@ -101,7 +127,7 @@ computeMain (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
             (tryCreateTransport dhpp)
             closeTransport
             (\transport ->
-                    newLocalNode transport rtable --  initRemoteTable
+                    newLocalNode transport rtable
                 >>= \node -> runProcess node
                                (initDaemonAndServer bcastport (bypassNER,bypassTEXTNER) lcfg)
             )
