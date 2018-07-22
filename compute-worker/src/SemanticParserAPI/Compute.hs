@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-matches #-}
 module SemanticParserAPI.Compute where
@@ -23,7 +22,7 @@ import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
 --
-import           CloudHaskell.Closure                      ((@<))
+import           CloudHaskell.Closure                      (Capture(..),(@<),spawnChannel_)
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,Q(..),R(..)
                                                            ,TCPPort(..),Router(..))
@@ -91,7 +90,7 @@ taskManager = do
     let nid = processNodeId them_main
     tellLog $ "node id = " ++ show nid
     (sr,rr) <- newChan
-    sq <- spawnChannel ($(mkStatic 'sdictInt)) nid (holdState__closure @< 0 @< sr)
+    sq <- spawnChannel_ nid (holdState__closure @< 0 @< sr)
     sendChan sq (100 :: Int)
     n <- receiveChan rr
     liftIO $ print n
