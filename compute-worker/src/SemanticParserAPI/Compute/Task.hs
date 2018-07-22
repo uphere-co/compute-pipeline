@@ -53,12 +53,11 @@ rtable = __remoteTable initRemoteTable
 
 instance Capture String where
   capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
+  staticSdict = $(mkStatic 'sdictString)
 
 instance Capture Int where
   capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
-
-instance Capture (SendPort Int) where
-  capture = closure (staticDecode $(mkStatic 'sdictSendPortInt)) . encode
+  staticSdict = $(mkStatic 'sdictInt)
 
 
 holdState__closure :: Closure (Int -> SendPort Int -> ReceivePort Int -> Process ())
