@@ -1,8 +1,10 @@
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-matches #-}
 module SemanticParserAPI.Compute where
 
@@ -63,20 +65,30 @@ test' :: Static (BL.ByteString -> Int)
 test' = staticDecode test
 -}
 
-test :: Closure (String -> Int -> Process ())
-test = staticClosure $(mkStatic 'holdState)
+class Capture a where
+  capture :: a -> Closure a
 
-captureS :: String -> Closure String
-captureS = closure (staticDecode $(mkStatic 'sdictString)) . encode
-  -- NOTE: you cannot do the following. v__static must exist.
-  -- staticClosure $(mkStatic 'v)
+instance Capture String where
+  capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
 
-captureI :: Int -> Closure Int
-captureI = closure (staticDecode $(mkStatic 'sdictInt)) . encode
+instance Capture Int where
+  capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
 
 
-test2 :: Closure (Int -> Process ())
-test2 = closureApply test (captureS "abc")
+(@@) :: Closure (a -> b) -> Closure a -> Closure b
+(@@) = closureApply
+
+(@<) :: (Capture a) => Closure (a -> b) -> a -> Closure b
+(@<) c = closureApply c . capture
+
+holdState__closure :: Closure (String -> Int -> Process ())
+holdState__closure = staticClosure $(mkStatic 'holdState)
+
+
+test__closure :: Closure (Int -> Process ())
+test__closure = holdState__closure @< "abc"
+                -- NOTE: equivalently
+                -- holdState__closure @@ (capture @String "abc")
 
 -- test2 :: Double
 -- test2 = holdState__static
@@ -133,7 +145,7 @@ taskManager = do
     -- sendChan sq 100
     -- n <- receiveChan rr
 
-    spawn nid (closureApply test2 (captureI 3))
+    spawn nid (test__closure @< 3)
     -- n :: Int <- expect
     -- liftIO $ print n
     () <- expect
