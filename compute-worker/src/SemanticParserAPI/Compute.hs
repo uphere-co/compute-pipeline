@@ -10,6 +10,8 @@ import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,R
 import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
 import qualified Data.HashMap.Strict                 as HM
+import           Data.Text                                 (Text)
+import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
 --
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
@@ -66,13 +68,13 @@ initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg = do
   server port (start (sq,rr))
 
 
-computeMain :: (TCPPort,String,String)
+computeMain :: (TCPPort,Text,Text)
             -> (Bool,Bool)  -- ^ (bypassNER, bypassTEXTNER)
             -> FilePath -- ^ configjson "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
             -> IO ()
 computeMain (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
     let chport = show (unTCPPort (bcastport+1))
-        dhpp = DHPP (hostg,chport) (hostl,chport)
+        dhpp = DHPP (T.unpack hostg,chport) (T.unpack hostl,chport)
     bracket
             (tryCreateTransport dhpp)
             closeTransport

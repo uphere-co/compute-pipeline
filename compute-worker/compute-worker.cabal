@@ -85,6 +85,8 @@ library
 executable compute-server
   main-is:             compute-server.hs
   build-depends:       base
+                     , aeson
+                     , bytestring
                      , optparse-applicative
                      --
                      , cloud-haskell-util
