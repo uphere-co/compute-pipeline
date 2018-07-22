@@ -104,8 +104,8 @@ executable compute-server
                     -O2
 
 
-executable compute-client
-  main-is:             compute-client.hs
+executable cell
+  main-is:             cell.hs
   build-depends:       base
                      , bytestring
                      , distributed-process
