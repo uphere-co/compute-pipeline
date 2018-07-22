@@ -3,13 +3,35 @@
 
 module Main where
 
-import           Data.Maybe                   (fromMaybe)
+import           Control.Applicative  (optional)
+import           Control.Monad.IO.Class (liftIO)
+import           Data.Monoid          ((<>))
+import           Data.Maybe           (fromMaybe)
+import           Data.Text            (Text)
+import qualified Data.Text       as T
 import           Options.Applicative
 --
-import           CloudHaskell.Client          (heartBeatHandshake,serviceHandshake,client)
-import           SemanticParserAPI.CLI.Client (consoleClient)
-import           SemanticParserAPI.CLI.Type   (clientOption,hostg,hostl,port,serverip,serverport)
+import           CloudHaskell.Client  (client) -- (heartBeatHandshake,serviceHandshake,client)
+import           CloudHaskell.Type    (TCPPort(..))
+--
 
+
+data ClientOption = ClientOption { port :: Int
+                                 , hostg :: Maybe Text
+                                 , hostl :: Maybe Text
+                                 , serverip :: Maybe Text
+                                 , serverport :: Int
+                                 } deriving Show
+
+pOptions :: Parser ClientOption
+pOptions = ClientOption <$> option auto (long "port" <> short 'p' <> help "Port number")
+                        <*> (fmap T.pack <$> optional (strOption (long "global-ip" <> short 'g' <> help "Global IP address")))
+                        <*> (fmap T.pack <$> optional (strOption (long "local-ip" <> short 'l' <> help "Local IP address")))
+                        <*> (fmap T.pack <$> optional (strOption (long "server-ip" <> short 's' <> help "Server IP address")))
+                        <*> option auto (long "server-port" <> short 'q' <> help "Server Port")
+
+clientOption :: ParserInfo ClientOption
+clientOption = info pOptions (fullDesc <> progDesc "Client")
 
 main :: IO ()
 main = do
@@ -20,6 +42,9 @@ main = do
          ,fromMaybe "127.0.0.1" (hostg opt)
          ,fromMaybe "127.0.0.1" (hostl opt)
          ,fromMaybe "127.0.0.1" (serverip opt)
-         ,serverport opt)
+         ,TCPPort (serverport opt))
          -- TODO: this is not a correct implementation. we should change it.
-         (\them_ping -> heartBeatHandshake them_ping (serviceHandshake them_ping consoleClient))
+         (\gw ->
+            liftIO $ print gw
+            -- heartBeatHandshake them_ping (serviceHandshake them_ping consoleClient)
+         )

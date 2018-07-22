@@ -70,7 +70,6 @@ library
                     SemanticParserAPI.Compute.Type
                     SemanticParserAPI.Compute.Worker
                     SemanticParserAPI.CLI.Client
-                    SemanticParserAPI.CLI.Type
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded
