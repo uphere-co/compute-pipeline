@@ -1,50 +1,49 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
 module Main where
 
-import           Control.Applicative       (optional)
-import           Data.Maybe                (fromMaybe)
+import           Data.Aeson                (eitherDecodeStrict)
+import qualified Data.ByteString.Char8 as B
+import           Data.Foldable             (for_)
 import           Data.Monoid               ((<>))
 import           Options.Applicative
 --
+import           CloudHaskell.Type         (TCPPort(..))
+--
 import           SemanticParserAPI.Compute (computeMain)
+import           SemanticParserAPI.Compute.Type (ComputeConfig(..),NetworkConfig(..))
 
 
-data ComputeServerOption = ComputeServerOption { _port :: Int
-                                               , _hostg :: Maybe String
-                                               , _hostl :: Maybe String
-                                               , _bypassNER :: Bool
-                                               , _bypassTEXTNER :: Bool
-                                               , _lcfg :: FilePath
-                                               -- , _config :: String
-                                               -- , _corenlp :: String
-                                               }
-
+data ComputeServerOption = ComputeServerOption {
+                             servLangConfig :: FilePath
+                           , servComputeConfig :: FilePath
+                           }
+                         deriving (Show,Eq,Ord)
 
 pOptions :: Parser ComputeServerOption
 pOptions = ComputeServerOption
-           <$> option auto (long "port" <> short 'p' <> help "Port number")
-           <*> optional (strOption (long "global-ip" <> short 'g' <> help "Global IP address"))
-           <*> optional (strOption (long "local-ip"  <> short 'l' <> help "Local IP address"))
-           <*> switch (long "bypassner" <> short 'n' <> help "bypass NER")
-           <*> switch (long "bypasstextner" <> short 't' <> help "bypass TEXTNER")
-           <*> strOption (long "lexiconconfig" <> short 'c' <> help "lexicon config")
-           --  <*> strOption (long "config-file" <> short 'c' <> help "Config file")
-           --  <*> strOption (long "corenlp" <> short 'n' <> help "CoreNLP server address")
+           <$> strOption (long "lang" <> short 'l' <> help "Language engine configuration")
+           <*> strOption (long "compute" <> short 'c' <> help "Compute pipeline configuration")
 
 computeServerOption :: ParserInfo ComputeServerOption
 computeServerOption = info pOptions ( fullDesc <>
-                                      progDesc "semantic-parser-api-compute server daemon" <>
-                                      header "options are port, global-ip, local-ip")
+                                      progDesc "semantic-parser-api-compute server daemon"
+                                    )
 
 
 main :: IO ()
 main = do
   opt <- execParser computeServerOption
-  computeMain
-    (_port opt,fromMaybe "127.0.0.1" (_hostg opt),fromMaybe "127.0.0.1" (_hostl opt))
-    (_bypassNER opt,_bypassTEXTNER opt)
-    (_lcfg opt)
-
+  ecompcfg :: Either String ComputeConfig <-
+    eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
+  for_ ecompcfg $ \compcfg -> do
+    let hostGlobalIP = hostg (computeServer compcfg)
+        hostLocalIP = hostl (computeServer compcfg)
+        hostPort = port (computeServer compcfg)
+        bypassNER = computeBypassNER compcfg
+        bypassTEXTNER = computeBypassTEXTNER compcfg
+    computeMain
+      (TCPPort hostPort,hostGlobalIP,hostLocalIP)
+      (bypassNER,bypassTEXTNER)
+      (servLangConfig opt)

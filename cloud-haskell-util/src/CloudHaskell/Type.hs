@@ -45,3 +45,7 @@ instance (Eq k, Hashable k, Binary k, Binary v) => Binary (HashMap k v) where
 
 newtype Router = Router { unRouter :: HashMap Text ProcessId }
                deriving (Show,Binary,Typeable)
+
+
+newtype TCPPort = TCPPort { unTCPPort :: Int }
+                deriving (Show,Eq,Ord,Num)
