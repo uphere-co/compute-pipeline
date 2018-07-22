@@ -7,6 +7,7 @@
 module SemanticParserAPI.Compute where
 
 import           Control.Distributed.Process               (Closure,Process,processNodeId)
+import           Control.Distributed.Process.Closure       (mkStatic)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
                                                            ,expect,getSelfPid
                                                            ,newChan,sendChan,receiveChan
@@ -35,25 +36,19 @@ import           CloudHaskell.Util                         (tellLog
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Task            (rtable
+                                                           ,sdictInt
+                                                           ,sdictInt__static
                                                            ,holdState__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
+{-
 
-
-
-test__closure :: Closure (Int -> Process ())
+test__closure :: Closure (ReceivePort Int -> Process ())
 test__closure = holdState__closure @< "abc"
                 -- NOTE: equivalently
                 -- holdState__closure @@ (capture @String "abc")
-
--- test2 :: Double
--- test2 = holdState__static
-
-{-
-test :: Double -- String -> Closure (Process ())
-test = $(mkClosure 'holdState)
 -}
 
 dummyProcess :: Q -> Pipeline R
@@ -95,17 +90,15 @@ taskManager = do
     tellLog "taskManager: inside heartbeat"
     let nid = processNodeId them_main
     tellLog $ "node id = " ++ show nid
-    -- us <- getSelfPid
-    -- (sr :: SendPort Int,rr :: ReceivePort Int) <- newChan
-    -- (sr,rr) <- newChan
-    -- sq <- spawnChannel ($(mkStatic 'sdictInt)) nid ($(mkClosure 'holdState) ("3" :: String))
+    (sr,rr) <- newChan
+    sq <- spawnChannel ($(mkStatic 'sdictInt)) nid (holdState__closure @< 0 @< sr)
+    sendChan sq (100 :: Int)
+    n <- receiveChan rr
+    liftIO $ print n
+    sendChan sq (100 :: Int)
+    n' <- receiveChan rr
+    liftIO $ print n'
 
-    -- sendChan sq 100
-    -- n <- receiveChan rr
-
-    spawn nid (test__closure @< 3)
-    -- n :: Int <- expect
-    -- liftIO $ print n
     () <- expect
     pure ()
 

@@ -6,6 +6,7 @@ import           Control.Distributed.Static  (closureApply)
 class Capture a where
   capture :: a -> Closure a
 
+
 (@@) :: Closure (a -> b) -> Closure a -> Closure b
 (@@) = closureApply
 

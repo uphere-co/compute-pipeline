@@ -8,13 +8,15 @@ import           Control.Distributed.Process.Closure (remotable,mkStatic)
 import           Control.Distributed.Process         (Closure,Process,ProcessId,RemoteTable
                                                      ,SendPort,ReceivePort
                                                      ,send,sendChan,receiveChan)
+import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
-import           Control.Distributed.Static (closure,staticClosure,initRemoteTable)
-import           Control.Monad.IO.Class (liftIO)
-import           Data.Binary (encode)
+import           Control.Distributed.Static          (closure,staticClosure)
+import           Control.Monad.IO.Class              (liftIO)
+import           Data.Binary                         (encode)
 --
-import           CloudHaskell.Closure (Capture(..),(@<))
+import           CloudHaskell.Closure                (Capture(..),(@<))
+
 
 sdictInt :: SerializableDict Int
 sdictInt = SerializableDict
@@ -22,19 +24,27 @@ sdictInt = SerializableDict
 sdictString :: SerializableDict String
 sdictString = SerializableDict
 
+sdictSendPortInt :: SerializableDict (SendPort Int)
+sdictSendPortInt = SerializableDict
 
-holdState :: String -> Int {- -> ReceivePort Int -} -> Process ()
-holdState p sr {- rq  -} = do
-  liftIO $ putStrLn p
-  -- i <- receiveChan rq
-  -- sendChan sr (i+1)
-  liftIO $ print sr
-  -- pure "Abc"
+
+holdState :: Int -> SendPort Int -> ReceivePort Int -> Process ()
+holdState s sr rq = go s
+  where
+    go s0 = do
+      i <- receiveChan rq
+      liftIO $ putStrLn ("current state = " ++ show s0)
+      liftIO $ putStrLn ("received: " ++ show i)
+      let s' = s0 + i
+      liftIO $ putStrLn ("new state = " ++ show s')
+      sendChan sr s'
+      go s'
 
 
 remotable [ 'holdState
           , 'sdictInt
           , 'sdictString
+          , 'sdictSendPortInt
           ]
 
 rtable :: RemoteTable
@@ -47,6 +57,9 @@ instance Capture String where
 instance Capture Int where
   capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
 
+instance Capture (SendPort Int) where
+  capture = closure (staticDecode $(mkStatic 'sdictSendPortInt)) . encode
 
-holdState__closure :: Closure (String -> Int -> Process ())
+
+holdState__closure :: Closure (Int -> SendPort Int -> ReceivePort Int -> Process ())
 holdState__closure = staticClosure $(mkStatic 'holdState)
