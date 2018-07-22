@@ -1,13 +1,12 @@
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Task where
 
 import           Control.Distributed.Process.Closure (remotable,mkStatic)
-import           Control.Distributed.Process         (Closure,Process,ProcessId,RemoteTable
+import           Control.Distributed.Process         (Closure,Process,RemoteTable
                                                      ,SendPort,ReceivePort
-                                                     ,send,sendChan,receiveChan)
+                                                     ,sendChan,receiveChan)
 import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
@@ -15,7 +14,7 @@ import           Control.Distributed.Static          (closure,staticClosure)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Binary                         (encode)
 --
-import           CloudHaskell.Closure                (Capture(..),(@<))
+import           CloudHaskell.Closure                (Capture(..))
 
 
 sdictInt :: SerializableDict Int

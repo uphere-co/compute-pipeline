@@ -1,28 +1,21 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-unused-matches #-}
 module SemanticParserAPI.Compute where
 
-import           Control.Distributed.Process               (Closure,Process,processNodeId)
-import           Control.Distributed.Process.Closure       (mkStatic)
+import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
-                                                           ,expect,getSelfPid
-                                                           ,newChan,sendChan,receiveChan
-                                                           ,spawnChannel,spawn,send)
+                                                           ,expect,send
+                                                           ,newChan,sendChan,receiveChan)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
-import           Control.Distributed.Process.Serializable  (SerializableDict(..))
-import           Control.Distributed.Static
 import           Control.Exception                         (bracket)
 import           Control.Monad.IO.Class                    (liftIO)
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
 --
-import           CloudHaskell.Closure                      (Capture(..),(@<),spawnChannel_)
+import           CloudHaskell.Closure                      ((@<),spawnChannel_)
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,Q(..),R(..)
                                                            ,TCPPort(..),Router(..))
@@ -34,10 +27,7 @@ import           CloudHaskell.Util                         (tellLog
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import           SemanticParserAPI.Compute.Task            (rtable
-                                                           ,sdictInt
-                                                           ,sdictInt__static
-                                                           ,holdState__closure)
+import           SemanticParserAPI.Compute.Task            (rtable,holdState__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
