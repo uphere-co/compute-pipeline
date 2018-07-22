@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Main where
 
 import           Control.Applicative  (optional)
+import           Control.Distributed.Process.Lifted (expect,getSelfPid)
 import           Control.Monad.IO.Class (liftIO)
 import           Data.Monoid          ((<>))
 import           Data.Maybe           (fromMaybe)
@@ -11,8 +12,9 @@ import           Data.Text            (Text)
 import qualified Data.Text       as T
 import           Options.Applicative
 --
-import           CloudHaskell.Client  (client) -- (heartBeatHandshake,serviceHandshake,client)
-import           CloudHaskell.Type    (TCPPort(..))
+import           CloudHaskell.Client  (heartBeatHandshake,client)
+import           CloudHaskell.Type    (TCPPort(..),Gateway(..))
+import           CloudHaskell.Util    (tellLog)
 --
 
 
@@ -44,7 +46,13 @@ main = do
          ,fromMaybe "127.0.0.1" (serverip opt)
          ,TCPPort (serverport opt))
          -- TODO: this is not a correct implementation. we should change it.
-         (\gw ->
-            liftIO $ print gw
-            -- heartBeatHandshake them_ping (serviceHandshake them_ping consoleClient)
+         (\gw -> do
+            let them_ping = gatewayMaster gw
+            -- liftIO $ print gw
+            heartBeatHandshake them_ping $ do
+              us <- getSelfPid
+              tellLog ("send our pid: " ++ show us)
+              () <- expect
+              pure ()
+              -- (serviceHandshake them_ping consoleClient)
          )

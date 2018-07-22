@@ -34,8 +34,8 @@ dummyProcess :: Q -> Pipeline R
 dummyProcess _ = pure R
 
 
-start :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
-start (sq,rr) = do
+requestHandler :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
+requestHandler (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
   withHeartBeat them_ping $ \them_main -> do
@@ -61,11 +61,20 @@ start (sq,rr) = do
     pure ()
 
 
+taskManager :: Pipeline ()
+taskManager = do
+  them_ping :: ProcessId <- expectSafe
+  tellLog ("got slave ping pid: " ++ show them_ping)
+  withHeartBeat them_ping $ \_them_main -> do
+    tellLog "taskManager: inside heartbeat"
+    () <- expect
+    pure ()
+
 initDaemonAndServer :: TCPPort -> (Bool,Bool) -> FilePath -> Process ()
 initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (start (sq,rr)) (pure ())
+  server port (requestHandler (sq,rr)) taskManager
 
 
 computeMain :: (TCPPort,Text,Text)
