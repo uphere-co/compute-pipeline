@@ -1,14 +1,18 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 module SemanticParserAPI.Compute where
 
-import           Control.Distributed.Process               (Process)
+import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
-                                                           ,expect,sendChan,receiveChan
-                                                           ,send)
-import           Control.Distributed.Process.Node          (initRemoteTable,newLocalNode,runProcess)
+                                                           ,expect,getSelfPid
+                                                           ,sendChan,receiveChan
+                                                           ,send,spawn)
+import           Control.Distributed.Process.Closure       (mkClosure)
+import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
+import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
@@ -25,9 +29,12 @@ import           CloudHaskell.Util                         (tellLog
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
+import           SemanticParserAPI.Compute.Task            (rtable -- __remoteTable
+                                                           ,launchMissile
+                                                           ,launchMissile__sdict
+                                                           ,launchMissile__static)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
-
 
 
 dummyProcess :: Q -> Pipeline R
@@ -65,8 +72,14 @@ taskManager :: Pipeline ()
 taskManager = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
-  withHeartBeat them_ping $ \_them_main -> do
+  withHeartBeat them_ping $ \them_main -> do
     tellLog "taskManager: inside heartbeat"
+    let nid = processNodeId them_main
+    tellLog $ "node id = " ++ show nid
+    us <- getSelfPid
+    spawn nid ($(mkClosure 'launchMissile) us)
+    n :: Int <- expect
+    liftIO $ print n
     () <- expect
     pure ()
 
@@ -88,7 +101,7 @@ computeMain (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
             (tryCreateTransport dhpp)
             closeTransport
             (\transport ->
-                    newLocalNode transport initRemoteTable
+                    newLocalNode transport rtable --  initRemoteTable
                 >>= \node -> runProcess node
                                (initDaemonAndServer bcastport (bypassNER,bypassTEXTNER) lcfg)
             )
