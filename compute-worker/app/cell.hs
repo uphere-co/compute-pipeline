@@ -1,61 +1,64 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Main where
 
-import           Control.Applicative  (optional)
-import           Control.Distributed.Process.Lifted (expect,getSelfPid)
-import           Control.Monad.IO.Class (liftIO)
-import           Data.Monoid          ((<>))
-import           Data.Maybe           (fromMaybe)
-import           Data.Text            (Text)
-import qualified Data.Text       as T
+import           Control.Distributed.Process.Lifted (expect)
+import           Control.Error.Util                 (failWith)
+import           Control.Monad.IO.Class             (liftIO)
+import           Control.Monad.Trans.Except         (ExceptT(..),runExceptT)
+import           Data.Aeson                         (eitherDecodeStrict)
+import qualified Data.ByteString.Char8         as B
+import           Data.List                          (find)
+import           Data.Monoid                        ((<>))
+import qualified Data.Text                     as T
 import           Options.Applicative
 --
-import           CloudHaskell.Client  (heartBeatHandshake,client)
-import           CloudHaskell.Type    (TCPPort(..),Gateway(..))
-import           CloudHaskell.Util    (tellLog)
+import           CloudHaskell.Client                (heartBeatHandshake,client)
+import           CloudHaskell.Type                  (TCPPort(..),Gateway(..))
 --
-import           SemanticParserAPI.Compute.Task (rtable)
+import           SemanticParserAPI.Compute.Task     (rtable)
+import           SemanticParserAPI.Compute.Type     (CellConfig(..)
+                                                    ,ComputeConfig(..)
+                                                    ,NetworkConfig(..))
 
 
-data ClientOption = ClientOption { port :: Int
-                                 , hostg :: Maybe Text
-                                 , hostl :: Maybe Text
-                                 , serverip :: Maybe Text
-                                 , serverport :: Int
-                                 } deriving Show
 
-pOptions :: Parser ClientOption
-pOptions = ClientOption <$> option auto (long "port" <> short 'p' <> help "Port number")
-                        <*> (fmap T.pack <$> optional (strOption (long "global-ip" <> short 'g' <> help "Global IP address")))
-                        <*> (fmap T.pack <$> optional (strOption (long "local-ip" <> short 'l' <> help "Local IP address")))
-                        <*> (fmap T.pack <$> optional (strOption (long "server-ip" <> short 's' <> help "Server IP address")))
-                        <*> option auto (long "server-port" <> short 'q' <> help "Server Port")
+data CellOption = CellOption { cellOptComputeConfig :: FilePath
+                             , cellOptName          :: String
+                             }
+                deriving (Show)
 
-clientOption :: ParserInfo ClientOption
-clientOption = info pOptions (fullDesc <> progDesc "Client")
+cellOption :: ParserInfo CellOption
+cellOption =
+  info
+    (CellOption <$> strOption (long "compute" <> short 'c' <> help "Compute pipeline configuration")
+                <*> strOption (long "name" <> short 'n' <> help "Cell name"))
+    (fullDesc <> progDesc "Cell")
 
 main :: IO ()
 main = do
-  opt <- execParser clientOption
-  putStrLn "client"
-  print opt
-  client
-    rtable
-    (port opt
-    ,fromMaybe "127.0.0.1" (hostg opt)
-    ,fromMaybe "127.0.0.1" (hostl opt)
-    ,fromMaybe "127.0.0.1" (serverip opt)
-    ,TCPPort (serverport opt))
-    -- TODO: this is not a correct implementation. we should change it.
-    (\gw -> do
-       let them_ping = gatewayMaster gw
-       -- liftIO $ print gw
-       heartBeatHandshake them_ping $ do
-         -- us <- getSelfPid
-         -- tellLog ("send our pid: " ++ show us)
-         () <- expect -- this is a kill signal.
-         pure ()
-         -- (serviceHandshake them_ping consoleClient)
-    )
+  opt <- execParser cellOption
+  r <- runExceptT $ do
+    compcfg :: ComputeConfig <- ExceptT $ eitherDecodeStrict <$> B.readFile (cellOptComputeConfig opt)
+    let cname = T.pack (cellOptName opt)
+    cellcfg <- failWith "no such cell" $ find (\c -> cellName c == cname) (computeCells compcfg)
+    let
+        cport  = port  (cellAddress cellcfg)
+        chostg = hostg (cellAddress cellcfg)
+        chostl = hostl (cellAddress cellcfg)
+        shostg = hostg (computeServer compcfg)
+        sport  = TCPPort (port (computeServer compcfg))
+    liftIO $
+      client
+        rtable
+        (cport,chostg,chostl,shostg,sport)
+        -- TODO: this is not a correct implementation. we should change it.
+        (\gw -> do
+           let them_ping = gatewayMaster gw
+           heartBeatHandshake them_ping $ do
+             () <- expect -- this is a kill signal.
+             pure ()
+        )
+  case r of
+    Left e -> print e
+    Right _ -> pure ()
