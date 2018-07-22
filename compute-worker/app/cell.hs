@@ -1,12 +1,22 @@
-{-# LANGUAGE OverloadedStrings #-}
-
-module SemanticParserAPI.CLI.Type where
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+module Main where
 
 import           Control.Applicative  (optional)
+import           Control.Distributed.Process.Lifted (expect,getSelfPid)
+import           Control.Monad.IO.Class (liftIO)
 import           Data.Monoid          ((<>))
+import           Data.Maybe           (fromMaybe)
 import           Data.Text            (Text)
 import qualified Data.Text       as T
 import           Options.Applicative
+--
+import           CloudHaskell.Client  (heartBeatHandshake,client)
+import           CloudHaskell.Type    (TCPPort(..),Gateway(..))
+import           CloudHaskell.Util    (tellLog)
+--
+
 
 data ClientOption = ClientOption { port :: Int
                                  , hostg :: Maybe Text
@@ -24,3 +34,25 @@ pOptions = ClientOption <$> option auto (long "port" <> short 'p' <> help "Port 
 
 clientOption :: ParserInfo ClientOption
 clientOption = info pOptions (fullDesc <> progDesc "Client")
+
+main :: IO ()
+main = do
+  opt <- execParser clientOption
+  putStrLn "client"
+  print opt
+  client (port opt
+         ,fromMaybe "127.0.0.1" (hostg opt)
+         ,fromMaybe "127.0.0.1" (hostl opt)
+         ,fromMaybe "127.0.0.1" (serverip opt)
+         ,TCPPort (serverport opt))
+         -- TODO: this is not a correct implementation. we should change it.
+         (\gw -> do
+            let them_ping = gatewayMaster gw
+            -- liftIO $ print gw
+            heartBeatHandshake them_ping $ do
+              us <- getSelfPid
+              tellLog ("send our pid: " ++ show us)
+              () <- expect
+              pure ()
+              -- (serviceHandshake them_ping consoleClient)
+         )

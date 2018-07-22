@@ -5,6 +5,7 @@ module CloudHaskell.Type where
 import           Control.Concurrent.STM.TMVar (TMVar)
 import           Control.DeepSeq              (NFData)
 import           Control.Distributed.Process  (Process,ProcessId)
+-- import           Control.Lens.TH              (makeLenses)
 import           Control.Monad.Trans.Except   (ExceptT)
 import           Control.Monad.Trans.Reader   (ReaderT)
 import           Data.Binary                  (Binary(..))
@@ -49,3 +50,14 @@ newtype Router = Router { unRouter :: HashMap Text ProcessId }
 
 newtype TCPPort = TCPPort { unTCPPort :: Int }
                 deriving (Show,Eq,Ord,Num)
+
+
+data Gateway = Gateway { gatewayWeb :: ProcessId
+                       , gatewayMaster :: ProcessId
+                       }
+             deriving (Show,Eq,Generic)
+
+
+
+instance Binary Gateway
+instance NFData Gateway

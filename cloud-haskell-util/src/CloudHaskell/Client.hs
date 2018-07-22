@@ -30,7 +30,8 @@ import           Network.Transport.UpHere          (DualHostPortPair(..))
 --
 import           CloudHaskell.QueryQueue           (QQVar,QueryStatus(..),next)
 import           CloudHaskell.Socket               (recvAndUnpack)
-import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..),Router(..))
+import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..)
+                                                   ,Router(..),Gateway(..),TCPPort(..))
 import           CloudHaskell.Util                 (tellLog,atomicLog,newLogLock
                                                    ,onesecond,expectSafe
                                                    ,spawnChannelLocalReceive
@@ -52,11 +53,12 @@ pingHeartBeat ps them n = do
       mapM_ (flip kill "heartbeat dead") ps
 
 
-retrieveQueryServerPid :: LogLock
-                       -> (Text,Int)   -- ^ (serverid,serverport)
-                       -> IO (Maybe ProcessId)
-retrieveQueryServerPid lock (serverip,serverport) = do
-  NS.connect (T.unpack serverip) (show serverport) $ \(sock,addr) -> do
+acquireGatewayInfo ::
+     LogLock
+  -> (Text,TCPPort)   -- ^ (serverid,serverport)
+  -> IO (Maybe Gateway)
+acquireGatewayInfo lock (serverip,serverport) = do
+  NS.connect (T.unpack serverip) (show (unTCPPort serverport)) $ \(sock,addr) -> do
     atomicLog lock ("connection established to " ++ show addr)
     recvAndUnpack sock
 
@@ -143,7 +145,7 @@ heartBeatHandshake them_ping main = do
   void $ pingHeartBeat [p1] them_ping 0
 
 
-client :: (Int,Text,Text,Text,Int) -> (ProcessId -> Pipeline ()) -> IO ()
+client :: (Int,Text,Text,Text,TCPPort) -> (Gateway -> Pipeline ()) -> IO ()
 client (portnum,hostg,hostl,serverip,serverport) process = do
   let dhpp = DHPP (T.unpack hostg,show portnum) (T.unpack hostl,show portnum)
   bracket (tryCreateTransport dhpp)
@@ -153,18 +155,19 @@ client (portnum,hostg,hostl,serverip,serverport) process = do
                lock <- newLogLock 0
                forever $ do
                  -- TODO: reorganize this cascade with ExceptT.
-                 emthem <- try (retrieveQueryServerPid lock (serverip,serverport))
-                 case emthem of
+                 emgw <- try (acquireGatewayInfo lock (serverip,serverport))
+                 case emgw of
                    Left (e :: SomeException) -> do
                      atomicLog lock "exception caught"
                      atomicLog lock (show e)
-                   Right mthem ->
-                     case mthem of
-                       Nothing -> atomicLog lock "no pid"
-                       Just them -> do
-                         atomicLog lock ("server id =" ++ show them)
+                   Right mgw ->
+                     case mgw of
+                       Nothing -> atomicLog lock "no gateway"
+                       Just gw -> do
+                         atomicLog lock ("gateway =" ++ show gw)
+                         -- let web = gatewayWeb gw
                          runProcess node $ flip runReaderT lock $ do
-                           e <- runExceptT (process them)
+                           e <- runExceptT (process gw)
                            case e of
                              Left err -> atomicLog lock (show err)
                              Right _  -> pure ()

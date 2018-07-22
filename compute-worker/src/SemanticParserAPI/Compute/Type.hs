@@ -22,7 +22,7 @@ instance ToJSON NetworkConfig
 
 data ComputeConfig = ComputeConfig {
                        computeServer :: NetworkConfig
-                     , computeClient :: NetworkConfig
+                     , computeWeb :: NetworkConfig
                      , computeBypassNER :: Bool
                      , computeBypassTEXTNER :: Bool
                      }

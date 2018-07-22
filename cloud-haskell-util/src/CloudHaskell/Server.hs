@@ -23,7 +23,8 @@ import qualified Network.Simple.TCP          as NS
 --
 import           CloudHaskell.Socket               (packAndSend)
 import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..)
-                                                   ,TCPPort(..))
+                                                   ,TCPPort(..)
+                                                   ,Gateway(..))
 import           CloudHaskell.Util                 (expectSafe,spawnChannelLocalSend
                                                    ,newLogLock,atomicLog
                                                    ,tellLog,onesecond,incClientNum)
@@ -91,27 +92,29 @@ serverUnit lock handle = do
 
 
 
-serve :: TMVar ProcessId -> Pipeline () -> Pipeline ()
-serve pidref action = do
-  pid <-  spawnLocal $ action >> tellLog "action finished"
+serve :: TMVar Gateway -> Pipeline () -> Pipeline () -> Pipeline ()
+serve ref web master = do
+  pidWeb    <-  spawnLocal web
+  pidMaster <- spawnLocal master
 
-  tellLog "preparation mode"
-  tellLog (show pid)
-  liftIO (atomically (putTMVar pidref pid))
+  tellLog $ "preparation mode: (web,master) = "  ++ show (pidWeb,pidMaster)
+  liftIO $ atomically $ putTMVar ref (Gateway pidWeb pidMaster)
   tellLog "wait mode"
-  local incClientNum $ serve pidref action
+  -- TODO: this is an incorrect implementation. should be rewritten.
+  local incClientNum $
+    serve ref web master
 
 
 
-server :: TCPPort -> Pipeline () -> Process ()
-server port action = do
-  pidref <- liftIO newEmptyTMVarIO
-  liftIO $ putStrLn "server started"
+server :: TCPPort -> Pipeline () -> Pipeline () -> Process ()
+server port web master = do
+  ref <- liftIO newEmptyTMVarIO
+  -- liftIO $ putStrLn "server started"
   lock <- newLogLock 0
 
-  void . liftIO $ forkIO (bcastService lock pidref port)
+  void . liftIO $ forkIO (bcastService lock ref port)
   flip runReaderT lock $ do
-    e <- runExceptT $ local incClientNum $ serve pidref action
+    e <- runExceptT $ local incClientNum $ serve ref web master
     case e of
       Left err -> atomicLog lock (show err)
       Right _  -> pure ()
