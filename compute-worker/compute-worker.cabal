@@ -107,9 +107,11 @@ executable compute-server
 executable cell
   main-is:             cell.hs
   build-depends:       base
+                     , aeson
                      , bytestring
                      , distributed-process
                      , distributed-process-lifted
+                     , errors
                      , network-transport
                      , optparse-applicative
                      , text

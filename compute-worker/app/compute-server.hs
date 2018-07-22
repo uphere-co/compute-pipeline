@@ -5,7 +5,6 @@ module Main where
 
 import           Data.Aeson                (eitherDecodeStrict)
 import qualified Data.ByteString.Char8 as B
-import           Data.Foldable             (for_)
 import           Data.Monoid               ((<>))
 import           Options.Applicative
 --
@@ -37,13 +36,15 @@ main = do
   opt <- execParser computeServerOption
   ecompcfg :: Either String ComputeConfig <-
     eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
-  for_ ecompcfg $ \compcfg -> do
-    let hostGlobalIP = hostg (computeServer compcfg)
-        hostLocalIP = hostl (computeServer compcfg)
-        hostPort = port (computeServer compcfg)
-        bypassNER = computeBypassNER compcfg
-        bypassTEXTNER = computeBypassTEXTNER compcfg
-    computeMain
-      (TCPPort hostPort,hostGlobalIP,hostLocalIP)
-      (bypassNER,bypassTEXTNER)
-      (servLangConfig opt)
+  case ecompcfg of
+    Right compcfg -> do
+      let hostGlobalIP = hostg (computeServer compcfg)
+          hostLocalIP = hostl (computeServer compcfg)
+          hostPort = port (computeServer compcfg)
+          bypassNER = computeBypassNER compcfg
+          bypassTEXTNER = computeBypassTEXTNER compcfg
+      computeMain
+        (TCPPort hostPort,hostGlobalIP,hostLocalIP)
+        (bypassNER,bypassTEXTNER)
+        (servLangConfig opt)
+    Left err -> print err

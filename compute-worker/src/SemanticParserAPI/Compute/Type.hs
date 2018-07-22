@@ -20,9 +20,22 @@ data NetworkConfig = NetworkConfig {
 instance FromJSON NetworkConfig
 instance ToJSON NetworkConfig
 
+data CellConfig = CellConfig {
+                    cellName :: Text
+                  , cellAddress :: NetworkConfig
+                  }
+                deriving (Generic, Show)
+
+instance FromJSON CellConfig
+instance ToJSON CellConfig
+
+
+
+
 data ComputeConfig = ComputeConfig {
                        computeServer :: NetworkConfig
                      , computeWeb :: NetworkConfig
+                     , computeCells :: [CellConfig]
                      , computeBypassNER :: Bool
                      , computeBypassTEXTNER :: Bool
                      }
