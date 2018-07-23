@@ -17,8 +17,7 @@ import           Network.Transport                         (closeTransport)
 --
 import           CloudHaskell.Closure                      ((@<),spawnChannel_)
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
-import           CloudHaskell.Type                         (Pipeline,Q(..),R(..)
-                                                           ,TCPPort(..),Router(..))
+import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
 import           CloudHaskell.Util                         (tellLog
                                                            ,expectSafe
                                                            ,ioWorker
@@ -28,20 +27,16 @@ import           CloudHaskell.Util                         (tellLog
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Task            (rtable,holdState__closure)
-import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
+import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
+                                                           ,ComputeResult(..)
+                                                           ,StatusQuery(..)
+                                                           ,StatusResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
-{-
 
-test__closure :: Closure (ReceivePort Int -> Process ())
-test__closure = holdState__closure @< "abc"
-                -- NOTE: equivalently
-                -- holdState__closure @@ (capture @String "abc")
--}
-
-dummyProcess :: Q -> Pipeline R
-dummyProcess _ = pure R
+statusQuery :: StatusQuery -> Pipeline StatusResult
+statusQuery _ = pure SR
 
 
 requestHandler :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
@@ -57,7 +52,7 @@ requestHandler (sq,rr) = do
           receiveChan rr
     (slock1,pid1) <-
       spawnChannelLocalSend $ \rlock1 ->
-        serverUnit rlock1 dummyProcess
+        serverUnit rlock1 statusQuery
 
 
     let router = Router $

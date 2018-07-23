@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module SemanticParserAPI.Compute.Type where
@@ -15,22 +16,13 @@ data NetworkConfig = NetworkConfig {
                      , hostl :: Text
                      , port :: Int
                      }
-                   deriving (Generic, Show)
-
-instance FromJSON NetworkConfig
-instance ToJSON NetworkConfig
+                   deriving (Generic,Show,FromJSON,ToJSON)
 
 data CellConfig = CellConfig {
                     cellName :: Text
                   , cellAddress :: NetworkConfig
                   }
-                deriving (Generic, Show)
-
-instance FromJSON CellConfig
-instance ToJSON CellConfig
-
-
-
+                deriving (Generic,Show,FromJSON,ToJSON)
 
 data ComputeConfig = ComputeConfig {
                        computeServer :: NetworkConfig
@@ -39,50 +31,30 @@ data ComputeConfig = ComputeConfig {
                      , computeBypassNER :: Bool
                      , computeBypassTEXTNER :: Bool
                      }
-                   deriving (Generic,Show)
-
-instance FromJSON ComputeConfig
-instance ToJSON ComputeConfig
-
-
+                   deriving (Generic,Show,FromJSON,ToJSON)
 
 data ComputeQuery = CQ_Sentence Text
                   | CQ_Reuters Int
-                  deriving (Generic,Show)
-
-instance Binary   ComputeQuery
-instance ToJSON   ComputeQuery
-instance FromJSON ComputeQuery
-instance NFData   ComputeQuery
+                  deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
 data ResultSentence = ResultSentence { _sentence_query :: Text
                                      , _sentence_token :: [[(Int,Text)]]
                                      , _sentence_meaning_graph :: [MeaningGraph]
                                      , _sentence_output :: ConsoleOutput
                                      }
-                    deriving (Generic,Show)
-
-instance Binary   ResultSentence
-instance ToJSON   ResultSentence
-instance FromJSON ResultSentence
-instance NFData   ResultSentence
+                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
 data ResultReuters = ResultReuters { _reuters_query :: Int
                                    , _reuters_mgs :: [MeaningGraph]
                                    }
-                   deriving (Generic,Show)
-
-instance Binary   ResultReuters
-instance ToJSON   ResultReuters
-instance FromJSON ResultReuters
-instance NFData   ResultReuters
-
+                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
 data ComputeResult = CR_Sentence ResultSentence
                    | CR_Reuters  ResultReuters
-                   deriving (Generic,Show)
+                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
-instance Binary   ComputeResult
-instance ToJSON   ComputeResult
-instance FromJSON ComputeResult
-instance NFData   ComputeResult
+data StatusQuery = SQ
+                  deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
+
+data StatusResult = SR
+                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
