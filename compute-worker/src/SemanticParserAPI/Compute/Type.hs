@@ -53,8 +53,10 @@ data ComputeResult = CR_Sentence ResultSentence
                    | CR_Reuters  ResultReuters
                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
+type Status = [(Text,Maybe Int)]
+
 data StatusQuery = SQ
                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
-data StatusResult = SR
+data StatusResult = SR Status -- [(Text,Bool)]
                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)

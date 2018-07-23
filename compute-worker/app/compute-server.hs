@@ -11,7 +11,8 @@ import           Options.Applicative
 import           CloudHaskell.Type         (TCPPort(..))
 --
 import           SemanticParserAPI.Compute (computeMain)
-import           SemanticParserAPI.Compute.Type (ComputeConfig(..),NetworkConfig(..))
+import           SemanticParserAPI.Compute.Type (ComputeConfig(..),NetworkConfig(..)
+                                                ,CellConfig(..))
 
 
 data ComputeServerOption = ComputeServerOption {
@@ -43,7 +44,9 @@ main = do
           hostPort = port (computeServer compcfg)
           bypassNER = computeBypassNER compcfg
           bypassTEXTNER = computeBypassTEXTNER compcfg
+          initStatus = map (\c -> (cellName c,Nothing))  (computeCells compcfg)
       computeMain
+        initStatus
         (TCPPort hostPort,hostGlobalIP,hostLocalIP)
         (bypassNER,bypassTEXTNER)
         (servLangConfig opt)

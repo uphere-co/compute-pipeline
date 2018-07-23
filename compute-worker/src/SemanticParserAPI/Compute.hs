@@ -3,6 +3,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module SemanticParserAPI.Compute where
 
+import           Control.Concurrent.STM                    (TVar,atomically
+                                                           ,newTVarIO,readTVarIO,writeTVar)
 import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
                                                            ,expect,send
@@ -29,18 +31,27 @@ import           Network.Transport.UpHere                  (DualHostPortPair(..)
 import           SemanticParserAPI.Compute.Task            (rtable,holdState__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..)
+                                                           ,Status
                                                            ,StatusQuery(..)
                                                            ,StatusResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
 
-statusQuery :: StatusQuery -> Pipeline StatusResult
-statusQuery _ = pure SR
+statusQuery ::
+     TVar Status
+  -> StatusQuery
+  -> Pipeline StatusResult
+statusQuery ref  _ = do
+  lst <- liftIO $ readTVarIO ref
+  pure (SR lst)
 
 
-requestHandler :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
-requestHandler (sq,rr) = do
+requestHandler ::
+     TVar Status
+  -> (SendPort ComputeQuery, ReceivePort ComputeResult)
+  -> Pipeline ()
+requestHandler ref (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
   withHeartBeat them_ping $ \them_main -> do
@@ -52,7 +63,7 @@ requestHandler (sq,rr) = do
           receiveChan rr
     (slock1,pid1) <-
       spawnChannelLocalSend $ \rlock1 ->
-        serverUnit rlock1 statusQuery
+        serverUnit rlock1 (statusQuery ref)
 
 
     let router = Router $
@@ -66,8 +77,8 @@ requestHandler (sq,rr) = do
     pure ()
 
 
-taskManager :: Pipeline ()
-taskManager = do
+taskManager :: TVar Status -> Pipeline ()
+taskManager ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping $ \them_main -> do
@@ -82,22 +93,24 @@ taskManager = do
     sendChan sq (100 :: Int)
     n' <- receiveChan rr
     liftIO $ print n'
-
+    liftIO $ atomically $ writeTVar ref [("mark",Just n')]
     () <- expect
     pure ()
 
-initDaemonAndServer :: TCPPort -> (Bool,Bool) -> FilePath -> Process ()
-initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg = do
+initDaemonAndServer :: Status -> TCPPort -> (Bool,Bool) -> FilePath -> Process ()
+initDaemonAndServer stat port (bypassNER,bypassTEXTNER) lcfg = do
+  ref <- liftIO $ newTVarIO stat
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (requestHandler (sq,rr)) taskManager
+  server port (requestHandler ref (sq,rr)) (taskManager ref)
 
 
-computeMain :: (TCPPort,Text,Text)
+computeMain :: Status
+            -> (TCPPort,Text,Text)
             -> (Bool,Bool)  -- ^ (bypassNER, bypassTEXTNER)
             -> FilePath -- ^ configjson "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
             -> IO ()
-computeMain (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
+computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
     let chport = show (unTCPPort (bcastport+1))
         dhpp = DHPP (T.unpack hostg,chport) (T.unpack hostl,chport)
     bracket
@@ -106,5 +119,5 @@ computeMain (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
             (\transport ->
                     newLocalNode transport rtable
                 >>= \node -> runProcess node
-                               (initDaemonAndServer bcastport (bypassNER,bypassTEXTNER) lcfg)
+                               (initDaemonAndServer stat bcastport (bypassNER,bypassTEXTNER) lcfg)
             )
