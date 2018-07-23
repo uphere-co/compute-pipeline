@@ -4,10 +4,11 @@
 module SemanticParserAPI.Compute where
 
 import           Control.Concurrent.STM                    (TVar,atomically
-                                                           ,newTVarIO,readTVarIO,writeTVar)
+                                                           ,newTVarIO,readTVarIO
+                                                           ,readTVar,writeTVar)
 import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
-                                                           ,expect,send
+                                                           ,expect,getSelfPid,send
                                                            ,newChan,sendChan,receiveChan)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
@@ -43,8 +44,8 @@ statusQuery ::
   -> StatusQuery
   -> Pipeline StatusResult
 statusQuery ref  _ = do
-  lst <- liftIO $ readTVarIO ref
-  pure (SR lst)
+  m <- liftIO $ readTVarIO ref
+  pure (SR (HM.toList m))
 
 
 requestHandler ::
@@ -82,7 +83,11 @@ taskManager ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping $ \them_main -> do
-    tellLog "taskManager: inside heartbeat"
+    themaster <- getSelfPid
+    let router = Router $ HM.insert "master" themaster mempty
+    send them_main router
+    cname :: Text <- expectSafe
+    tellLog $ "taskManager: got " ++ show cname
     let nid = processNodeId them_main
     tellLog $ "node id = " ++ show nid
     (sr,rr) <- newChan
@@ -93,7 +98,10 @@ taskManager ref = do
     sendChan sq (100 :: Int)
     n' <- receiveChan rr
     liftIO $ print n'
-    liftIO $ atomically $ writeTVar ref [("mark",Just n')]
+    liftIO $ atomically $ do
+      m <- readTVar ref
+      let m' = HM.update (const (Just (Just n'))) cname m
+      writeTVar ref m'
     () <- expect
     pure ()
 

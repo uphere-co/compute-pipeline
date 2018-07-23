@@ -5,6 +5,7 @@ module Main where
 
 import           Data.Aeson                (eitherDecodeStrict)
 import qualified Data.ByteString.Char8 as B
+import qualified Data.HashMap.Strict   as HM
 import           Data.Monoid               ((<>))
 import           Options.Applicative
 --
@@ -44,7 +45,7 @@ main = do
           hostPort = port (computeServer compcfg)
           bypassNER = computeBypassNER compcfg
           bypassTEXTNER = computeBypassTEXTNER compcfg
-          initStatus = map (\c -> (cellName c,Nothing))  (computeCells compcfg)
+          initStatus = HM.fromList $ map (\c -> (cellName c,Nothing))  (computeCells compcfg)
       computeMain
         initStatus
         (TCPPort hostPort,hostGlobalIP,hostLocalIP)

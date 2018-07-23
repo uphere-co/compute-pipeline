@@ -6,6 +6,7 @@ module SemanticParserAPI.Compute.Type where
 import           Control.DeepSeq                (NFData)
 import           Data.Aeson                     (FromJSON,ToJSON)
 import           Data.Binary                    (Binary)
+import           Data.HashMap.Strict            (HashMap)
 import           Data.Text                      (Text)
 import           GHC.Generics                   (Generic)
 --
@@ -53,10 +54,10 @@ data ComputeResult = CR_Sentence ResultSentence
                    | CR_Reuters  ResultReuters
                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
-type Status = [(Text,Maybe Int)]
+type Status = HashMap Text (Maybe Int)
 
 data StatusQuery = SQ
                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
-data StatusResult = SR Status -- [(Text,Bool)]
+data StatusResult = SR [(Text,Maybe Int)]
                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)

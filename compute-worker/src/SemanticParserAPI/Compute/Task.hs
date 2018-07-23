@@ -43,9 +43,13 @@ holdState s sr rq = go s
       go s'
 
 
+testFunc :: (Int,String) -> (String,String) -> Process ()
+testFunc _ _ = pure ()
+
 remotable [ 'holdState
           , 'sdictInt
           , 'sdictString
+          , 'testFunc
           ]
 
 rtable :: RemoteTable
