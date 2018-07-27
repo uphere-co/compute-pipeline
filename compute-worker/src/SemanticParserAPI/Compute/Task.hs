@@ -23,13 +23,6 @@ sdictInt = SerializableDict
 sdictString :: SerializableDict String
 sdictString = SerializableDict
 
--- sdictText :: SerializableDict Text
--- sdictText = SerializableDict
-
--- sdictSendPortInt :: SerializableDict (SendPort Int)
--- sdictSendPortInt = SerializableDict
-
-
 holdState :: Int -> SendPort Int -> ReceivePort Int -> Process ()
 holdState s sr rq = go s
   where
