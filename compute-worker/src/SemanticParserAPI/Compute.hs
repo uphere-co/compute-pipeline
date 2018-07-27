@@ -105,9 +105,8 @@ taskManager ref = do
     () <- expect
     pure ()
 
-initDaemonAndServer :: Status -> TCPPort -> (Bool,Bool) -> FilePath -> Process ()
-initDaemonAndServer stat port (bypassNER,bypassTEXTNER) lcfg = do
-  ref <- liftIO $ newTVarIO stat
+initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Process ()
+initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
   server port (requestHandler ref (sq,rr)) (taskManager ref)
@@ -119,6 +118,7 @@ computeMain :: Status
             -> FilePath -- ^ configjson "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
             -> IO ()
 computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
+    ref <- liftIO $ newTVarIO stat
     let chport = show (unTCPPort (bcastport+1))
         dhpp = DHPP (T.unpack hostg,chport) (T.unpack hostl,chport)
     bracket
@@ -127,5 +127,5 @@ computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
             (\transport ->
                     newLocalNode transport rtable
                 >>= \node -> runProcess node
-                               (initDaemonAndServer stat bcastport (bypassNER,bypassTEXTNER) lcfg)
+                               (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
             )
