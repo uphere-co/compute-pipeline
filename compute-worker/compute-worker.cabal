@@ -82,6 +82,7 @@ library
                     -funbox-strict-fields
                     -fno-warn-orphans
                     -O2
+                    -ddump-splices
 
 executable compute-server
   main-is:             compute-server.hs
@@ -89,6 +90,7 @@ executable compute-server
                      , aeson
                      , bytestring
                      , optparse-applicative
+                     , unordered-containers
                      --
                      , cloud-haskell-util
                      --
@@ -103,6 +105,7 @@ executable compute-server
                     -funbox-strict-fields
                     -fno-warn-orphans
                     -O2
+                    -rtsopts
 
 
 executable cell
@@ -132,3 +135,4 @@ executable cell
                     -funbox-strict-fields
                     -fno-warn-orphans
                     -O2
+                    -rtsopts

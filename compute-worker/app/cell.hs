@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Distributed.Process.Lifted (expect)
+import           Control.Distributed.Process.Lifted (expect,send)
 import           Control.Error.Util                 (failWith)
 import           Control.Monad.IO.Class             (liftIO)
 import           Control.Monad.Trans.Except         (ExceptT(..),runExceptT)
@@ -13,8 +13,9 @@ import           Data.Monoid                        ((<>))
 import qualified Data.Text                     as T
 import           Options.Applicative
 --
-import           CloudHaskell.Client                (heartBeatHandshake,client)
+import           CloudHaskell.Client                (heartBeatHandshake,client,routerHandshake)
 import           CloudHaskell.Type                  (TCPPort(..),Gateway(..))
+import           CloudHaskell.Util                  (lookupRouter)
 --
 import           SemanticParserAPI.Compute.Task     (rtable)
 import           SemanticParserAPI.Compute.Type     (CellConfig(..)
@@ -54,10 +55,12 @@ main = do
         (cport,chostg,chostl,shostg,sport)
         -- TODO: this is not a correct implementation. we should change it.
         (\gw -> do
-           let them_ping = gatewayMaster gw
-           heartBeatHandshake them_ping $ do
-             () <- expect -- this is a kill signal.
-             pure ()
+           heartBeatHandshake (gatewayMaster gw) $
+             routerHandshake $ \router -> do
+               themaster <- lookupRouter "master" router
+               send themaster cname
+               () <- expect -- this is a kill signal.
+               pure ()
         )
   case r of
     Left e -> print e

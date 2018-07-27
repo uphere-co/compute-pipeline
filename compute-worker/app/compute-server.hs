@@ -5,13 +5,15 @@ module Main where
 
 import           Data.Aeson                (eitherDecodeStrict)
 import qualified Data.ByteString.Char8 as B
+import qualified Data.HashMap.Strict   as HM
 import           Data.Monoid               ((<>))
 import           Options.Applicative
 --
 import           CloudHaskell.Type         (TCPPort(..))
 --
 import           SemanticParserAPI.Compute (computeMain)
-import           SemanticParserAPI.Compute.Type (ComputeConfig(..),NetworkConfig(..))
+import           SemanticParserAPI.Compute.Type (ComputeConfig(..),NetworkConfig(..)
+                                                ,CellConfig(..))
 
 
 data ComputeServerOption = ComputeServerOption {
@@ -43,7 +45,9 @@ main = do
           hostPort = port (computeServer compcfg)
           bypassNER = computeBypassNER compcfg
           bypassTEXTNER = computeBypassTEXTNER compcfg
+          initStatus = HM.fromList $ map (\c -> (cellName c,Nothing))  (computeCells compcfg)
       computeMain
+        initStatus
         (TCPPort hostPort,hostGlobalIP,hostLocalIP)
         (bypassNER,bypassTEXTNER)
         (servLangConfig opt)

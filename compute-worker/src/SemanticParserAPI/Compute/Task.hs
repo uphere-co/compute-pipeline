@@ -23,10 +23,6 @@ sdictInt = SerializableDict
 sdictString :: SerializableDict String
 sdictString = SerializableDict
 
-sdictSendPortInt :: SerializableDict (SendPort Int)
-sdictSendPortInt = SerializableDict
-
-
 holdState :: Int -> SendPort Int -> ReceivePort Int -> Process ()
 holdState s sr rq = go s
   where
@@ -40,10 +36,13 @@ holdState s sr rq = go s
       go s'
 
 
+testFunc :: (Int,String) -> (String,String) -> Process ()
+testFunc _ _ = pure ()
+
 remotable [ 'holdState
           , 'sdictInt
           , 'sdictString
-          , 'sdictSendPortInt
+          , 'testFunc
           ]
 
 rtable :: RemoteTable

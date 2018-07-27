@@ -3,9 +3,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module SemanticParserAPI.Compute where
 
+import           Control.Concurrent.STM                    (TVar,atomically
+                                                           ,newTVarIO,readTVarIO
+                                                           ,readTVar,writeTVar)
 import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
-                                                           ,expect,send
+                                                           ,expect,getSelfPid,send
                                                            ,newChan,sendChan,receiveChan)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
@@ -17,8 +20,7 @@ import           Network.Transport                         (closeTransport)
 --
 import           CloudHaskell.Closure                      ((@<),spawnChannel_)
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
-import           CloudHaskell.Type                         (Pipeline,Q(..),R(..)
-                                                           ,TCPPort(..),Router(..))
+import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
 import           CloudHaskell.Util                         (tellLog
                                                            ,expectSafe
                                                            ,ioWorker
@@ -28,24 +30,29 @@ import           CloudHaskell.Util                         (tellLog
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Task            (rtable,holdState__closure)
-import           SemanticParserAPI.Compute.Type            (ComputeQuery(..),ComputeResult(..))
+import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
+                                                           ,ComputeResult(..)
+                                                           ,Status
+                                                           ,StatusQuery(..)
+                                                           ,StatusResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
-{-
 
-test__closure :: Closure (ReceivePort Int -> Process ())
-test__closure = holdState__closure @< "abc"
-                -- NOTE: equivalently
-                -- holdState__closure @@ (capture @String "abc")
--}
-
-dummyProcess :: Q -> Pipeline R
-dummyProcess _ = pure R
+statusQuery ::
+     TVar Status
+  -> StatusQuery
+  -> Pipeline StatusResult
+statusQuery ref  _ = do
+  m <- liftIO $ readTVarIO ref
+  pure (SR (HM.toList m))
 
 
-requestHandler :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
-requestHandler (sq,rr) = do
+requestHandler ::
+     TVar Status
+  -> (SendPort ComputeQuery, ReceivePort ComputeResult)
+  -> Pipeline ()
+requestHandler ref (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
   withHeartBeat them_ping $ \them_main -> do
@@ -57,7 +64,7 @@ requestHandler (sq,rr) = do
           receiveChan rr
     (slock1,pid1) <-
       spawnChannelLocalSend $ \rlock1 ->
-        serverUnit rlock1 dummyProcess
+        serverUnit rlock1 (statusQuery ref)
 
 
     let router = Router $
@@ -71,12 +78,16 @@ requestHandler (sq,rr) = do
     pure ()
 
 
-taskManager :: Pipeline ()
-taskManager = do
+taskManager :: TVar Status -> Pipeline ()
+taskManager ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping $ \them_main -> do
-    tellLog "taskManager: inside heartbeat"
+    themaster <- getSelfPid
+    let router = Router $ HM.insert "master" themaster mempty
+    send them_main router
+    cname :: Text <- expectSafe
+    tellLog $ "taskManager: got " ++ show cname
     let nid = processNodeId them_main
     tellLog $ "node id = " ++ show nid
     (sr,rr) <- newChan
@@ -87,22 +98,27 @@ taskManager = do
     sendChan sq (100 :: Int)
     n' <- receiveChan rr
     liftIO $ print n'
-
+    liftIO $ atomically $ do
+      m <- readTVar ref
+      let m' = HM.update (const (Just (Just n'))) cname m
+      writeTVar ref m'
     () <- expect
     pure ()
 
-initDaemonAndServer :: TCPPort -> (Bool,Bool) -> FilePath -> Process ()
-initDaemonAndServer port (bypassNER,bypassTEXTNER) lcfg = do
+initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Process ()
+initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (requestHandler (sq,rr)) taskManager
+  server port (requestHandler ref (sq,rr)) (taskManager ref)
 
 
-computeMain :: (TCPPort,Text,Text)
+computeMain :: Status
+            -> (TCPPort,Text,Text)
             -> (Bool,Bool)  -- ^ (bypassNER, bypassTEXTNER)
             -> FilePath -- ^ configjson "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
             -> IO ()
-computeMain (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
+computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
+    ref <- liftIO $ newTVarIO stat
     let chport = show (unTCPPort (bcastport+1))
         dhpp = DHPP (T.unpack hostg,chport) (T.unpack hostl,chport)
     bracket
@@ -111,5 +127,5 @@ computeMain (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
             (\transport ->
                     newLocalNode transport rtable
                 >>= \node -> runProcess node
-                               (initDaemonAndServer bcastport (bypassNER,bypassTEXTNER) lcfg)
+                               (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
             )
