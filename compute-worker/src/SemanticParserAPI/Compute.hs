@@ -100,7 +100,7 @@ taskManager ref = do
     liftIO $ print n'
     liftIO $ atomically $ do
       m <- readTVar ref
-      let m' = HM.update (const (Just (Just n'))) cname m
+      let m' = HM.update (const (Just True)) cname m
       writeTVar ref m'
     () <- expect
     pure ()

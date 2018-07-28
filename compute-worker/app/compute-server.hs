@@ -45,7 +45,7 @@ main = do
           hostPort = port (computeServer compcfg)
           bypassNER = computeBypassNER compcfg
           bypassTEXTNER = computeBypassTEXTNER compcfg
-          initStatus = HM.fromList $ map (\c -> (cellName c,Nothing))  (computeCells compcfg)
+          initStatus = HM.fromList $ map (\c -> (cellName c,False))  (computeCells compcfg)
       computeMain
         initStatus
         (TCPPort hostPort,hostGlobalIP,hostLocalIP)
