@@ -16,14 +16,20 @@ import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Binary                         (encode)
 --
-import           SRL.Analyze.Type                    (ConsoleOutput(..))
+-- import           SRL.Analyze.Type                    (ConsoleOutput(..))
 --
 import           CloudHaskell.Closure                (Capture(..))
+import           CloudHaskell.Util                   (ioWorker
+                                                     ,spawnChannelLocalDuplex)
 --
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
-                                                           ,ComputeResult(..)
-                                                           ,ResultSentence(..))
+                                                           ,ComputeResult(..))
+                                                            -- ResultSentence(..)
+import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
+
+sdictBoolBool :: SerializableDict (Bool,Bool)
+sdictBoolBool = SerializableDict
 
 sdictInt :: SerializableDict Int
 sdictInt = SerializableDict
@@ -37,33 +43,45 @@ sdictComputeQuery = SerializableDict
 sdictComputeResult :: SerializableDict ComputeResult
 sdictComputeResult = SerializableDict
 
-querySemanticParser :: SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ()
-querySemanticParser sr rq =
+daemonSemanticParser :: (Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ()
+daemonSemanticParser (bypassNER,bypassTEXTNER) lcfg sr rq = do
+  -- Semantic Parser worker daemon
+  ((sq_i,rr_i),_) <- spawnChannelLocalDuplex $ \(rq_i,sr_i) ->
+    ioWorker (rq_i,sr_i) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+  -- Query processing
   forever $ do
     q <- receiveChan rq
     liftIO $ putStrLn ("query received: " ++ show q)
-    let r = CR_Sentence (ResultSentence "dummy" [] [] (ConsoleOutput "" "" ""))
-    liftIO $ putStrLn ("dummy result: " ++ show r)
+    sendChan sq_i q
+    r <- receiveChan rr_i
+    -- let r = CR_Sentence (ResultSentence "dummy" [] [] (ConsoleOutput "" "" ""))
+    -- liftIO $ putStrLn ("dummy result: " ++ show r)
     sendChan sr r
 
-remotable [ 'querySemanticParser
+remotable [ 'sdictBoolBool
           , 'sdictInt
           , 'sdictString
           , 'sdictComputeQuery
           , 'sdictComputeResult
+          , 'daemonSemanticParser
           ]
 
 rtable :: RemoteTable
 rtable = __remoteTable initRemoteTable
 
 
-instance Capture String where
-  capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
-  staticSdict = $(mkStatic 'sdictString)
+instance Capture (Bool,Bool) where
+  capture = closure (staticDecode $(mkStatic 'sdictBoolBool)) . encode
+  staticSdict = $(mkStatic 'sdictBoolBool)
+
 
 instance Capture Int where
   capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
   staticSdict = $(mkStatic 'sdictInt)
+
+instance Capture String where
+  capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
+  staticSdict = $(mkStatic 'sdictString)
 
 instance Capture ComputeQuery where
   capture = closure (staticDecode $(mkStatic 'sdictComputeQuery)) . encode
@@ -75,5 +93,5 @@ instance Capture ComputeResult where
 
 
 
-querySemanticParser__closure :: Closure (SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ())
-querySemanticParser__closure = staticClosure $(mkStatic 'querySemanticParser)
+daemonSemanticParser__closure :: Closure ((Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ())
+daemonSemanticParser__closure = staticClosure $(mkStatic 'daemonSemanticParser)

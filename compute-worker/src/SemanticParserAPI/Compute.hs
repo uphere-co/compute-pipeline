@@ -32,7 +32,7 @@ import           CloudHaskell.Util                         (tellLog
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import           SemanticParserAPI.Compute.Task            (rtable,querySemanticParser__closure)
+import           SemanticParserAPI.Compute.Task            (rtable,daemonSemanticParser__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
 import           SemanticParserAPI.Compute.Type.Status     (Status
@@ -93,8 +93,8 @@ elimLinkedProcess ref pid = do
     writeTVar ref m'
 
 
-taskManager :: TVar Status -> Pipeline ()
-taskManager ref = do
+taskManager :: TVar Status -> (Bool,Bool) -> FilePath -> Pipeline ()
+taskManager ref (bypassNER,bypassTEXTNER) lcfg = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (elimLinkedProcess ref) $ \them_main -> do
@@ -107,8 +107,8 @@ taskManager ref = do
     tellLog $ "node id = " ++ show nid
     -- TEMPORARY TESTING
     (sr,rr) <- newChan
-    sq <- spawnChannel_ nid (querySemanticParser__closure @< sr)
-    sendChan sq (CQ_Sentence "lalal")
+    sq <- spawnChannel_ nid (daemonSemanticParser__closure @< (bypassNER,bypassTEXTNER) @< lcfg @< sr)
+    sendChan sq (CQ_Sentence "I love you")
     r <- receiveChan rr
     liftIO $ print r
     -- sendChan sq (100 :: Int)
@@ -127,7 +127,7 @@ initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Proc
 initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (requestHandler ref (sq,rr)) (taskManager ref)
+  server port (requestHandler ref (sq,rr)) (taskManager ref (bypassNER,bypassTEXTNER) lcfg)
 
 
 computeMain :: Status
