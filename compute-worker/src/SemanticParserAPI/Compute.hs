@@ -31,8 +31,8 @@ import           CloudHaskell.Util                         (tellLog
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Task            (rtable,holdState__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
-                                                           ,ComputeResult(..)
-                                                           ,Status
+                                                           ,ComputeResult(..))
+import           SemanticParserAPI.Compute.Type.Status     (Status
                                                            ,StatusQuery(..)
                                                            ,StatusResult(..))
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)

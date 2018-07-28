@@ -70,6 +70,7 @@ library
                     SemanticParserAPI.Compute.Network
                     SemanticParserAPI.Compute.Task
                     SemanticParserAPI.Compute.Type
+                    SemanticParserAPI.Compute.Type.Status
                     SemanticParserAPI.Compute.Worker
                     SemanticParserAPI.CLI.Client
   other-extensions: TemplateHaskell
