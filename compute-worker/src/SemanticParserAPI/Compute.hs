@@ -12,8 +12,11 @@ import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,R
                                                            ,newChan,sendChan,receiveChan)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
+import           Control.Lens                              ((&),(.~),(^.),(%~),at,to)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
+-- import qualified Data.HashSet                        as HS
+import           Data.Maybe                                (isJust)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
@@ -31,10 +34,11 @@ import           CloudHaskell.Util                         (tellLog
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           SemanticParserAPI.Compute.Task            (rtable,holdState__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
-                                                           ,ComputeResult(..)
-                                                           ,Status
+                                                           ,ComputeResult(..))
+import           SemanticParserAPI.Compute.Type.Status     (Status
                                                            ,StatusQuery(..)
-                                                           ,StatusResult(..))
+                                                           ,StatusResult(..)
+                                                           ,statusNodes)
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
@@ -43,9 +47,10 @@ statusQuery ::
      TVar Status
   -> StatusQuery
   -> Pipeline StatusResult
-statusQuery ref  _ = do
+statusQuery ref _ = do
   m <- liftIO $ readTVarIO ref
-  pure (SR (HM.toList m))
+  let lst = map (\(k,v) -> (k,isJust v)) (m^.statusNodes.to HM.toList)
+  pure (SR lst)
 
 
 requestHandler ::
@@ -55,7 +60,7 @@ requestHandler ::
 requestHandler ref (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
-  withHeartBeat them_ping $ \them_main -> do
+  withHeartBeat them_ping (const (pure ())) $ \them_main -> do
 
     (slock0,pid0) <-
       spawnChannelLocalSend $ \rlock0 ->
@@ -78,11 +83,21 @@ requestHandler ref (sq,rr) = do
     pure ()
 
 
+elimLinkedProcess :: TVar Status -> ProcessId -> Pipeline ()
+elimLinkedProcess ref pid = do
+  liftIO $ atomically $ do
+    m <- readTVar ref
+    let elim i = HM.map $ \case Nothing -> Nothing
+                                Just i' -> if i == i' then Nothing else Just i'
+        m' = m & (statusNodes %~ elim pid)
+    writeTVar ref m'
+
+
 taskManager :: TVar Status -> Pipeline ()
 taskManager ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
-  withHeartBeat them_ping $ \them_main -> do
+  withHeartBeat them_ping (elimLinkedProcess ref) $ \them_main -> do
     themaster <- getSelfPid
     let router = Router $ HM.insert "master" themaster mempty
     send them_main router
@@ -90,6 +105,7 @@ taskManager ref = do
     tellLog $ "taskManager: got " ++ show cname
     let nid = processNodeId them_main
     tellLog $ "node id = " ++ show nid
+    -- TEMPORARY TESTING
     (sr,rr) <- newChan
     sq <- spawnChannel_ nid (holdState__closure @< 0 @< sr)
     sendChan sq (100 :: Int)
@@ -98,10 +114,17 @@ taskManager ref = do
     sendChan sq (100 :: Int)
     n' <- receiveChan rr
     liftIO $ print n'
+    -- TEMPORARY TESTING UP TO HERE
+    liftIO $ print them_main
     liftIO $ atomically $ do
       m <- readTVar ref
-      let m' = HM.update (const (Just (Just n'))) cname m
+      let m' = m & (statusNodes . at cname .~ Just (Just them_main))
+                 -- & (statusLinkedProcesses %~ HS.insert them_main)
       writeTVar ref m'
+    liftIO $ do
+      r <- atomically $ readTVar ref
+      print r
+
     () <- expect
     pure ()
 

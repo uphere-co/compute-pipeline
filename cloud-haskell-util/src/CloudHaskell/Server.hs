@@ -29,12 +29,17 @@ import           CloudHaskell.Util                 (expectSafe,spawnChannelLocal
                                                    ,newLogLock,atomicLog
                                                    ,tellLog,onesecond,incClientNum)
 
-withHeartBeat :: ProcessId -> (ProcessId -> Pipeline ()) -> Pipeline ()
-withHeartBeat them_ping action = do
+-- | withHeartBeat makes heartbeating channel and spawn a specified process.
+withHeartBeat
+  :: ProcessId                  -- ^ client heart beat process
+  -> (ProcessId -> Pipeline ()) -- ^ finalizer. process id is that of client's
+  -> (ProcessId -> Pipeline ()) -- ^ main process
+  -> Pipeline ()
+withHeartBeat them_ping finalizer mainProcess = do
   (sthem_main,us_main) <- spawnChannelLocalSend $ \rthem_main -> do
     them_main <- receiveChan rthem_main
     -- NOTE: main process launch
-    action them_main
+    mainProcess them_main
   send them_ping us_main
   tellLog ("sent our main pid: " ++ show us_main)
   them_main :: ProcessId <- expectSafe
@@ -50,6 +55,7 @@ withHeartBeat them_ping action = do
   -- NOTE: and kill the spawned process.
   --       An enclosing process may restart the whole process.
   kill us_main "connection closed"
+  finalizer them_main
 
 
 -- | broadcast service information
