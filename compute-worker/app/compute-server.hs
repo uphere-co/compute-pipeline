@@ -6,7 +6,7 @@ module Main where
 import           Data.Aeson                (eitherDecodeStrict)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.HashMap.Strict   as HM
-import           Data.Monoid               ((<>),mempty)
+import           Data.Monoid               ((<>))
 import           Options.Applicative
 --
 import           CloudHaskell.Type         (TCPPort(..))
@@ -46,8 +46,7 @@ main = do
           hostPort = port (computeServer compcfg)
           bypassNER = computeBypassNER compcfg
           bypassTEXTNER = computeBypassTEXTNER compcfg
-          initStatus = Status (HM.fromList $ map (\c -> (cellName c,False))  (computeCells compcfg))
-                              mempty
+          initStatus = Status (HM.fromList $ map (\c -> (cellName c,Nothing))  (computeCells compcfg))
       computeMain
         initStatus
         (TCPPort hostPort,hostGlobalIP,hostLocalIP)

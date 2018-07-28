@@ -15,7 +15,8 @@ import           Control.Exception                         (bracket)
 import           Control.Lens                              ((&),(.~),(^.),(%~),at,to)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
-import qualified Data.HashSet                        as HS
+-- import qualified Data.HashSet                        as HS
+import           Data.Maybe                                (isJust)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
@@ -37,8 +38,7 @@ import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
 import           SemanticParserAPI.Compute.Type.Status     (Status
                                                            ,StatusQuery(..)
                                                            ,StatusResult(..)
-                                                           ,statusNodes
-                                                           ,statusLinkedProcesses)
+                                                           ,statusNodes)
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
@@ -49,7 +49,8 @@ statusQuery ::
   -> Pipeline StatusResult
 statusQuery ref _ = do
   m <- liftIO $ readTVarIO ref
-  pure (SR (m^.statusNodes.to HM.toList))
+  let lst = map (\(k,v) -> (k,isJust v)) (m^.statusNodes.to HM.toList)
+  pure (SR lst)
 
 
 requestHandler ::
@@ -86,10 +87,12 @@ elimLinkedProcess :: TVar Status -> ProcessId -> Pipeline ()
 elimLinkedProcess ref pid = do
   liftIO $ atomically $ do
     m <- readTVar ref
-    let m' = m & (statusLinkedProcesses %~ HS.delete pid)
+    let elim i = HM.map $ \case Nothing -> Nothing
+                                Just i' -> if i == i' then Nothing else Just i'
+        m' = m & (statusNodes %~ elim pid)
     writeTVar ref m'
 
-  
+
 taskManager :: TVar Status -> Pipeline ()
 taskManager ref = do
   them_ping :: ProcessId <- expectSafe
@@ -102,6 +105,7 @@ taskManager ref = do
     tellLog $ "taskManager: got " ++ show cname
     let nid = processNodeId them_main
     tellLog $ "node id = " ++ show nid
+    -- TEMPORARY TESTING
     (sr,rr) <- newChan
     sq <- spawnChannel_ nid (holdState__closure @< 0 @< sr)
     sendChan sq (100 :: Int)
@@ -110,15 +114,17 @@ taskManager ref = do
     sendChan sq (100 :: Int)
     n' <- receiveChan rr
     liftIO $ print n'
+    -- TEMPORARY TESTING UP TO HERE
+    liftIO $ print them_main
     liftIO $ atomically $ do
       m <- readTVar ref
-      -- let m' = HM.update (const (Just True)) cname m
-      let m' = m & (statusNodes . at cname .~ Just True)
-                 & (statusLinkedProcesses %~ HS.insert them_main)
+      let m' = m & (statusNodes . at cname .~ Just (Just them_main))
+                 -- & (statusLinkedProcesses %~ HS.insert them_main)
       writeTVar ref m'
     liftIO $ do
       r <- atomically $ readTVar ref
       print r
+
     () <- expect
     pure ()
 

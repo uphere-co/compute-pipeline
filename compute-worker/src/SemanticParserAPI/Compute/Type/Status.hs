@@ -9,13 +9,13 @@ import           Control.Lens                (makeLenses)
 import           Data.Aeson                  (FromJSON,ToJSON)
 import           Data.Binary                 (Binary)
 import           Data.HashMap.Strict         (HashMap)
-import           Data.HashSet                (HashSet)
+-- import           Data.HashSet                (HashSet)
 import           Data.Text                   (Text)
 import           GHC.Generics                (Generic)
 
 
-data Status = Status { _statusNodes :: HashMap Text Bool -- on/off node
-                     , _statusLinkedProcesses :: HashSet ProcessId
+data Status = Status { _statusNodes :: HashMap Text (Maybe ProcessId) -- Bool -- on/off node
+                     -- , _statusLinkedProcesses :: HashSet ProcessId
                      }
               deriving (Show)
 makeLenses ''Status
