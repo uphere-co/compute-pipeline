@@ -12,9 +12,10 @@ import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,R
                                                            ,newChan,sendChan,receiveChan)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
-import           Control.Lens                              ((&),(.~),(^.),at,to)
+import           Control.Lens                              ((&),(.~),(^.),(%~),at,to)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
+import qualified Data.HashSet                        as HS
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
@@ -36,7 +37,8 @@ import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
 import           SemanticParserAPI.Compute.Type.Status     (Status
                                                            ,StatusQuery(..)
                                                            ,StatusResult(..)
-                                                           ,statusNodes)
+                                                           ,statusNodes
+                                                           ,statusLinkedProcesses)
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
@@ -80,11 +82,19 @@ requestHandler ref (sq,rr) = do
     pure ()
 
 
+elimLinkedProcess :: TVar Status -> ProcessId -> Pipeline ()
+elimLinkedProcess ref pid = do
+  liftIO $ atomically $ do
+    m <- readTVar ref
+    let m' = m & (statusLinkedProcesses %~ HS.delete pid)
+    writeTVar ref m'
+
+  
 taskManager :: TVar Status -> Pipeline ()
 taskManager ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
-  withHeartBeat them_ping (const (pure ())) $ \them_main -> do
+  withHeartBeat them_ping (elimLinkedProcess ref) $ \them_main -> do
     themaster <- getSelfPid
     let router = Router $ HM.insert "master" themaster mempty
     send them_main router
@@ -104,7 +114,11 @@ taskManager ref = do
       m <- readTVar ref
       -- let m' = HM.update (const (Just True)) cname m
       let m' = m & (statusNodes . at cname .~ Just True)
+                 & (statusLinkedProcesses %~ HS.insert them_main)
       writeTVar ref m'
+    liftIO $ do
+      r <- atomically $ readTVar ref
+      print r
     () <- expect
     pure ()
 

@@ -32,7 +32,7 @@ import           CloudHaskell.Util                 (expectSafe,spawnChannelLocal
 -- | withHeartBeat makes heartbeating channel and spawn a specified process.
 withHeartBeat
   :: ProcessId                  -- ^ client heart beat process
-  -> (ProcessId -> Pipeline ()) -- ^ finalizer
+  -> (ProcessId -> Pipeline ()) -- ^ finalizer. process id is that of client's
   -> (ProcessId -> Pipeline ()) -- ^ main process
   -> Pipeline ()
 withHeartBeat them_ping finalizer mainProcess = do
@@ -55,7 +55,7 @@ withHeartBeat them_ping finalizer mainProcess = do
   -- NOTE: and kill the spawned process.
   --       An enclosing process may restart the whole process.
   kill us_main "connection closed"
-  finalizer us_main
+  finalizer them_main
 
 
 -- | broadcast service information
