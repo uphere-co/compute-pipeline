@@ -32,7 +32,7 @@ import           CloudHaskell.Util                         (tellLog
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import           SemanticParserAPI.Compute.Task            (rtable,holdState__closure)
+import           SemanticParserAPI.Compute.Task            (rtable,daemonSemanticParser__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
 import           SemanticParserAPI.Compute.Type.Status     (Status
@@ -93,8 +93,8 @@ elimLinkedProcess ref pid = do
     writeTVar ref m'
 
 
-taskManager :: TVar Status -> Pipeline ()
-taskManager ref = do
+taskManager :: TVar Status -> (Bool,Bool) -> FilePath -> Pipeline ()
+taskManager ref (bypassNER,bypassTEXTNER) lcfg = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (elimLinkedProcess ref) $ \them_main -> do
@@ -107,32 +107,27 @@ taskManager ref = do
     tellLog $ "node id = " ++ show nid
     -- TEMPORARY TESTING
     (sr,rr) <- newChan
-    sq <- spawnChannel_ nid (holdState__closure @< 0 @< sr)
-    sendChan sq (100 :: Int)
-    n <- receiveChan rr
-    liftIO $ print n
-    sendChan sq (100 :: Int)
-    n' <- receiveChan rr
-    liftIO $ print n'
+    sq <- spawnChannel_ nid (daemonSemanticParser__closure @< (bypassNER,bypassTEXTNER) @< lcfg @< sr)
+    sendChan sq (CQ_Sentence "I love you")
+    r <- receiveChan rr
+    liftIO $ print r
+    -- sendChan sq (100 :: Int)
+    -- n' <- receiveChan rr
+    -- liftIO $ print n'
     -- TEMPORARY TESTING UP TO HERE
     liftIO $ print them_main
     liftIO $ atomically $ do
       m <- readTVar ref
       let m' = m & (statusNodes . at cname .~ Just (Just them_main))
-                 -- & (statusLinkedProcesses %~ HS.insert them_main)
       writeTVar ref m'
-    liftIO $ do
-      r <- atomically $ readTVar ref
-      print r
-
-    () <- expect
+    () <- expect  -- for idling
     pure ()
 
 initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Process ()
 initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (requestHandler ref (sq,rr)) (taskManager ref)
+  server port (requestHandler ref (sq,rr)) (taskManager ref (bypassNER,bypassTEXTNER) lcfg)
 
 
 computeMain :: Status

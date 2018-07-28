@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module SemanticParserAPI.Compute.Task where
 
@@ -11,11 +12,24 @@ import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
 import           Control.Distributed.Static          (closure,staticClosure)
+import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Binary                         (encode)
 --
+-- import           SRL.Analyze.Type                    (ConsoleOutput(..))
+--
 import           CloudHaskell.Closure                (Capture(..))
+import           CloudHaskell.Util                   (ioWorker
+                                                     ,spawnChannelLocalDuplex)
+--
+import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
+                                                           ,ComputeResult(..))
+                                                            -- ResultSentence(..)
+import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
+
+sdictBoolBool :: SerializableDict (Bool,Bool)
+sdictBoolBool = SerializableDict
 
 sdictInt :: SerializableDict Int
 sdictInt = SerializableDict
@@ -23,40 +37,61 @@ sdictInt = SerializableDict
 sdictString :: SerializableDict String
 sdictString = SerializableDict
 
-holdState :: Int -> SendPort Int -> ReceivePort Int -> Process ()
-holdState s sr rq = go s
-  where
-    go s0 = do
-      i <- receiveChan rq
-      liftIO $ putStrLn ("current state = " ++ show s0)
-      liftIO $ putStrLn ("received: " ++ show i)
-      let s' = s0 + i
-      liftIO $ putStrLn ("new state = " ++ show s')
-      sendChan sr s'
-      go s'
+sdictComputeQuery :: SerializableDict ComputeQuery
+sdictComputeQuery = SerializableDict
 
+sdictComputeResult :: SerializableDict ComputeResult
+sdictComputeResult = SerializableDict
 
-testFunc :: (Int,String) -> (String,String) -> Process ()
-testFunc _ _ = pure ()
+daemonSemanticParser :: (Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ()
+daemonSemanticParser (bypassNER,bypassTEXTNER) lcfg sr rq = do
+  -- Semantic Parser worker daemon
+  ((sq_i,rr_i),_) <- spawnChannelLocalDuplex $ \(rq_i,sr_i) ->
+    ioWorker (rq_i,sr_i) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+  -- Query processing
+  forever $ do
+    q <- receiveChan rq
+    liftIO $ putStrLn ("query received: " ++ show q)
+    sendChan sq_i q
+    r <- receiveChan rr_i
+    -- let r = CR_Sentence (ResultSentence "dummy" [] [] (ConsoleOutput "" "" ""))
+    -- liftIO $ putStrLn ("dummy result: " ++ show r)
+    sendChan sr r
 
-remotable [ 'holdState
+remotable [ 'sdictBoolBool
           , 'sdictInt
           , 'sdictString
-          , 'testFunc
+          , 'sdictComputeQuery
+          , 'sdictComputeResult
+          , 'daemonSemanticParser
           ]
 
 rtable :: RemoteTable
 rtable = __remoteTable initRemoteTable
 
 
-instance Capture String where
-  capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
-  staticSdict = $(mkStatic 'sdictString)
+instance Capture (Bool,Bool) where
+  capture = closure (staticDecode $(mkStatic 'sdictBoolBool)) . encode
+  staticSdict = $(mkStatic 'sdictBoolBool)
+
 
 instance Capture Int where
   capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
   staticSdict = $(mkStatic 'sdictInt)
 
+instance Capture String where
+  capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
+  staticSdict = $(mkStatic 'sdictString)
 
-holdState__closure :: Closure (Int -> SendPort Int -> ReceivePort Int -> Process ())
-holdState__closure = staticClosure $(mkStatic 'holdState)
+instance Capture ComputeQuery where
+  capture = closure (staticDecode $(mkStatic 'sdictComputeQuery)) . encode
+  staticSdict = $(mkStatic 'sdictComputeQuery)
+
+instance Capture ComputeResult where
+  capture = closure (staticDecode $(mkStatic 'sdictComputeResult)) . encode
+  staticSdict = $(mkStatic 'sdictComputeResult)
+
+
+
+daemonSemanticParser__closure :: Closure ((Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ())
+daemonSemanticParser__closure = staticClosure $(mkStatic 'daemonSemanticParser)
