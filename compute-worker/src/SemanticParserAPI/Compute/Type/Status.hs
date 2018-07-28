@@ -1,17 +1,24 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass  #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE TemplateHaskell #-}
 module SemanticParserAPI.Compute.Type.Status where
 
-import           Control.DeepSeq     (NFData)
-import           Data.Aeson          (FromJSON,ToJSON)
-import           Data.Binary         (Binary)
-import           Data.HashMap.Strict (HashMap)
--- import           Data.HashSet (HashSet)
-import           Data.Text                      (Text)
-import           GHC.Generics                   (Generic)
+import           Control.DeepSeq             (NFData)
+import           Control.Distributed.Process (ProcessId)
+import           Control.Lens                (makeLenses)
+import           Data.Aeson                  (FromJSON,ToJSON)
+import           Data.Binary                 (Binary)
+import           Data.HashMap.Strict         (HashMap)
+import           Data.HashSet                (HashSet)
+import           Data.Text                   (Text)
+import           GHC.Generics                (Generic)
 
 
-type Status = HashMap Text Bool -- on/off
+data Status = Status { _statusNodes :: HashMap Text Bool -- on/off node
+                     , _statusLinkedProcesses :: HashSet ProcessId
+                     }
+              deriving (Show)
+makeLenses ''Status
 
 data StatusQuery = SQ
                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
@@ -19,4 +26,3 @@ data StatusQuery = SQ
 data StatusResult = SR [(Text,Bool)]
                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
--- data ProcessStatus = PStat { _processStatus :: HashSet ProcessId }

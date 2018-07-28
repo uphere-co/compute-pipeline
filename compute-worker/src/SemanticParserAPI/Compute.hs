@@ -12,6 +12,7 @@ import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,R
                                                            ,newChan,sendChan,receiveChan)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
+import           Control.Lens                              ((&),(.~),(^.),at,to)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
@@ -34,7 +35,8 @@ import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
 import           SemanticParserAPI.Compute.Type.Status     (Status
                                                            ,StatusQuery(..)
-                                                           ,StatusResult(..))
+                                                           ,StatusResult(..)
+                                                           ,statusNodes)
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
@@ -43,9 +45,9 @@ statusQuery ::
      TVar Status
   -> StatusQuery
   -> Pipeline StatusResult
-statusQuery ref  _ = do
+statusQuery ref _ = do
   m <- liftIO $ readTVarIO ref
-  pure (SR (HM.toList m))
+  pure (SR (m^.statusNodes.to HM.toList))
 
 
 requestHandler ::
@@ -100,7 +102,8 @@ taskManager ref = do
     liftIO $ print n'
     liftIO $ atomically $ do
       m <- readTVar ref
-      let m' = HM.update (const (Just True)) cname m
+      -- let m' = HM.update (const (Just True)) cname m
+      let m' = m & (statusNodes . at cname .~ Just True)
       writeTVar ref m'
     () <- expect
     pure ()
