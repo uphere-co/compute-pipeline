@@ -55,7 +55,7 @@ requestHandler ::
 requestHandler ref (sq,rr) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
-  withHeartBeat them_ping $ \them_main -> do
+  withHeartBeat them_ping (const (pure ())) $ \them_main -> do
 
     (slock0,pid0) <-
       spawnChannelLocalSend $ \rlock0 ->
@@ -82,7 +82,7 @@ taskManager :: TVar Status -> Pipeline ()
 taskManager ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
-  withHeartBeat them_ping $ \them_main -> do
+  withHeartBeat them_ping (const (pure ())) $ \them_main -> do
     themaster <- getSelfPid
     let router = Router $ HM.insert "master" themaster mempty
     send them_main router
