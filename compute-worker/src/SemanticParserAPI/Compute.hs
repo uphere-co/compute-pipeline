@@ -32,7 +32,7 @@ import           CloudHaskell.Util                         (tellLog
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import           SemanticParserAPI.Compute.Task            (rtable,holdState__closure)
+import           SemanticParserAPI.Compute.Task            (rtable,querySemanticParser__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
 import           SemanticParserAPI.Compute.Type.Status     (Status
@@ -107,25 +107,20 @@ taskManager ref = do
     tellLog $ "node id = " ++ show nid
     -- TEMPORARY TESTING
     (sr,rr) <- newChan
-    sq <- spawnChannel_ nid (holdState__closure @< 0 @< sr)
-    sendChan sq (100 :: Int)
-    n <- receiveChan rr
-    liftIO $ print n
-    sendChan sq (100 :: Int)
-    n' <- receiveChan rr
-    liftIO $ print n'
+    sq <- spawnChannel_ nid (querySemanticParser__closure @< sr)
+    sendChan sq (CQ_Sentence "lalal")
+    r <- receiveChan rr
+    liftIO $ print r
+    -- sendChan sq (100 :: Int)
+    -- n' <- receiveChan rr
+    -- liftIO $ print n'
     -- TEMPORARY TESTING UP TO HERE
     liftIO $ print them_main
     liftIO $ atomically $ do
       m <- readTVar ref
       let m' = m & (statusNodes . at cname .~ Just (Just them_main))
-                 -- & (statusLinkedProcesses %~ HS.insert them_main)
       writeTVar ref m'
-    liftIO $ do
-      r <- atomically $ readTVar ref
-      print r
-
-    () <- expect
+    () <- expect  -- for idling
     pure ()
 
 initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Process ()

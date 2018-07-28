@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module SemanticParserAPI.Compute.Task where
 
@@ -11,10 +12,17 @@ import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
 import           Control.Distributed.Static          (closure,staticClosure)
+import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Binary                         (encode)
 --
+import           SRL.Analyze.Type                    (ConsoleOutput(..))
+--
 import           CloudHaskell.Closure                (Capture(..))
+--
+import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
+                                                           ,ComputeResult(..)
+                                                           ,ResultSentence(..))
 
 
 sdictInt :: SerializableDict Int
@@ -23,26 +31,26 @@ sdictInt = SerializableDict
 sdictString :: SerializableDict String
 sdictString = SerializableDict
 
-holdState :: Int -> SendPort Int -> ReceivePort Int -> Process ()
-holdState s sr rq = go s
-  where
-    go s0 = do
-      i <- receiveChan rq
-      liftIO $ putStrLn ("current state = " ++ show s0)
-      liftIO $ putStrLn ("received: " ++ show i)
-      let s' = s0 + i
-      liftIO $ putStrLn ("new state = " ++ show s')
-      sendChan sr s'
-      go s'
+sdictComputeQuery :: SerializableDict ComputeQuery
+sdictComputeQuery = SerializableDict
 
+sdictComputeResult :: SerializableDict ComputeResult
+sdictComputeResult = SerializableDict
 
-testFunc :: (Int,String) -> (String,String) -> Process ()
-testFunc _ _ = pure ()
+querySemanticParser :: SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ()
+querySemanticParser sr rq =
+  forever $ do
+    q <- receiveChan rq
+    liftIO $ putStrLn ("query received: " ++ show q)
+    let r = CR_Sentence (ResultSentence "dummy" [] [] (ConsoleOutput "" "" ""))
+    liftIO $ putStrLn ("dummy result: " ++ show r)
+    sendChan sr r
 
-remotable [ 'holdState
+remotable [ 'querySemanticParser
           , 'sdictInt
           , 'sdictString
-          , 'testFunc
+          , 'sdictComputeQuery
+          , 'sdictComputeResult
           ]
 
 rtable :: RemoteTable
@@ -57,6 +65,15 @@ instance Capture Int where
   capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
   staticSdict = $(mkStatic 'sdictInt)
 
+instance Capture ComputeQuery where
+  capture = closure (staticDecode $(mkStatic 'sdictComputeQuery)) . encode
+  staticSdict = $(mkStatic 'sdictComputeQuery)
 
-holdState__closure :: Closure (Int -> SendPort Int -> ReceivePort Int -> Process ())
-holdState__closure = staticClosure $(mkStatic 'holdState)
+instance Capture ComputeResult where
+  capture = closure (staticDecode $(mkStatic 'sdictComputeResult)) . encode
+  staticSdict = $(mkStatic 'sdictComputeResult)
+
+
+
+querySemanticParser__closure :: Closure (SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ())
+querySemanticParser__closure = staticClosure $(mkStatic 'querySemanticParser)
