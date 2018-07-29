@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE MonoLocalBinds       #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -11,13 +12,15 @@ import           Control.Distributed.Process         (Closure,Process,RemoteTabl
                                                      ,sendChan,receiveChan)
 import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
-import           Control.Distributed.Process.Serializable  (SerializableDict(..))
+import           Control.Distributed.Process.Serializable  (SerializableDict(..)
+                                                           ,Serializable)
 import           Control.Distributed.Static          (closure,staticClosure)
 import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Binary                         (encode)
 --
 import           CloudHaskell.Closure                (Capture(..))
+import           CloudHaskell.QueryQueue             (QQVar)
 import           CloudHaskell.Util                   (ioWorker
                                                      ,spawnChannelLocalDuplex)
 import           Task.CoreNLP                        (QCoreNLP(..),RCoreNLP(..)
@@ -50,32 +53,37 @@ sdictRCoreNLP :: SerializableDict RCoreNLP
 sdictRCoreNLP = SerializableDict
 
 
-
-remoteDaemonSemanticParser :: (Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ()
-remoteDaemonSemanticParser (bypassNER,bypassTEXTNER) lcfg sr rq = do
+mkRemoteDaemon ::
+    (Serializable q, Serializable r) =>
+    (QQVar q r -> IO ())
+  -> SendPort r
+  -> ReceivePort q
+  -> Process ()
+mkRemoteDaemon daemon sr rq = do
   -- Semantic Parser worker daemon
   ((sq_i,rr_i),_) <- spawnChannelLocalDuplex $ \(rq_i,sr_i) ->
-    ioWorker (rq_i,sr_i) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+    ioWorker (rq_i,sr_i) daemon
   -- Query processing
   forever $ do
     q <- receiveChan rq
-    liftIO $ putStrLn ("query received: " ++ show q)
+    -- liftIO $ putStrLn ("query received: " ++ show q)
     sendChan sq_i q
     r <- receiveChan rr_i
     sendChan sr r
+
+
+remoteDaemonSemanticParser ::
+     (Bool,Bool)
+   -> FilePath
+   -> SendPort ComputeResult
+   -> ReceivePort ComputeQuery
+   -> Process ()
+remoteDaemonSemanticParser (bypassNER,bypassTEXTNER) lcfg =
+  mkRemoteDaemon (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+
 
 remoteDaemonCoreNLP :: SendPort RCoreNLP -> ReceivePort QCoreNLP -> Process ()
-remoteDaemonCoreNLP sr rq = do
-  -- Semantic Parser worker daemon
-  ((sq_i,rr_i),_) <- spawnChannelLocalDuplex $ \(rq_i,sr_i) ->
-    ioWorker (rq_i,sr_i) daemonCoreNLP
-  -- Query processing
-  forever $ do
-    q <- receiveChan rq
-    liftIO $ putStrLn ("query received: " ++ show q)
-    sendChan sq_i q
-    r <- receiveChan rr_i
-    sendChan sr r
+remoteDaemonCoreNLP = mkRemoteDaemon daemonCoreNLP
 
 
 remotable [ 'sdictBoolBool
