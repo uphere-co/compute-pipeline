@@ -24,6 +24,7 @@ in
     jobqueue-server = ./jobqueue-server;
     jobqueue-types  = ./jobqueue-types;
     storage-manager = ./storage-manager;
+    task-corenlp    = ./task-corenlp;
     task-reuters    = ./task-reuters;
     uphere-db       = ./uphere-db;
   };
@@ -78,6 +79,7 @@ in
       "jobqueue-server"
       "jobqueue-types"
       "storage-manager"
+      "task-corenlp"
       "task-reuters"
       "uphere-db"
     ];
