@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Task where
 
 import           Control.Distributed.Process.Closure (remotable,mkStatic)
@@ -16,15 +17,14 @@ import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Binary                         (encode)
 --
--- import           SRL.Analyze.Type                    (ConsoleOutput(..))
---
 import           CloudHaskell.Closure                (Capture(..))
 import           CloudHaskell.Util                   (ioWorker
                                                      ,spawnChannelLocalDuplex)
+import           Task.CoreNLP                        (QCoreNLP(..),RCoreNLP(..)
+                                                     ,daemonCoreNLP)
 --
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
-                                                            -- ResultSentence(..)
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
@@ -43,8 +43,16 @@ sdictComputeQuery = SerializableDict
 sdictComputeResult :: SerializableDict ComputeResult
 sdictComputeResult = SerializableDict
 
-daemonSemanticParser :: (Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ()
-daemonSemanticParser (bypassNER,bypassTEXTNER) lcfg sr rq = do
+sdictQCoreNLP :: SerializableDict QCoreNLP
+sdictQCoreNLP = SerializableDict
+
+sdictRCoreNLP :: SerializableDict RCoreNLP
+sdictRCoreNLP = SerializableDict
+
+
+
+remoteDaemonSemanticParser :: (Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ()
+remoteDaemonSemanticParser (bypassNER,bypassTEXTNER) lcfg sr rq = do
   -- Semantic Parser worker daemon
   ((sq_i,rr_i),_) <- spawnChannelLocalDuplex $ \(rq_i,sr_i) ->
     ioWorker (rq_i,sr_i) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
@@ -54,16 +62,31 @@ daemonSemanticParser (bypassNER,bypassTEXTNER) lcfg sr rq = do
     liftIO $ putStrLn ("query received: " ++ show q)
     sendChan sq_i q
     r <- receiveChan rr_i
-    -- let r = CR_Sentence (ResultSentence "dummy" [] [] (ConsoleOutput "" "" ""))
-    -- liftIO $ putStrLn ("dummy result: " ++ show r)
     sendChan sr r
+
+remoteDaemonCoreNLP :: SendPort RCoreNLP -> ReceivePort QCoreNLP -> Process ()
+remoteDaemonCoreNLP sr rq = do
+  -- Semantic Parser worker daemon
+  ((sq_i,rr_i),_) <- spawnChannelLocalDuplex $ \(rq_i,sr_i) ->
+    ioWorker (rq_i,sr_i) daemonCoreNLP
+  -- Query processing
+  forever $ do
+    q <- receiveChan rq
+    liftIO $ putStrLn ("query received: " ++ show q)
+    sendChan sq_i q
+    r <- receiveChan rr_i
+    sendChan sr r
+
 
 remotable [ 'sdictBoolBool
           , 'sdictInt
           , 'sdictString
           , 'sdictComputeQuery
           , 'sdictComputeResult
-          , 'daemonSemanticParser
+          , 'sdictQCoreNLP
+          , 'sdictRCoreNLP
+          , 'remoteDaemonSemanticParser
+          , 'remoteDaemonCoreNLP
           ]
 
 rtable :: RemoteTable
@@ -91,7 +114,17 @@ instance Capture ComputeResult where
   capture = closure (staticDecode $(mkStatic 'sdictComputeResult)) . encode
   staticSdict = $(mkStatic 'sdictComputeResult)
 
+instance Capture QCoreNLP where
+  capture = closure (staticDecode $(mkStatic 'sdictQCoreNLP)) . encode
+  staticSdict = $(mkStatic 'sdictQCoreNLP)
+
+instance Capture RCoreNLP where
+  capture = closure (staticDecode $(mkStatic 'sdictRCoreNLP)) . encode
+  staticSdict = $(mkStatic 'sdictRCoreNLP)
 
 
-daemonSemanticParser__closure :: Closure ((Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ())
-daemonSemanticParser__closure = staticClosure $(mkStatic 'daemonSemanticParser)
+remoteDaemonSemanticParser__closure :: Closure ((Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ())
+remoteDaemonSemanticParser__closure = staticClosure $(mkStatic 'remoteDaemonSemanticParser)
+
+remoteDaemonCoreNLP__closure :: Closure (SendPort RCoreNLP -> ReceivePort QCoreNLP -> Process ())
+remoteDaemonCoreNLP__closure = staticClosure $(mkStatic 'remoteDaemonCoreNLP)

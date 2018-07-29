@@ -35,15 +35,12 @@ import           SRL.Analyze.Type     (DocAnalysisInput)
 --
 import           CloudHaskell.QueryQueue (QQVar(..),QueryStatus(..),next)
 
--- instance Binary DocAnalysisInput
-
--- instance NFData DocAnalysisInput
 
 data QCoreNLP = QCoreNLP Text
-              deriving (Generic,Show)  -- Binary,ToJSON,FromJSON,NFData
+              deriving (Generic,Show,ToJSON,FromJSON,Binary,NFData)
 
 data RCoreNLP = RCoreNLP DocAnalysisInput
-              deriving (Generic,Show) -- Binary,ToJSON,FromJSON,NFData
+              deriving (Generic,Show,ToJSON,FromJSON,Binary,NFData)
 
 type Pipeline = J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
 
