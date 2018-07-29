@@ -60,6 +60,7 @@ library
                 , semantic-role-labeler
                 , semantic-types
                 , syntactic-analysis
+                , task-corenlp
                 , task-reuters
                 , uphere-network-util
                 , wiki-ner

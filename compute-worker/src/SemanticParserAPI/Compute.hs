@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute where
 
 import           Control.Concurrent.STM                    (TVar,atomically
@@ -32,7 +33,10 @@ import           CloudHaskell.Util                         (tellLog
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import           SemanticParserAPI.Compute.Task            (rtable,daemonSemanticParser__closure)
+import           Task.CoreNLP (QCoreNLP(..),RCoreNLP(..))
+--
+import           SemanticParserAPI.Compute.Task            (rtable
+                                                           ,remoteDaemonCoreNLP__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
 import           SemanticParserAPI.Compute.Type.Status     (Status
@@ -93,8 +97,8 @@ elimLinkedProcess ref pid = do
     writeTVar ref m'
 
 
-taskManager :: TVar Status -> (Bool,Bool) -> FilePath -> Pipeline ()
-taskManager ref (bypassNER,bypassTEXTNER) lcfg = do
+taskManager :: TVar Status -> Pipeline ()
+taskManager ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (elimLinkedProcess ref) $ \them_main -> do
@@ -107,13 +111,10 @@ taskManager ref (bypassNER,bypassTEXTNER) lcfg = do
     tellLog $ "node id = " ++ show nid
     -- TEMPORARY TESTING
     (sr,rr) <- newChan
-    sq <- spawnChannel_ nid (daemonSemanticParser__closure @< (bypassNER,bypassTEXTNER) @< lcfg @< sr)
-    sendChan sq (CQ_Sentence "I love you")
+    sq <- spawnChannel_ nid (remoteDaemonCoreNLP__closure @< sr)
+    sendChan sq (QCoreNLP "I love you")
     r <- receiveChan rr
     liftIO $ print r
-    -- sendChan sq (100 :: Int)
-    -- n' <- receiveChan rr
-    -- liftIO $ print n'
     -- TEMPORARY TESTING UP TO HERE
     liftIO $ print them_main
     liftIO $ atomically $ do
@@ -127,7 +128,7 @@ initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Proc
 initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (requestHandler ref (sq,rr)) (taskManager ref (bypassNER,bypassTEXTNER) lcfg)
+  server port (requestHandler ref (sq,rr)) (taskManager ref)
 
 
 computeMain :: Status
