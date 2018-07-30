@@ -11,20 +11,24 @@ import           Data.Binary                 (Binary)
 import           Data.HashMap.Strict         (HashMap)
 import           Data.Text                   (Text)
 import           GHC.Generics                (Generic)
-
+--
+import CloudHaskell.Util (RequestDuplex)
+import Task.CoreNLP (QCoreNLP,RCoreNLP)
 
 data NodeStatus = NodeStatus {
                     _nodeStatusMainProcessId :: ProcessId
                   , _nodeStatusIsServing :: Bool
+                  , _nodeStatusDuplex :: RequestDuplex QCoreNLP RCoreNLP -- TODO: Generalize this!
+                  -- , _nodeStatusRPortStatus :: ReceivePort Bool
                   }
-                deriving (Show)
+                -- deriving (Show)
 
 makeLenses ''NodeStatus
 
 data Status = Status {
                 _statusNodes :: HashMap Text (Maybe NodeStatus)
               }
-              deriving (Show)
+              -- deriving (Show)
 makeLenses ''Status
 
 data StatusQuery = SQ

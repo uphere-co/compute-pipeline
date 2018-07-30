@@ -26,7 +26,8 @@ import           Network.Transport                         (closeTransport)
 import           CloudHaskell.Closure                      ((@<),spawnChannel_)
 import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
-import           CloudHaskell.Util                         (tellLog
+import           CloudHaskell.Util                         (RequestDuplex
+                                                           ,tellLog
                                                            ,expectSafe
                                                            ,ioWorker
                                                            ,tryCreateTransport
@@ -103,11 +104,14 @@ elimLinkedProcess ref pid = do
     writeTVar ref m'
 
 
-addLinkedProcess :: TVar Status -> (Text,ProcessId) -> Pipeline ()
-addLinkedProcess ref (cname,pid) =
+addLinkedProcess ::
+     TVar Status
+  -> (Text,ProcessId,RequestDuplex QCoreNLP RCoreNLP)
+  -> Pipeline ()
+addLinkedProcess ref (cname,pid,duplex) =
   liftIO $ atomically $ do
     m <- readTVar ref
-    let nstat = NodeStatus pid False
+    let nstat = NodeStatus pid False duplex
         m' = m & (statusNodes . at cname .~ Just (Just nstat))
     writeTVar ref m'
 
@@ -123,6 +127,20 @@ updateLinkedProcessStatus ref (cname,status) =
         writeTVar ref m'
       _ -> pure ()
 
+launchTask :: TVar Status -> Text -> ProcessId -> Pipeline ()
+launchTask ref cname pid = do
+  let nid = processNodeId pid
+  tellLog $ "node id = " ++ show nid
+  (sr,rr) <- newChan
+  (sstat,rstat) <- newChan
+  sq <- spawnChannel_ nid (remoteDaemonCoreNLP__closure @< sstat @< sr)
+  -- for monitoring
+  spawnLocal $ forever $ do
+    b <- receiveChan rstat
+    updateLinkedProcessStatus ref (cname,b)
+  let duplex = (sq,rr)
+  addLinkedProcess ref (cname,pid,duplex)
+
 
 taskManager :: TVar Status -> Pipeline ()
 taskManager ref = do
@@ -134,23 +152,7 @@ taskManager ref = do
     send them_main router
     cname :: Text <- expectSafe
     tellLog $ "taskManager: got " ++ show cname
-    let nid = processNodeId them_main
-    tellLog $ "node id = " ++ show nid
-    -- TEMPORARY TESTING
-    (sr,rr) <- newChan
-    -- TESTING spawning multiple channels
-    (sstat,rstat) <- newChan
-    sq <- spawnChannel_ nid (remoteDaemonCoreNLP__closure @< sstat @< sr)
-    -- for monitoring
-    spawnLocal $ forever $ do
-      b <- receiveChan rstat
-      updateLinkedProcessStatus ref (cname,b)
-    addLinkedProcess ref (cname,them_main)
-    sendChan sq (QCoreNLP "I love you")
-    r <- receiveChan rr
-    liftIO $ print r
-    -- TEMPORARY TESTING UP TO HERE
-    liftIO $ print them_main
+    launchTask ref cname them_main
     () <- expect  -- for idling
     pure ()
 
