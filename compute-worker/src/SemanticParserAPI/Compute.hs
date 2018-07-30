@@ -8,7 +8,7 @@ import           Control.Concurrent.STM                    (TVar,atomically
 import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (ProcessId
                                                            ,expect,getSelfPid,send
-                                                           ,newChan,receiveChan
+                                                           ,newChan,sendChan,receiveChan
                                                            ,spawnLocal)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
@@ -19,6 +19,8 @@ import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
+-- language-engine
+import SRL.Analyze.Type (DocAnalysisInput(..))
 -- compute-pipeline
 import           CloudHaskell.Closure                      ((@<),spawnChannel_)
 import           CloudHaskell.Server                       (server,withHeartBeat)
@@ -112,7 +114,12 @@ initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Proc
 initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (requestHandler ref (sq,rr)) (taskManager ref) -- (requestHandler2 ref)
+  ((sqcorenlp,rrcorenlp),_) <- spawnChannelLocalDuplex $ \(rqcorenlp,srcorenlp) ->
+    forever $ do
+      qcorenlp <- receiveChan rqcorenlp
+      liftIO $ print qcorenlp
+      sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
+  server port (requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp)) (taskManager ref)
 
 
 computeMain :: Status

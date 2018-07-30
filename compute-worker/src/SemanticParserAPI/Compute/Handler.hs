@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Handler where
 
 import           Control.Concurrent.STM                    (TVar,readTVarIO)
@@ -12,9 +13,11 @@ import qualified Data.HashMap.Strict                 as HM
 --
 import           CloudHaskell.Server                       (serverUnit,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,Router(..))
-import           CloudHaskell.Util                         (tellLog
+import           CloudHaskell.Util                         (RequestDuplex
+                                                           ,tellLog
                                                            ,expectSafe
                                                            ,spawnChannelLocalSend)
+import           Task.CoreNLP                              (QCoreNLP,RCoreNLP)
 --
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
@@ -36,9 +39,10 @@ statusQuery ref _ = do
 
 requestHandler ::
      TVar Status
-  -> (SendPort ComputeQuery, ReceivePort ComputeResult)
+  -> RequestDuplex ComputeQuery ComputeResult -- (SendPort ComputeQuery, ReceivePort ComputeResult)
+  -> RequestDuplex QCoreNLP RCoreNLP -- (SendPort QCoreNLP, ReceivePort RCoreNLP)
   -> Pipeline ()
-requestHandler ref (sq,rr) = do
+requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
   withHeartBeat them_ping (const (pure ())) $ \them_main -> do
@@ -51,15 +55,20 @@ requestHandler ref (sq,rr) = do
     (slock1,pid1) <-
       spawnChannelLocalSend $ \rlock1 ->
         serverUnit rlock1 (statusQuery ref)
-
-
+    (slock2,pid2) <-
+      spawnChannelLocalSend $ \rlock2 ->
+        serverUnit rlock2 $ \q -> do
+          sendChan sqcorenlp q
+          receiveChan rrcorenlp
     let router = Router $
-                   HM.insert "test"  pid1 $
-                   HM.insert "query" pid0 $
+                   HM.insert "corenlp" pid2 $
+                   HM.insert "test"    pid1 $
+                   HM.insert "query"   pid0 $
                    HM.empty
     send them_main router
     sendChan slock0 ()
     sendChan slock1 ()
+    sendChan slock2 ()
     () <- expect  -- wait indefinitely
     pure ()
 
