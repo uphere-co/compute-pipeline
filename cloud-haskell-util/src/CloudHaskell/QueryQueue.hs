@@ -13,7 +13,6 @@ import           Prelude
 data QueryStatus q r = NewQuery q
                      | BeingProcessed q
                      | Answered q r
-                     | Removed
                      deriving Show
 
 
@@ -27,10 +26,11 @@ getAnswered (Answered _ r) = Just r
 getAnswered _                  = Nothing
 
 
+{-
 isRemoved :: QueryStatus q r -> Bool
 isRemoved Removed = True
 isRemoved _       = False
-
+-}
 
 type QueryQueue q r = IntMap (QueryStatus q r)
 
@@ -48,17 +48,17 @@ newQuery q qq = if IM.null qq
                 else let k = fst (IM.findMax qq) + 1
                      in (k,IM.insert k (NewQuery q) qq)
 
-
+{-
 clean :: QueryQueue q r -> QueryQueue q r
-clean = IM.filter (not.isRemoved) 
-
+clean = IM.filter (not.isRemoved)
+-}
 
 next :: QueryQueue q r -> Maybe (Int,q)
 next = listToMaybe . mapMaybe (\(k,v) -> (k,) <$> getNewQuery v) . IM.toList
 
 
 remove :: Int -> QueryQueue q r -> QueryQueue q r
-remove i = IM.update (\_ -> Just Removed) i
+remove i = IM.update (\_ -> Nothing) i
 
 
 singleQuery :: QQVar q r -> q -> IO r
