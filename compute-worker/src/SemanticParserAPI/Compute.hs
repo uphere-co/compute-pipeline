@@ -4,7 +4,8 @@
 module SemanticParserAPI.Compute where
 
 import           Control.Concurrent.STM                    (TVar,atomically
-                                                           ,newTVarIO,readTVar,writeTVar)
+                                                           ,newTVarIO,readTVarIO
+                                                           ,readTVar,writeTVar)
 import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (ProcessId
                                                            ,expect,getSelfPid,send
@@ -13,7 +14,7 @@ import           Control.Distributed.Process.Lifted        (ProcessId
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
 import           Control.Lens                              ((&),(.~),(^.),(%~),at)
-import           Control.Monad                             (forever)
+import           Control.Monad                             (forever,join)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
 import           Data.Text                                 (Text)
@@ -41,6 +42,7 @@ import           SemanticParserAPI.Compute.Task            (rtable
 import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
                                                            ,nodeStatusMainProcessId
                                                            ,nodeStatusIsServing
+                                                           ,nodeStatusDuplex
                                                            ,Status
                                                            ,statusNodes)
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
@@ -118,7 +120,15 @@ initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
     forever $ do
       qcorenlp <- receiveChan rqcorenlp
       liftIO $ print qcorenlp
-      sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
+      m <- (^.statusNodes) <$> liftIO (readTVarIO ref)
+      let mnode = join (HM.lookup "mark1" m)
+      case mnode of
+        Nothing -> sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
+        Just node -> do
+          let (sq_i,rr_i) = node^.nodeStatusDuplex
+          sendChan sq_i qcorenlp
+          rcorenlp <- receiveChan rr_i
+          sendChan srcorenlp rcorenlp
   server port (requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp)) (taskManager ref)
 
 
