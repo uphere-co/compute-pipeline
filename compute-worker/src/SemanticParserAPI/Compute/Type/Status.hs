@@ -30,6 +30,6 @@ makeLenses ''Status
 data StatusQuery = SQ
                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
-data StatusResult = SR [(Text,Bool)]
+data StatusResult = SR [(Text,(Maybe Bool))]
                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 

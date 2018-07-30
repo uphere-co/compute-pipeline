@@ -31,6 +31,10 @@ import           SemanticParserAPI.Compute.Type      (ComputeQuery(..)
 import           SemanticParserAPI.Compute.Worker    (runSRLQueryDaemon)
 
 
+-- TODO: We need to eliminate these boilerplates!
+sdictBool :: SerializableDict Bool
+sdictBool = SerializableDict
+
 sdictBoolBool :: SerializableDict (Bool,Bool)
 sdictBoolBool = SerializableDict
 
@@ -56,24 +60,27 @@ sdictRCoreNLP = SerializableDict
 mkRemoteDaemon ::
     (Serializable q, Serializable r) =>
     (QQVar q r -> IO ())
+  -> SendPort Bool   -- ^ isServing
   -> SendPort r
   -> ReceivePort q
   -> Process ()
-mkRemoteDaemon daemon sr rq = do
+mkRemoteDaemon daemon sstat sr rq = do
   -- Semantic Parser worker daemon
   ((sq_i,rr_i),_) <- spawnChannelLocalDuplex $ \(rq_i,sr_i) ->
     ioWorker (rq_i,sr_i) daemon
   -- Query processing
   forever $ do
     q <- receiveChan rq
+    sendChan sstat True   -- serving
     sendChan sq_i q
     r <- receiveChan rr_i
     sendChan sr r
-
+    sendChan sstat False  -- not serving
 
 remoteDaemonSemanticParser ::
      (Bool,Bool)
    -> FilePath
+   -> SendPort Bool
    -> SendPort ComputeResult
    -> ReceivePort ComputeQuery
    -> Process ()
@@ -81,11 +88,17 @@ remoteDaemonSemanticParser (bypassNER,bypassTEXTNER) lcfg =
   mkRemoteDaemon (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
 
 
-remoteDaemonCoreNLP :: SendPort RCoreNLP -> ReceivePort QCoreNLP -> Process ()
-remoteDaemonCoreNLP = mkRemoteDaemon daemonCoreNLP
+remoteDaemonCoreNLP ::
+     SendPort Bool
+  -> SendPort RCoreNLP
+  -> ReceivePort QCoreNLP
+  -> Process ()
+remoteDaemonCoreNLP =
+  mkRemoteDaemon daemonCoreNLP
 
 
-remotable [ 'sdictBoolBool
+remotable [ 'sdictBool
+          , 'sdictBoolBool
           , 'sdictInt
           , 'sdictString
           , 'sdictComputeQuery
@@ -100,10 +113,13 @@ rtable :: RemoteTable
 rtable = __remoteTable initRemoteTable
 
 
+instance Capture Bool where
+  capture = closure (staticDecode $(mkStatic 'sdictBool)) . encode
+  staticSdict = $(mkStatic 'sdictBool)
+
 instance Capture (Bool,Bool) where
   capture = closure (staticDecode $(mkStatic 'sdictBoolBool)) . encode
   staticSdict = $(mkStatic 'sdictBoolBool)
-
 
 instance Capture Int where
   capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
@@ -130,8 +146,18 @@ instance Capture RCoreNLP where
   staticSdict = $(mkStatic 'sdictRCoreNLP)
 
 
-remoteDaemonSemanticParser__closure :: Closure ((Bool,Bool) -> FilePath -> SendPort ComputeResult -> ReceivePort ComputeQuery -> Process ())
+remoteDaemonSemanticParser__closure ::
+  Closure (   (Bool,Bool)
+           -> FilePath
+           -> SendPort Bool
+           -> SendPort ComputeResult
+           -> ReceivePort ComputeQuery
+           -> Process ())
 remoteDaemonSemanticParser__closure = staticClosure $(mkStatic 'remoteDaemonSemanticParser)
 
-remoteDaemonCoreNLP__closure :: Closure (SendPort RCoreNLP -> ReceivePort QCoreNLP -> Process ())
+remoteDaemonCoreNLP__closure ::
+  Closure (   SendPort Bool
+           -> SendPort RCoreNLP
+           -> ReceivePort QCoreNLP
+           -> Process ())
 remoteDaemonCoreNLP__closure = staticClosure $(mkStatic 'remoteDaemonCoreNLP)
