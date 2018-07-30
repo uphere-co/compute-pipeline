@@ -13,10 +13,11 @@ import           Control.Distributed.Process.Lifted        (ProcessId
                                                            ,spawnLocal)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
-import           Control.Lens                              ((&),(.~),(^.),(%~),at)
-import           Control.Monad                             (forever,join)
+import           Control.Lens                              ((&),(.~),(^.),(^?),(%~),at,_Just)
+import           Control.Monad                             (forever,join,void)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
+import           Data.Foldable                             (find)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
@@ -121,10 +122,11 @@ initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
       qcorenlp <- receiveChan rqcorenlp
       liftIO $ print qcorenlp
       m <- (^.statusNodes) <$> liftIO (readTVarIO ref)
-      let mnode = join (HM.lookup "mark1" m)
+      -- let mnode = join (HM.lookup "mark1" m)
+      let mnode = join $ find (\v -> v^?_Just.nodeStatusIsServing == Just False) m
       case mnode of
-        Nothing -> sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
-        Just node -> do
+        Nothing -> void $ sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
+        Just node -> void $ do
           let (sq_i,rr_i) = node^.nodeStatusDuplex
           sendChan sq_i qcorenlp
           rcorenlp <- receiveChan rr_i
