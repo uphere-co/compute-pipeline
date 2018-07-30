@@ -26,9 +26,9 @@ import           CloudHaskell.Util                   (ioWorker
 import           Task.CoreNLP                        (QCoreNLP(..),RCoreNLP(..)
                                                      ,daemonCoreNLP)
 --
-import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
-                                                           ,ComputeResult(..))
-import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
+import           SemanticParserAPI.Compute.Type      (ComputeQuery(..)
+                                                     ,ComputeResult(..))
+import           SemanticParserAPI.Compute.Worker    (runSRLQueryDaemon)
 
 
 sdictBoolBool :: SerializableDict (Bool,Bool)
@@ -66,7 +66,6 @@ mkRemoteDaemon daemon sr rq = do
   -- Query processing
   forever $ do
     q <- receiveChan rq
-    -- liftIO $ putStrLn ("query received: " ++ show q)
     sendChan sq_i q
     r <- receiveChan rr_i
     sendChan sr r

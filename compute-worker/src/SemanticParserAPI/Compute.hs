@@ -16,7 +16,6 @@ import           Control.Exception                         (bracket)
 import           Control.Lens                              ((&),(.~),(^.),(%~),at,to)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
--- import qualified Data.HashSet                        as HS
 import           Data.Maybe                                (isJust)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
@@ -39,7 +38,10 @@ import           SemanticParserAPI.Compute.Task            (rtable
                                                            ,remoteDaemonCoreNLP__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
-import           SemanticParserAPI.Compute.Type.Status     (Status
+import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
+                                                           ,nodeStatusMainProcessId
+                                                           ,nodeStatusIsServing
+                                                           ,Status
                                                            ,StatusQuery(..)
                                                            ,StatusResult(..)
                                                            ,statusNodes)
@@ -92,10 +94,20 @@ elimLinkedProcess ref pid = do
   liftIO $ atomically $ do
     m <- readTVar ref
     let elim i = HM.map $ \case Nothing -> Nothing
-                                Just i' -> if i == i' then Nothing else Just i'
+                                Just nstat -> if (nstat^.nodeStatusMainProcessId == i)
+                                              then Nothing
+                                              else Just nstat
         m' = m & (statusNodes %~ elim pid)
     writeTVar ref m'
 
+
+addLinkedProcess :: TVar Status -> (Text,ProcessId) -> Pipeline ()
+addLinkedProcess ref (cname,pid) = do
+    liftIO $ atomically $ do
+      m <- readTVar ref
+      let nstat = NodeStatus pid False
+          m' = m & (statusNodes . at cname .~ Just (Just nstat))
+      writeTVar ref m'
 
 taskManager :: TVar Status -> Pipeline ()
 taskManager ref = do
@@ -117,10 +129,7 @@ taskManager ref = do
     liftIO $ print r
     -- TEMPORARY TESTING UP TO HERE
     liftIO $ print them_main
-    liftIO $ atomically $ do
-      m <- readTVar ref
-      let m' = m & (statusNodes . at cname .~ Just (Just them_main))
-      writeTVar ref m'
+    addLinkedProcess ref (cname,them_main)
     () <- expect  -- for idling
     pure ()
 
