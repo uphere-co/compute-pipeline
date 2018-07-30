@@ -6,6 +6,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Task where
 
+import Control.Concurrent (threadDelay)
 import           Control.Distributed.Process.Closure (remotable,mkStatic)
 import           Control.Distributed.Process         (Closure,Process,RemoteTable
                                                      ,SendPort,ReceivePort
@@ -72,6 +73,7 @@ mkRemoteDaemon daemon sstat sr rq = do
   forever $ do
     q <- receiveChan rq
     sendChan sstat True   -- serving
+    liftIO $ threadDelay 10000000
     sendChan sq_i q
     r <- receiveChan rr_i
     sendChan sr r

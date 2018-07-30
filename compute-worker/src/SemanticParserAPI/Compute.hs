@@ -1,94 +1,52 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute where
 
 import           Control.Concurrent.STM                    (TVar,atomically
                                                            ,newTVarIO,readTVarIO
                                                            ,readTVar,writeTVar)
 import           Control.Distributed.Process               (Process,processNodeId)
-import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
+import           Control.Distributed.Process.Lifted        (ProcessId
                                                            ,expect,getSelfPid,send
                                                            ,newChan,sendChan,receiveChan
                                                            ,spawnLocal)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
-import           Control.Lens                              ((&),(.~),(^.),(%~),at,to)
-import           Control.Monad                             (forever)
+import           Control.Lens                              ((&),(.~),(^.),(^?),(%~),at,_Just)
+import           Control.Monad                             (forever,join,void)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
-import           Data.Maybe                                (isJust)
+import           Data.Foldable                             (find)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
---
+-- language-engine
+import SRL.Analyze.Type (DocAnalysisInput(..))
+-- compute-pipeline
 import           CloudHaskell.Closure                      ((@<),spawnChannel_)
-import           CloudHaskell.Server                       (server,serverUnit,withHeartBeat)
+import           CloudHaskell.Server                       (server,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
-import           CloudHaskell.Util                         (tellLog
+import           CloudHaskell.Util                         (RequestDuplex
+                                                           ,tellLog
                                                            ,expectSafe
                                                            ,ioWorker
                                                            ,tryCreateTransport
-                                                           ,spawnChannelLocalSend
                                                            ,spawnChannelLocalDuplex
                                                            )
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           Task.CoreNLP (QCoreNLP(..),RCoreNLP(..))
---
+--this package
+import           SemanticParserAPI.Compute.Handler         (requestHandler)
 import           SemanticParserAPI.Compute.Task            (rtable
                                                            ,remoteDaemonCoreNLP__closure)
-import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
-                                                           ,ComputeResult(..))
 import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
                                                            ,nodeStatusMainProcessId
                                                            ,nodeStatusIsServing
+                                                           ,nodeStatusDuplex
                                                            ,Status
-                                                           ,StatusQuery(..)
-                                                           ,StatusResult(..)
                                                            ,statusNodes)
 import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
-
-
-
-statusQuery ::
-     TVar Status
-  -> StatusQuery
-  -> Pipeline StatusResult
-statusQuery ref _ = do
-  m <- liftIO $ readTVarIO ref
-  let lst = map (\(k,v) -> (k,fmap (^.nodeStatusIsServing) v)) (m^.statusNodes.to HM.toList)
-  pure (SR lst)
-
-
-requestHandler ::
-     TVar Status
-  -> (SendPort ComputeQuery, ReceivePort ComputeResult)
-  -> Pipeline ()
-requestHandler ref (sq,rr) = do
-  them_ping :: ProcessId <- expectSafe
-  tellLog ("got client ping pid : " ++ show them_ping)
-  withHeartBeat them_ping (const (pure ())) $ \them_main -> do
-
-    (slock0,pid0) <-
-      spawnChannelLocalSend $ \rlock0 ->
-        serverUnit rlock0 $ \q -> do
-          sendChan sq q
-          receiveChan rr
-    (slock1,pid1) <-
-      spawnChannelLocalSend $ \rlock1 ->
-        serverUnit rlock1 (statusQuery ref)
-
-
-    let router = Router $
-                   HM.insert "test"  pid1 $
-                   HM.insert "query" pid0 $
-                   HM.empty
-    send them_main router
-    sendChan slock0 ()
-    sendChan slock1 ()
-    () <- expect  -- wait indefinitely
-    pure ()
 
 
 elimLinkedProcess :: TVar Status -> ProcessId -> Pipeline ()
@@ -103,11 +61,14 @@ elimLinkedProcess ref pid = do
     writeTVar ref m'
 
 
-addLinkedProcess :: TVar Status -> (Text,ProcessId) -> Pipeline ()
-addLinkedProcess ref (cname,pid) =
+addLinkedProcess ::
+     TVar Status
+  -> (Text,ProcessId,RequestDuplex QCoreNLP RCoreNLP)
+  -> Pipeline ()
+addLinkedProcess ref (cname,pid,duplex) =
   liftIO $ atomically $ do
     m <- readTVar ref
-    let nstat = NodeStatus pid False
+    let nstat = NodeStatus pid False duplex
         m' = m & (statusNodes . at cname .~ Just (Just nstat))
     writeTVar ref m'
 
@@ -123,6 +84,20 @@ updateLinkedProcessStatus ref (cname,status) =
         writeTVar ref m'
       _ -> pure ()
 
+launchTask :: TVar Status -> Text -> ProcessId -> Pipeline ()
+launchTask ref cname pid = do
+  let nid = processNodeId pid
+  tellLog $ "node id = " ++ show nid
+  (sr,rr) <- newChan
+  (sstat,rstat) <- newChan
+  sq <- spawnChannel_ nid (remoteDaemonCoreNLP__closure @< sstat @< sr)
+  -- for monitoring
+  spawnLocal $ forever $ do
+    b <- receiveChan rstat
+    updateLinkedProcessStatus ref (cname,b)
+  let duplex = (sq,rr)
+  addLinkedProcess ref (cname,pid,duplex)
+
 
 taskManager :: TVar Status -> Pipeline ()
 taskManager ref = do
@@ -134,23 +109,7 @@ taskManager ref = do
     send them_main router
     cname :: Text <- expectSafe
     tellLog $ "taskManager: got " ++ show cname
-    let nid = processNodeId them_main
-    tellLog $ "node id = " ++ show nid
-    -- TEMPORARY TESTING
-    (sr,rr) <- newChan
-    -- TESTING spawning multiple channels
-    (sstat,rstat) <- newChan
-    sq <- spawnChannel_ nid (remoteDaemonCoreNLP__closure @< sstat @< sr)
-    -- for monitoring
-    spawnLocal $ forever $ do
-      b <- receiveChan rstat
-      updateLinkedProcessStatus ref (cname,b)
-    addLinkedProcess ref (cname,them_main)
-    sendChan sq (QCoreNLP "I love you")
-    r <- receiveChan rr
-    liftIO $ print r
-    -- TEMPORARY TESTING UP TO HERE
-    liftIO $ print them_main
+    launchTask ref cname them_main
     () <- expect  -- for idling
     pure ()
 
@@ -158,7 +117,21 @@ initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Proc
 initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
-  server port (requestHandler ref (sq,rr)) (taskManager ref)
+  ((sqcorenlp,rrcorenlp),_) <- spawnChannelLocalDuplex $ \(rqcorenlp,srcorenlp) ->
+    forever $ do
+      qcorenlp <- receiveChan rqcorenlp
+      liftIO $ print qcorenlp
+      m <- (^.statusNodes) <$> liftIO (readTVarIO ref)
+      -- let mnode = join (HM.lookup "mark1" m)
+      let mnode = join $ find (\v -> v^?_Just.nodeStatusIsServing == Just False) m
+      case mnode of
+        Nothing -> void $ sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
+        Just node -> void $ do
+          let (sq_i,rr_i) = node^.nodeStatusDuplex
+          sendChan sq_i qcorenlp
+          rcorenlp <- receiveChan rr_i
+          sendChan srcorenlp rcorenlp
+  server port (requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp)) (taskManager ref)
 
 
 computeMain :: Status
