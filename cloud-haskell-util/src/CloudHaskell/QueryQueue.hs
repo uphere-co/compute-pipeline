@@ -13,8 +13,13 @@ import           Prelude
 data QueryStatus q r = NewQuery q
                      | BeingProcessed q
                      | Answered q r
-                     | Removed
                      deriving Show
+
+
+type QueryQueue q r = IntMap (QueryStatus q r)
+
+
+type QQVar q r = TVar (QueryQueue q r)
 
 
 getNewQuery :: QueryStatus q r -> Maybe q
@@ -27,19 +32,8 @@ getAnswered (Answered _ r) = Just r
 getAnswered _                  = Nothing
 
 
-isRemoved :: QueryStatus q r -> Bool
-isRemoved Removed = True
-isRemoved _       = False
-
-
-type QueryQueue q r = IntMap (QueryStatus q r)
-
-
 emptyQQ :: QueryQueue q r
 emptyQQ = IM.empty
-
-
-type QQVar q r = TVar (QueryQueue q r)
 
 
 newQuery :: q -> QueryQueue q r -> (Int,QueryQueue q r)
@@ -49,16 +43,12 @@ newQuery q qq = if IM.null qq
                      in (k,IM.insert k (NewQuery q) qq)
 
 
-clean :: QueryQueue q r -> QueryQueue q r
-clean = IM.filter (not.isRemoved) 
-
-
 next :: QueryQueue q r -> Maybe (Int,q)
 next = listToMaybe . mapMaybe (\(k,v) -> (k,) <$> getNewQuery v) . IM.toList
 
 
 remove :: Int -> QueryQueue q r -> QueryQueue q r
-remove i = IM.update (\_ -> Just Removed) i
+remove i = IM.update (\_ -> Nothing) i
 
 
 singleQuery :: QQVar q r -> q -> IO r
@@ -67,11 +57,11 @@ singleQuery qqvar query  = do
     qq <- readTVar qqvar
     let (i,qq') = newQuery query qq
     writeTVar qqvar qq'
-    return i
+    pure i
   r <- atomically $ do
     qq <- readTVar qqvar
     case getAnswered =<< IM.lookup i qq of
       Nothing -> retry
       Just r -> let qq' = remove i qq
-                in writeTVar qqvar qq' >> return r
-  return r
+                in writeTVar qqvar qq' >> pure r
+  pure r
