@@ -10,13 +10,14 @@ import           Control.Concurrent.STM                    (TVar,atomically
 import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
                                                            ,expect,getSelfPid,send
-                                                           ,newChan,sendChan,receiveChan)
+                                                           ,newChan,sendChan,receiveChan
+                                                           ,spawnLocal)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Exception                         (bracket)
 import           Control.Lens                              ((&),(.~),(^.),(%~),at,to)
+import           Control.Monad                             (forever)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
--- import qualified Data.HashSet                        as HS
 import           Data.Maybe                                (isJust)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
@@ -39,7 +40,10 @@ import           SemanticParserAPI.Compute.Task            (rtable
                                                            ,remoteDaemonCoreNLP__closure)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
-import           SemanticParserAPI.Compute.Type.Status     (Status
+import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
+                                                           ,nodeStatusMainProcessId
+                                                           ,nodeStatusIsServing
+                                                           ,Status
                                                            ,StatusQuery(..)
                                                            ,StatusResult(..)
                                                            ,statusNodes)
@@ -53,7 +57,7 @@ statusQuery ::
   -> Pipeline StatusResult
 statusQuery ref _ = do
   m <- liftIO $ readTVarIO ref
-  let lst = map (\(k,v) -> (k,isJust v)) (m^.statusNodes.to HM.toList)
+  let lst = map (\(k,v) -> (k,fmap (^.nodeStatusIsServing) v)) (m^.statusNodes.to HM.toList)
   pure (SR lst)
 
 
@@ -92,9 +96,32 @@ elimLinkedProcess ref pid = do
   liftIO $ atomically $ do
     m <- readTVar ref
     let elim i = HM.map $ \case Nothing -> Nothing
-                                Just i' -> if i == i' then Nothing else Just i'
+                                Just nstat -> if (nstat^.nodeStatusMainProcessId == i)
+                                              then Nothing
+                                              else Just nstat
         m' = m & (statusNodes %~ elim pid)
     writeTVar ref m'
+
+
+addLinkedProcess :: TVar Status -> (Text,ProcessId) -> Pipeline ()
+addLinkedProcess ref (cname,pid) =
+  liftIO $ atomically $ do
+    m <- readTVar ref
+    let nstat = NodeStatus pid False
+        m' = m & (statusNodes . at cname .~ Just (Just nstat))
+    writeTVar ref m'
+
+updateLinkedProcessStatus :: TVar Status -> (Text,Bool) -> Pipeline ()
+updateLinkedProcessStatus ref (cname,status) =
+  liftIO $ atomically $ do
+    m <- readTVar ref
+    let mnstat = m ^. statusNodes . at cname
+    case mnstat of
+      Just (Just nstat) -> do
+        let nstat' = nstat & nodeStatusIsServing .~ status
+            m' = m & (statusNodes . at cname .~ Just (Just nstat'))
+        writeTVar ref m'
+      _ -> pure ()
 
 
 taskManager :: TVar Status -> Pipeline ()
@@ -111,16 +138,19 @@ taskManager ref = do
     tellLog $ "node id = " ++ show nid
     -- TEMPORARY TESTING
     (sr,rr) <- newChan
-    sq <- spawnChannel_ nid (remoteDaemonCoreNLP__closure @< sr)
+    -- TESTING spawning multiple channels
+    (sstat,rstat) <- newChan
+    sq <- spawnChannel_ nid (remoteDaemonCoreNLP__closure @< sstat @< sr)
+    -- for monitoring
+    spawnLocal $ forever $ do
+      b <- receiveChan rstat
+      updateLinkedProcessStatus ref (cname,b)
+    addLinkedProcess ref (cname,them_main)
     sendChan sq (QCoreNLP "I love you")
     r <- receiveChan rr
     liftIO $ print r
     -- TEMPORARY TESTING UP TO HERE
     liftIO $ print them_main
-    liftIO $ atomically $ do
-      m <- readTVar ref
-      let m' = m & (statusNodes . at cname .~ Just (Just them_main))
-      writeTVar ref m'
     () <- expect  -- for idling
     pure ()
 
