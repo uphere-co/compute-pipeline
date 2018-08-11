@@ -2,29 +2,19 @@
 {-# LANGUAGE MonoLocalBinds       #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE StaticPointers       #-}
-{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Task where
 
 import           Control.Concurrent (threadDelay)
-import           Control.Distributed.Process.Closure (remotable,mkStatic)
-import           Control.Distributed.Process         (Closure,Process,RemoteTable
+import           Control.Distributed.Process         (Process,RemoteTable
                                                      ,SendPort,ReceivePort
                                                      ,sendChan,receiveChan)
 import           Control.Distributed.Process.Node    (initRemoteTable)
-import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
-import           Control.Distributed.Process.Serializable  (SerializableDict(..)
-                                                           ,Serializable)
-import           Control.Distributed.Static          (closure
-                                                     ,registerStatic
-                                                     ,staticClosure,staticPtr)
+import           Control.Distributed.Process.Serializable  (Serializable)
+import           Control.Distributed.Static          (registerStatic,staticPtr)
 import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
-import           Data.Binary                         (encode)
-import           Data.Rank1Dynamic
-import           Data.Typeable                       (Typeable)
-import           GHC.StaticPtr                       (StaticPtr)
+import           Data.Rank1Dynamic                   (toDynamic)
 --
 import           CloudHaskell.QueryQueue             (QQVar)
 import           CloudHaskell.Util                   (ioWorker
@@ -52,7 +42,8 @@ mkRemoteDaemon daemon sstat sr rq = do
   forever $ do
     q <- receiveChan rq
     sendChan sstat True   -- serving
-    liftIO $ threadDelay 10000000
+    -- TODO: Remove this test code
+    liftIO $ threadDelay 5000000
     sendChan sq_i q
     r <- receiveChan rr_i
     sendChan sr r

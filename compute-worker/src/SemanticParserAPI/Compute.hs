@@ -95,6 +95,8 @@ launchTask ref cname pid = do
   tellLog $ "node id = " ++ show nid
   (sr,rr) <- newChan
   (sstat,rstat) <- newChan
+  -- call remoteDaemonCoreNLP in the slave node.
+  -- TODO: This will be simplified using Quasi-Quoter
   sq <- spawnChannel
           (staticPtr (static (SerializableDict @QCoreNLP)))
           nid
@@ -107,7 +109,6 @@ launchTask ref cname pid = do
             )
             sr
           )
-
   -- for monitoring
   spawnLocal $ forever $ do
     b <- receiveChan rstat
