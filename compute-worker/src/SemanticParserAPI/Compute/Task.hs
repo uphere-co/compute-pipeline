@@ -7,7 +7,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Task where
 
-import Control.Concurrent (threadDelay)
+import           Control.Concurrent (threadDelay)
 import           Control.Distributed.Process.Closure (remotable,mkStatic)
 import           Control.Distributed.Process         (Closure,Process,RemoteTable
                                                      ,SendPort,ReceivePort
@@ -16,10 +16,13 @@ import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..)
                                                            ,Serializable)
-import           Control.Distributed.Static          (closure,staticClosure,staticPtr)
+import           Control.Distributed.Static          (closure
+                                                     ,registerStatic
+                                                     ,staticClosure,staticPtr)
 import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Binary                         (encode)
+import           Data.Rank1Dynamic
 import           Data.Typeable                       (Typeable)
 import           GHC.StaticPtr                       (StaticPtr)
 --
@@ -104,6 +107,13 @@ remoteDaemonCoreNLP ::
   -> Process ()
 remoteDaemonCoreNLP =
   mkRemoteDaemon daemonCoreNLP
+
+rtable :: RemoteTable 
+rtable =
+  registerStatic
+    "$remoteDaemonCoreNLP"
+    (toDynamic (staticPtr (static remoteDaemonCoreNLP)))
+    initRemoteTable 
 
 {-
 remotable [ 'sdictBool

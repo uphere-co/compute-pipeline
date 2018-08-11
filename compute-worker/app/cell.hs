@@ -3,7 +3,7 @@
 module Main where
 
 import           Control.Distributed.Process.Lifted (expect,send)
-import           Control.Distributed.Static         (initRemoteTable)
+-- import           Control.Distributed.Static         (initRemoteTable)
 import           Control.Error.Util                 (failWith)
 import           Control.Monad.IO.Class             (liftIO)
 import           Control.Monad.Trans.Except         (ExceptT(..),runExceptT)
@@ -18,7 +18,7 @@ import           CloudHaskell.Client                (heartBeatHandshake,client,r
 import           CloudHaskell.Type                  (TCPPort(..),Gateway(..))
 import           CloudHaskell.Util                  (lookupRouter)
 --
--- import           SemanticParserAPI.Compute.Task     (rtable)
+import           SemanticParserAPI.Compute.Task     (rtable)
 import           SemanticParserAPI.Compute.Type     (CellConfig(..)
                                                     ,ComputeConfig(..)
                                                     ,NetworkConfig(..))
@@ -52,7 +52,7 @@ main = do
         sport  = TCPPort (port (computeServer compcfg))
     liftIO $
       client
-        initRemoteTable
+        rtable
         (cport,chostg,chostl,shostg,sport)
         -- TODO: this is not a correct implementation. we should change it.
         (\gw -> do

@@ -13,8 +13,7 @@ import           Control.Distributed.Process.Lifted        (ProcessId
                                                            ,newChan,sendChan,receiveChan
                                                            ,spawnLocal)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
-import           Control.Distributed.Static                (initRemoteTable
-                                                           ,staticClosure
+import           Control.Distributed.Static                (staticClosure
                                                            ,staticPtr
                                                            ,closureApply)
 import           Control.Exception                         (bracket)
@@ -43,7 +42,7 @@ import           Network.Transport.UpHere                  (DualHostPortPair(..)
 import           Task.CoreNLP (QCoreNLP(..),RCoreNLP(..))
 --this package
 import           SemanticParserAPI.Compute.Handler         (requestHandler)
-import           SemanticParserAPI.Compute.Task            (remoteDaemonCoreNLP)
+import           SemanticParserAPI.Compute.Task            (remoteDaemonCoreNLP,rtable)
 import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
                                                            ,nodeStatusMainProcessId
                                                            ,nodeStatusIsServing
@@ -154,7 +153,7 @@ computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
             (tryCreateTransport dhpp)
             closeTransport
             (\transport ->
-                    newLocalNode transport initRemoteTable -- rtable
+                    newLocalNode transport rtable
                 >>= \node -> runProcess node
                                (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
             )
