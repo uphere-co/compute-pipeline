@@ -31,6 +31,13 @@ infixl 9 @@
 
 infixl 9 @<
 
+capture' :: (Serializable a) => Static (SerializableDict a) -> a -> Closure a
+capture' ssdict = closure (staticDecode ssdict) . encode
+
+capply' :: (Serializable a) => Static (SerializableDict a) -> Closure (a -> b) -> a -> Closure b
+capply' ssdict c = closureApply c . capture' ssdict
+
+
 spawnChannel_ ::
      (MonadProcess m, StaticSerializableDict a) =>
      NodeId
