@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StaticPointers      #-}
 module SemanticParserAPI.Compute where
 
 import           Control.Concurrent.STM                    (TVar,atomically
@@ -12,6 +13,10 @@ import           Control.Distributed.Process.Lifted        (ProcessId
                                                            ,newChan,sendChan,receiveChan
                                                            ,spawnLocal)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
+import           Control.Distributed.Static                (initRemoteTable
+                                                           ,staticClosure
+                                                           ,staticPtr
+                                                           ,closureApply)
 import           Control.Exception                         (bracket)
 import           Control.Lens                              ((&),(.~),(^.),(^?),(%~),at,_Just)
 import           Control.Monad                             (forever,join,void)
@@ -24,7 +29,7 @@ import           Network.Transport                         (closeTransport)
 -- language-engine
 import SRL.Analyze.Type (DocAnalysisInput(..))
 -- compute-pipeline
-import           CloudHaskell.Closure                      ((@<),spawnChannel_)
+import           CloudHaskell.Closure                      (Capture(..),spawnChannel_) -- (@<)
 import           CloudHaskell.Server                       (server,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
 import           CloudHaskell.Util                         (RequestDuplex
@@ -38,8 +43,7 @@ import           Network.Transport.UpHere                  (DualHostPortPair(..)
 import           Task.CoreNLP (QCoreNLP(..),RCoreNLP(..))
 --this package
 import           SemanticParserAPI.Compute.Handler         (requestHandler)
-import           SemanticParserAPI.Compute.Task            (rtable
-                                                           ,remoteDaemonCoreNLP__closure)
+import           SemanticParserAPI.Compute.Task            (remoteDaemonCoreNLP)
 import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
                                                            ,nodeStatusMainProcessId
                                                            ,nodeStatusIsServing
@@ -90,7 +94,11 @@ launchTask ref cname pid = do
   tellLog $ "node id = " ++ show nid
   (sr,rr) <- newChan
   (sstat,rstat) <- newChan
-  sq <- spawnChannel_ nid (remoteDaemonCoreNLP__closure @< sstat @< sr)
+  sq <- spawnChannel_ nid $
+                         staticClosure (staticPtr (static remoteDaemonCoreNLP))
+          `closureApply` capture sstat
+          `closureApply` capture sr
+  -- (remoteDaemonCoreNLP__closure @< sstat @< sr)
   -- for monitoring
   spawnLocal $ forever $ do
     b <- receiveChan rstat
@@ -122,7 +130,6 @@ initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
       qcorenlp <- receiveChan rqcorenlp
       liftIO $ print qcorenlp
       m <- (^.statusNodes) <$> liftIO (readTVarIO ref)
-      -- let mnode = join (HM.lookup "mark1" m)
       let mnode = join $ find (\v -> v^?_Just.nodeStatusIsServing == Just False) m
       case mnode of
         Nothing -> void $ sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
@@ -147,7 +154,7 @@ computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
             (tryCreateTransport dhpp)
             closeTransport
             (\transport ->
-                    newLocalNode transport rtable
+                    newLocalNode transport initRemoteTable -- rtable
                 >>= \node -> runProcess node
                                (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
             )

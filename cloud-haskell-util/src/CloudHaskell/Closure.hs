@@ -17,6 +17,16 @@ instance (Serializable a, Capture a) => Capture (SendPort a) where
   capture = closure (staticDecode (sdictSendPort staticSdict)) . encode
   staticSdict = sdictSendPort staticSdict
 
+{- sdictTuple2
+  :: (Typeable a, Typeable b) =>
+  -> Static (SerializableDict a)
+  -> Static (SerializableDict b)
+  -> Static (Serializable
+sdictTuple2 =
+-}
+-- instance (Serializable a, Capture a, Serializable b, Capture b) => Capture (a,b) where
+
+
 (@@) :: Closure (a -> b) -> Closure a -> Closure b
 (@@) = closureApply
 

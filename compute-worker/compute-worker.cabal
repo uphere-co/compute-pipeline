@@ -118,6 +118,7 @@ executable cell
                      , bytestring
                      , distributed-process
                      , distributed-process-lifted
+                     , distributed-static
                      , errors
                      , network-transport
                      , optparse-applicative
