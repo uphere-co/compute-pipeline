@@ -23,12 +23,3 @@ capture' ssdict = closure (staticDecode ssdict) . encode
 
 capply' :: (Serializable a) => Static (SerializableDict a) -> Closure (a -> b) -> a -> Closure b
 capply' ssdict c = closureApply c . capture' ssdict
-
-{-
-spawnChannel_ ::
-     (MonadProcess m, StaticSerializableDict a) =>
-     NodeId
-  -> Closure (ReceivePort a -> Process ())
-  -> m (SendPort a)
-spawnChannel_ = spawnChannel (staticSdict
--}

@@ -97,10 +97,7 @@ launchTask ref cname pid = do
   (sstat,rstat) <- newChan
   sq <- spawnChannel
           (staticPtr (static (SerializableDict @QCoreNLP)))
-
           nid
-          -- staticClosure (staticPtr (static remoteDaemonCoreNLP)) @< sstat @< sr
-
           (capply'
             (staticPtr (static (SerializableDict @(SendPort RCoreNLP) )))
             (capply'
