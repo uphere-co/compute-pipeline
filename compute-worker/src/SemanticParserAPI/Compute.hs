@@ -14,8 +14,7 @@ import           Control.Distributed.Process.Lifted        (ProcessId
                                                            ,spawnLocal)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Distributed.Static                (staticClosure
-                                                           ,staticPtr
-                                                           ,closureApply)
+                                                           ,staticPtr)
 import           Control.Exception                         (bracket)
 import           Control.Lens                              ((&),(.~),(^.),(^?),(%~),at,_Just)
 import           Control.Monad                             (forever,join,void)
@@ -28,7 +27,7 @@ import           Network.Transport                         (closeTransport)
 -- language-engine
 import SRL.Analyze.Type (DocAnalysisInput(..))
 -- compute-pipeline
-import           CloudHaskell.Closure                      (Capture(..),spawnChannel_) -- (@<)
+import           CloudHaskell.Closure                      (spawnChannel_,(@<))
 import           CloudHaskell.Server                       (server,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
 import           CloudHaskell.Util                         (RequestDuplex
@@ -94,9 +93,7 @@ launchTask ref cname pid = do
   (sr,rr) <- newChan
   (sstat,rstat) <- newChan
   sq <- spawnChannel_ nid $
-                         staticClosure (staticPtr (static remoteDaemonCoreNLP))
-          `closureApply` capture sstat
-          `closureApply` capture sr
+          staticClosure (staticPtr (static remoteDaemonCoreNLP)) @< sstat @< sr
   -- (remoteDaemonCoreNLP__closure @< sstat @< sr)
   -- for monitoring
   spawnLocal $ forever $ do

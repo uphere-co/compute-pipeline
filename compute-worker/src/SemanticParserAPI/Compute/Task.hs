@@ -26,7 +26,7 @@ import           Data.Rank1Dynamic
 import           Data.Typeable                       (Typeable)
 import           GHC.StaticPtr                       (StaticPtr)
 --
-import           CloudHaskell.Closure                (Capture(..))
+import           CloudHaskell.Closure                (StaticSerializableDict(..))
 import           CloudHaskell.QueryQueue             (QQVar)
 import           CloudHaskell.Util                   (ioWorker
                                                      ,spawnChannelLocalDuplex)
@@ -133,36 +133,28 @@ rtable = __remoteTable initRemoteTable
 -}
 
 
-instance Capture Bool where
-  capture = closure (staticDecode (staticPtr (static SerializableDict))) . encode
+instance StaticSerializableDict Bool where
   staticSdict = staticPtr (static SerializableDict)
 
-instance Capture (Bool,Bool) where
-  capture = closure (staticDecode (staticPtr (static SerializableDict))) . encode
+instance StaticSerializableDict (Bool,Bool) where
   staticSdict = staticPtr (static SerializableDict)
 
-instance Capture Int where
-  capture = closure (staticDecode (staticPtr (static SerializableDict))) . encode
+instance StaticSerializableDict Int where
   staticSdict = staticPtr (static SerializableDict)
 
-instance Capture String where
-  capture = closure (staticDecode (staticPtr (static SerializableDict))) . encode
+instance StaticSerializableDict String where
   staticSdict = staticPtr (static SerializableDict)
 
-instance Capture ComputeQuery where
-  capture = closure (staticDecode (staticPtr (static SerializableDict))) . encode
+instance StaticSerializableDict ComputeQuery where
   staticSdict = staticPtr (static SerializableDict)
 
-instance Capture ComputeResult where
-  capture = closure (staticDecode (staticPtr (static SerializableDict))) . encode
+instance StaticSerializableDict ComputeResult where
   staticSdict = staticPtr (static SerializableDict)
 
-instance Capture QCoreNLP where
-  capture = closure (staticDecode (staticPtr (static SerializableDict))) . encode
+instance StaticSerializableDict QCoreNLP where
   staticSdict = staticPtr (static SerializableDict)
 
-instance Capture RCoreNLP where
-  capture = closure (staticDecode (staticPtr (static SerializableDict))) . encode
+instance StaticSerializableDict RCoreNLP where
   staticSdict = staticPtr (static SerializableDict)
 
 {-
