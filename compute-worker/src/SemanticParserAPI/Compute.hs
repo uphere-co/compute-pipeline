@@ -2,17 +2,20 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StaticPointers      #-}
+{-# LANGUAGE TypeApplications    #-}
 module SemanticParserAPI.Compute where
 
 import           Control.Concurrent.STM                    (TVar,atomically
                                                            ,newTVarIO,readTVarIO
                                                            ,readTVar,writeTVar)
-import           Control.Distributed.Process               (Process,processNodeId)
-import           Control.Distributed.Process.Lifted        (ProcessId
+-- import           Control.Distributed.Process               (Process,processNodeId)
+import           Control.Distributed.Process.Lifted        (Process,ProcessId,SendPort
+                                                           ,processNodeId
                                                            ,expect,getSelfPid,send
                                                            ,newChan,sendChan,receiveChan
-                                                           ,spawnLocal)
+                                                           ,spawnLocal,spawnChannel)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
+import           Control.Distributed.Process.Serializable  (SerializableDict(..))
 import           Control.Distributed.Static                (staticClosure
                                                            ,staticPtr)
 import           Control.Exception                         (bracket)
@@ -27,7 +30,7 @@ import           Network.Transport                         (closeTransport)
 -- language-engine
 import SRL.Analyze.Type (DocAnalysisInput(..))
 -- compute-pipeline
-import           CloudHaskell.Closure                      (spawnChannel_,(@<))
+import           CloudHaskell.Closure                      (capply')
 import           CloudHaskell.Server                       (server,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
 import           CloudHaskell.Util                         (RequestDuplex
@@ -92,8 +95,20 @@ launchTask ref cname pid = do
   tellLog $ "node id = " ++ show nid
   (sr,rr) <- newChan
   (sstat,rstat) <- newChan
-  sq <- spawnChannel_ nid $
-          staticClosure (staticPtr (static remoteDaemonCoreNLP)) @< sstat @< sr
+  -- call remoteDaemonCoreNLP in the slave node.
+  -- TODO: This will be simplified using Quasi-Quoter
+  sq <- spawnChannel
+          (staticPtr (static (SerializableDict @QCoreNLP)))
+          nid
+          (capply'
+            (staticPtr (static (SerializableDict @(SendPort RCoreNLP) )))
+            (capply'
+              (staticPtr (static (SerializableDict @(SendPort Bool))))
+              (staticClosure (staticPtr (static remoteDaemonCoreNLP)))
+              sstat
+            )
+            sr
+          )
   -- for monitoring
   spawnLocal $ forever $ do
     b <- receiveChan rstat
