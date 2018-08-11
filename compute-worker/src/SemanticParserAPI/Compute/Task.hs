@@ -26,7 +26,6 @@ import           Data.Rank1Dynamic
 import           Data.Typeable                       (Typeable)
 import           GHC.StaticPtr                       (StaticPtr)
 --
-import           CloudHaskell.Closure                (StaticSerializableDict(..))
 import           CloudHaskell.QueryQueue             (QQVar)
 import           CloudHaskell.Util                   (ioWorker
                                                      ,spawnChannelLocalDuplex)
@@ -86,26 +85,3 @@ rtable =
     initRemoteTable
 
 
-instance StaticSerializableDict Bool where
-  staticSdict = staticPtr (static SerializableDict)
-
-instance StaticSerializableDict (Bool,Bool) where
-  staticSdict = staticPtr (static SerializableDict)
-
-instance StaticSerializableDict Int where
-  staticSdict = staticPtr (static SerializableDict)
-
-instance StaticSerializableDict String where
-  staticSdict = staticPtr (static SerializableDict)
-
-instance StaticSerializableDict ComputeQuery where
-  staticSdict = staticPtr (static SerializableDict)
-
-instance StaticSerializableDict ComputeResult where
-  staticSdict = staticPtr (static SerializableDict)
-
-instance StaticSerializableDict QCoreNLP where
-  staticSdict = staticPtr (static SerializableDict)
-
-instance StaticSerializableDict RCoreNLP where
-  staticSdict = staticPtr (static SerializableDict)

@@ -13,7 +13,7 @@ import           Control.Distributed.Process.Lifted        (Process,ProcessId,Se
                                                            ,processNodeId
                                                            ,expect,getSelfPid,send
                                                            ,newChan,sendChan,receiveChan
-                                                           ,spawnLocal)
+                                                           ,spawnLocal,spawnChannel)
 import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
 import           Control.Distributed.Static                (staticClosure
@@ -30,7 +30,7 @@ import           Network.Transport                         (closeTransport)
 -- language-engine
 import SRL.Analyze.Type (DocAnalysisInput(..))
 -- compute-pipeline
-import           CloudHaskell.Closure                      (spawnChannel_,capply')
+import           CloudHaskell.Closure                      (capply')
 import           CloudHaskell.Server                       (server,withHeartBeat)
 import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
 import           CloudHaskell.Util                         (RequestDuplex
@@ -95,10 +95,13 @@ launchTask ref cname pid = do
   tellLog $ "node id = " ++ show nid
   (sr,rr) <- newChan
   (sstat,rstat) <- newChan
-  sq <- spawnChannel_ nid $
+  sq <- spawnChannel
+          (staticPtr (static (SerializableDict @QCoreNLP)))
+
+          nid
           -- staticClosure (staticPtr (static remoteDaemonCoreNLP)) @< sstat @< sr
 
-          capply'
+          (capply'
             (staticPtr (static (SerializableDict @(SendPort RCoreNLP) )))
             (capply'
               (staticPtr (static (SerializableDict @(SendPort Bool))))
@@ -106,6 +109,7 @@ launchTask ref cname pid = do
               sstat
             )
             sr
+          )
 
   -- for monitoring
   spawnLocal $ forever $ do
