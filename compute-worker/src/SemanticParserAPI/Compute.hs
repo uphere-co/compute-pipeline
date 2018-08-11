@@ -94,7 +94,6 @@ launchTask ref cname pid = do
   (sstat,rstat) <- newChan
   sq <- spawnChannel_ nid $
           staticClosure (staticPtr (static remoteDaemonCoreNLP)) @< sstat @< sr
-  -- (remoteDaemonCoreNLP__closure @< sstat @< sr)
   -- for monitoring
   spawnLocal $ forever $ do
     b <- receiveChan rstat

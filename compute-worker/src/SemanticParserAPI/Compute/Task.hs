@@ -38,36 +38,6 @@ import           SemanticParserAPI.Compute.Type      (ComputeQuery(..)
 import           SemanticParserAPI.Compute.Worker    (runSRLQueryDaemon)
 
 
--- TODO: We need to eliminate these boilerplates!
-{-
-sdictBool :: SerializableDict Bool
-sdictBool = SerializableDict
-
-test :: (Typeable a, Typeable b) => StaticPtr (a -> b -> (a,b))
-test = static (,)
-
-sdictBoolBool :: SerializableDict (Bool,Bool)
-sdictBoolBool = SerializableDict
-
-sdictInt :: SerializableDict Int
-sdictInt = SerializableDict
-
-sdictString :: SerializableDict String
-sdictString = SerializableDict
-
-sdictComputeQuery :: SerializableDict ComputeQuery
-sdictComputeQuery = SerializableDict
-
-sdictComputeResult :: SerializableDict ComputeResult
-sdictComputeResult = SerializableDict
-
-sdictQCoreNLP :: SerializableDict QCoreNLP
-sdictQCoreNLP = SerializableDict
-
-sdictRCoreNLP :: SerializableDict RCoreNLP
-sdictRCoreNLP = SerializableDict
--}
-
 mkRemoteDaemon ::
     (Serializable q, Serializable r) =>
     (QQVar q r -> IO ())
@@ -108,29 +78,12 @@ remoteDaemonCoreNLP ::
 remoteDaemonCoreNLP =
   mkRemoteDaemon daemonCoreNLP
 
-rtable :: RemoteTable 
+rtable :: RemoteTable
 rtable =
   registerStatic
     "$remoteDaemonCoreNLP"
     (toDynamic (staticPtr (static remoteDaemonCoreNLP)))
-    initRemoteTable 
-
-{-
-remotable [ 'sdictBool
-          , 'sdictBoolBool
-          , 'sdictInt
-          , 'sdictString
-          , 'sdictComputeQuery
-          , 'sdictComputeResult
-          , 'sdictQCoreNLP
-          , 'sdictRCoreNLP
-          , 'remoteDaemonSemanticParser
-          , 'remoteDaemonCoreNLP
-          ]
-
-rtable :: RemoteTable
-rtable = __remoteTable initRemoteTable
--}
+    initRemoteTable
 
 
 instance StaticSerializableDict Bool where
@@ -156,21 +109,3 @@ instance StaticSerializableDict QCoreNLP where
 
 instance StaticSerializableDict RCoreNLP where
   staticSdict = staticPtr (static SerializableDict)
-
-{-
-remoteDaemonSemanticParser__closure ::
-  Closure (   (Bool,Bool)
-           -> FilePath
-           -> SendPort Bool
-           -> SendPort ComputeResult
-           -> ReceivePort ComputeQuery
-           -> Process ())
-remoteDaemonSemanticParser__closure = staticClosure $(mkStatic 'remoteDaemonSemanticParser)
-
-remoteDaemonCoreNLP__closure ::
-  Closure (   SendPort Bool
-           -> SendPort RCoreNLP
-           -> ReceivePort QCoreNLP
-           -> Process ())
-remoteDaemonCoreNLP__closure = staticClosure $(mkStatic 'remoteDaemonCoreNLP)
--}
