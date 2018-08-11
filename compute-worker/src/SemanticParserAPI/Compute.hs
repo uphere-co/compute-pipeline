@@ -133,8 +133,11 @@ taskManager ref = do
 
 initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Process ()
 initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
+  -- SRL processing
+  -- TODO: This will be converted to a remote process later.
   ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
     ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+  -- CoreNLP parsing processing
   ((sqcorenlp,rrcorenlp),_) <- spawnChannelLocalDuplex $ \(rqcorenlp,srcorenlp) ->
     forever $ do
       qcorenlp <- receiveChan rqcorenlp
@@ -142,12 +145,16 @@ initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
       m <- (^.statusNodes) <$> liftIO (readTVarIO ref)
       let mnode = join $ find (\v -> v^?_Just.nodeStatusIsServing == Just False) m
       case mnode of
-        Nothing -> void $ sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
-        Just node -> void $ do
-          let (sq_i,rr_i) = node^.nodeStatusDuplex
-          sendChan sq_i qcorenlp
-          rcorenlp <- receiveChan rr_i
-          sendChan srcorenlp rcorenlp
+        Nothing ->
+          -- TODO: This error handling must be corrected!
+          void $ sendChan srcorenlp (RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing))
+        Just node ->
+          -- Asynchronously handle CoreNLP query.
+          void $ spawnLocal $ do
+            let (sq_i,rr_i) = node^.nodeStatusDuplex
+            sendChan sq_i qcorenlp
+            rcorenlp <- receiveChan rr_i
+            sendChan srcorenlp rcorenlp
   server port (requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp)) (taskManager ref)
 
 

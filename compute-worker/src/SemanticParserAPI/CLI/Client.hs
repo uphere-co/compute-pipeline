@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.CLI.Client where
 
 import           Control.Distributed.Process.Lifted  (Process,SendPort,ReceivePort)
@@ -29,6 +30,7 @@ instance MonadException Pipeline where
   controlIO f = join . liftIO $ f (RunIO return)
 
 
+{- 
 consoleClient :: (SendPort ComputeQuery, ReceivePort ComputeResult) -> Pipeline ()
 consoleClient (sq,rr) = do
   runInputT defaultSettings $
@@ -47,3 +49,4 @@ webClient :: QQVar ComputeQuery ComputeResult
           -> (SendPort ComputeQuery, ReceivePort ComputeResult)
           -> Pipeline ()
 webClient = clientUnit
+-}
