@@ -1,12 +1,13 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE MonoLocalBinds       #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE StaticPointers       #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Task where
 
-import Control.Concurrent (threadDelay)
+import           Control.Concurrent (threadDelay)
 import           Control.Distributed.Process.Closure (remotable,mkStatic)
 import           Control.Distributed.Process         (Closure,Process,RemoteTable
                                                      ,SendPort,ReceivePort
@@ -15,12 +16,17 @@ import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Internal.Closure.BuiltIn (staticDecode)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..)
                                                            ,Serializable)
-import           Control.Distributed.Static          (closure,staticClosure)
+import           Control.Distributed.Static          (closure
+                                                     ,registerStatic
+                                                     ,staticClosure,staticPtr)
 import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Binary                         (encode)
+import           Data.Rank1Dynamic
+import           Data.Typeable                       (Typeable)
+import           GHC.StaticPtr                       (StaticPtr)
 --
-import           CloudHaskell.Closure                (Capture(..))
+import           CloudHaskell.Closure                (StaticSerializableDict(..))
 import           CloudHaskell.QueryQueue             (QQVar)
 import           CloudHaskell.Util                   (ioWorker
                                                      ,spawnChannelLocalDuplex)
@@ -30,32 +36,6 @@ import           Task.CoreNLP                        (QCoreNLP(..),RCoreNLP(..)
 import           SemanticParserAPI.Compute.Type      (ComputeQuery(..)
                                                      ,ComputeResult(..))
 import           SemanticParserAPI.Compute.Worker    (runSRLQueryDaemon)
-
-
--- TODO: We need to eliminate these boilerplates!
-sdictBool :: SerializableDict Bool
-sdictBool = SerializableDict
-
-sdictBoolBool :: SerializableDict (Bool,Bool)
-sdictBoolBool = SerializableDict
-
-sdictInt :: SerializableDict Int
-sdictInt = SerializableDict
-
-sdictString :: SerializableDict String
-sdictString = SerializableDict
-
-sdictComputeQuery :: SerializableDict ComputeQuery
-sdictComputeQuery = SerializableDict
-
-sdictComputeResult :: SerializableDict ComputeResult
-sdictComputeResult = SerializableDict
-
-sdictQCoreNLP :: SerializableDict QCoreNLP
-sdictQCoreNLP = SerializableDict
-
-sdictRCoreNLP :: SerializableDict RCoreNLP
-sdictRCoreNLP = SerializableDict
 
 
 mkRemoteDaemon ::
@@ -98,68 +78,34 @@ remoteDaemonCoreNLP ::
 remoteDaemonCoreNLP =
   mkRemoteDaemon daemonCoreNLP
 
-
-remotable [ 'sdictBool
-          , 'sdictBoolBool
-          , 'sdictInt
-          , 'sdictString
-          , 'sdictComputeQuery
-          , 'sdictComputeResult
-          , 'sdictQCoreNLP
-          , 'sdictRCoreNLP
-          , 'remoteDaemonSemanticParser
-          , 'remoteDaemonCoreNLP
-          ]
-
 rtable :: RemoteTable
-rtable = __remoteTable initRemoteTable
+rtable =
+  registerStatic
+    "$remoteDaemonCoreNLP"
+    (toDynamic (staticPtr (static remoteDaemonCoreNLP)))
+    initRemoteTable
 
 
-instance Capture Bool where
-  capture = closure (staticDecode $(mkStatic 'sdictBool)) . encode
-  staticSdict = $(mkStatic 'sdictBool)
+instance StaticSerializableDict Bool where
+  staticSdict = staticPtr (static SerializableDict)
 
-instance Capture (Bool,Bool) where
-  capture = closure (staticDecode $(mkStatic 'sdictBoolBool)) . encode
-  staticSdict = $(mkStatic 'sdictBoolBool)
+instance StaticSerializableDict (Bool,Bool) where
+  staticSdict = staticPtr (static SerializableDict)
 
-instance Capture Int where
-  capture = closure (staticDecode $(mkStatic 'sdictInt)) . encode
-  staticSdict = $(mkStatic 'sdictInt)
+instance StaticSerializableDict Int where
+  staticSdict = staticPtr (static SerializableDict)
 
-instance Capture String where
-  capture = closure (staticDecode $(mkStatic 'sdictString)) . encode
-  staticSdict = $(mkStatic 'sdictString)
+instance StaticSerializableDict String where
+  staticSdict = staticPtr (static SerializableDict)
 
-instance Capture ComputeQuery where
-  capture = closure (staticDecode $(mkStatic 'sdictComputeQuery)) . encode
-  staticSdict = $(mkStatic 'sdictComputeQuery)
+instance StaticSerializableDict ComputeQuery where
+  staticSdict = staticPtr (static SerializableDict)
 
-instance Capture ComputeResult where
-  capture = closure (staticDecode $(mkStatic 'sdictComputeResult)) . encode
-  staticSdict = $(mkStatic 'sdictComputeResult)
+instance StaticSerializableDict ComputeResult where
+  staticSdict = staticPtr (static SerializableDict)
 
-instance Capture QCoreNLP where
-  capture = closure (staticDecode $(mkStatic 'sdictQCoreNLP)) . encode
-  staticSdict = $(mkStatic 'sdictQCoreNLP)
+instance StaticSerializableDict QCoreNLP where
+  staticSdict = staticPtr (static SerializableDict)
 
-instance Capture RCoreNLP where
-  capture = closure (staticDecode $(mkStatic 'sdictRCoreNLP)) . encode
-  staticSdict = $(mkStatic 'sdictRCoreNLP)
-
-
-remoteDaemonSemanticParser__closure ::
-  Closure (   (Bool,Bool)
-           -> FilePath
-           -> SendPort Bool
-           -> SendPort ComputeResult
-           -> ReceivePort ComputeQuery
-           -> Process ())
-remoteDaemonSemanticParser__closure = staticClosure $(mkStatic 'remoteDaemonSemanticParser)
-
-remoteDaemonCoreNLP__closure ::
-  Closure (   SendPort Bool
-           -> SendPort RCoreNLP
-           -> ReceivePort QCoreNLP
-           -> Process ())
-remoteDaemonCoreNLP__closure = staticClosure $(mkStatic 'remoteDaemonCoreNLP)
+instance StaticSerializableDict RCoreNLP where
+  staticSdict = staticPtr (static SerializableDict)

@@ -3,6 +3,7 @@
 module Main where
 
 import           Control.Distributed.Process.Lifted (expect,send)
+-- import           Control.Distributed.Static         (initRemoteTable)
 import           Control.Error.Util                 (failWith)
 import           Control.Monad.IO.Class             (liftIO)
 import           Control.Monad.Trans.Except         (ExceptT(..),runExceptT)

@@ -44,6 +44,7 @@ library
                 , network-transport
                 , optparse-applicative
                 , process
+                , rank1dynamic
                 , stm
                 , text
                 , time
@@ -118,6 +119,7 @@ executable cell
                      , bytestring
                      , distributed-process
                      , distributed-process-lifted
+                     -- , distributed-static
                      , errors
                      , network-transport
                      , optparse-applicative
