@@ -84,17 +84,18 @@ serverUnit lock handle = do
   tellLog "serverUnit started. wait for client pid"
   them <- expectSafe
   tellLog ("received client pid : " ++ show them)
-  (sq :: SendPort q, rq :: ReceivePort q) <- newChan
+  (sq :: SendPort (q,SendPort r), rq :: ReceivePort (q,SendPort r)) <- newChan
   tellLog "now we send query SendPort"
   send them sq
-  tellLog "sent. now we wait for result SendPort"
-  sr :: SendPort r <- expectSafe
+  -- tellLog "sent. now we wait for result SendPort"
+  -- sr :: SendPort r <- expectSafe
   tellLog "receive SendPortResult, Handshake done!"
   forever $ do
-    q <- receiveChan rq
-    r <- handle q
-    -- NOTE: result must be fully evaluated before sending.
-    r `deepseq` sendChan sr r
+    (q,sr) <- receiveChan rq
+    spawnLocal $ do
+      r <- handle q
+      -- NOTE: result must be fully evaluated before sending.
+      r `deepseq` sendChan sr r
 
 
 

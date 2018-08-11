@@ -39,7 +39,7 @@ statusQuery ref _ = do
 
 requestHandler ::
      TVar Status
-  -> RequestDuplex ComputeQuery ComputeResult -- (SendPort ComputeQuery, ReceivePort ComputeResult)
+  -> RequestDuplex ComputeQuery ComputeResult
   -> RequestDuplex QCoreNLP RCoreNLP -- (SendPort QCoreNLP, ReceivePort RCoreNLP)
   -> Pipeline ()
 requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp) = do

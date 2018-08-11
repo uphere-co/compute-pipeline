@@ -66,20 +66,21 @@ acquireGatewayInfo lock (serverip,serverport) = do
 
 queryProcess :: forall query result a.
                 (Binary query, Binary result, Typeable query, Typeable result) =>
-                (SendPort query, ReceivePort result)
+                SendPort (query, SendPort result) -- ReceivePort result)
              -> query
              -> (result -> Pipeline a)
              -> Pipeline a
-queryProcess (sq,rr) q f = do
-  sendChan sq q
+queryProcess sq q f = do
+  (sr :: SendPort result, rr :: ReceivePort result) <- newChan
+  sendChan sq (q,sr)
   f =<< receiveChan rr
 
 
 clientUnit :: (Serializable query, Serializable result,Show query, Show result) =>
               QQVar query result
-          -> (SendPort query, ReceivePort result)
+          -> (SendPort (query, SendPort result))
           -> Pipeline ()
-clientUnit qqvar (sq,rr) = do
+clientUnit qqvar sq = do
   forever $ do
     (i,q) <- liftIO $ atomically $ do
                qq <- readTVar qqvar
@@ -91,7 +92,7 @@ clientUnit qqvar (sq,rr) = do
                    return (i,q)
     tellLog ("query start: " ++ show (i,q))
     spawnLocal $ do
-      r <- queryProcess (sq,rr) q return
+      r <- queryProcess sq q pure
       liftIO $ atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
       test <- liftIO $ atomically $ readTVar qqvar
       tellLog (show test)
@@ -100,7 +101,7 @@ clientUnit qqvar (sq,rr) = do
 serviceHandshake ::
      forall query result. (Serializable query, Serializable result) =>
      ProcessId
-  -> ((SendPort query,ReceivePort result) ->  Pipeline ())
+  -> (SendPort (query,SendPort result) ->  Pipeline ())
   -> Pipeline ()
 serviceHandshake them process = do
   tellLog "service handshake process started"
@@ -108,12 +109,12 @@ serviceHandshake them process = do
   tellLog ("send our pid: " ++ show us)
   send them us
   tellLog "sent. now waiting for their SendPort"
-  sq :: SendPort query <- expectSafe
-  tellLog "received SendPort"
+  sq :: SendPort (query,SendPort result) <- expectSafe
+  {- tellLog "received SendPort"
   (sr :: SendPort result, rr :: ReceivePort result) <- newChan
   send them sr
-  tellLog "sent SendPort"
-  process (sq,rr)
+  tellLog "sent SendPort" -}
+  process sq
 
 
 routerHandshake :: (Router -> Pipeline ()) -> Pipeline ()
