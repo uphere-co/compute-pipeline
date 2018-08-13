@@ -4,19 +4,19 @@
 {-# LANGUAGE OverloadedStrings     #-}
 module DB.Schema.Reuters where
 
-import           Database.Beam
-import           GHC.Generics (Generic)
+import Database.Beam
+import GHC.Generics (Generic)
 --
--- import           DB.Schema.RSS.Cleanup      (AnalysisCleanupT(..))
-import           DB.Schema.Reuters.CoreNLP      (CoreNLPT(..))
-import           DB.Schema.Reuters.NER          (NERT(..))
-import           DB.Schema.Reuters.SRL          (SRLT(..))
-import           DB.Schema.Reuters.Summary      (SummaryT(..))
+import DB.Schema.Reuters.CleanUp (CleanUpT(..))
+import DB.Schema.Reuters.CoreNLP (CoreNLPT(..))
+import DB.Schema.Reuters.NER     (NERT(..))
+import DB.Schema.Reuters.SRL     (SRLT(..))
+import DB.Schema.Reuters.Summary (SummaryT(..))
 
 
 data ReutersDB f = ReutersDB {
                    _summaries        :: f (TableEntity SummaryT)
-                   -- , _cleanups         :: f (TableEntity CleanupT)
+                   , _cleanups         :: f (TableEntity CleanUpT)
                    , _coreNLPs         :: f (TableEntity CoreNLPT)
                    , _SRLs             :: f (TableEntity SRLT)
                    , _NERs             :: f (TableEntity NERT)
@@ -38,15 +38,14 @@ reutersDB = defaultDbSettings `withDbModification`
                     , _summaryDescription = fieldNamed "description"
                     , _summaryPubDate     = fieldNamed "pubdate"
                     }
-              {- , _cleanups =
+              , _cleanups =
                   modifyTable (\_ -> "cleanup") $
                     tableModification
-                    { _cleanupId          = fieldNamed "id"
-                    , _cleanupHash        = fieldNamed "hash"
+                    { _cleanupHash        = fieldNamed "hash"
                     , _cleanupTitle       = fieldNamed "link"
                     , _cleanupDescription = fieldNamed "title"
                     , _cleanupCreated     = fieldNamed "created"
-                    } -}
+                    }
               , _coreNLPs =
                   modifyTable (\_ -> "corenlp") $
                     tableModification
