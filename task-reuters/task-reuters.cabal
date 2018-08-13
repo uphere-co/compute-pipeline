@@ -47,13 +47,14 @@ library
                 , uphere-db
                 , wiki-ner
                 , yayaml
-  exposed-modules: Pipeline.App.Analysis
-                   Pipeline.App.CoreNLP
+  exposed-modules:
+                   -- Pipeline.App.Analysis
+                   -- Pipeline.App.CoreNLP
                    Pipeline.Load
                    Pipeline.Operation.Concurrent
                    Pipeline.Operation.DB
                    Pipeline.Operation.Graph
-                   Pipeline.Source.RSS.Article
+                   -- Pipeline.Source.RSS.Article
                    Pipeline.Type
                    Pipeline.Util
                    Pipeline.View.YAML.YAYAML

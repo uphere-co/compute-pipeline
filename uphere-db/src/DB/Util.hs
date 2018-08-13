@@ -2,7 +2,6 @@ module DB.Util where
 
 import           Data.ByteString                   (ByteString)
 import qualified Data.ByteString.Base16     as B16
-import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Text (Text)
 import qualified Data.Text.Encoding as TE
 

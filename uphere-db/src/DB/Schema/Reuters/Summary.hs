@@ -1,18 +1,19 @@
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE ImpredicativeTypes   #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module DB.Schema.RSS.Summary where
+module DB.Schema.Reuters.Summary where
 
-import           Data.ByteString.Char8
-import           Data.Text
-import           Data.Time.LocalTime
-import           Data.Time.Clock
-import           Database.Beam
-import           Lens.Micro
+import Data.ByteString.Char8 (ByteString)
+import Data.Text             (Text)
+import Data.Time.Clock       (UTCTime)
+import Database.Beam         (Beamable,Columnar,Identity,LensFor(..),Table(..),tableLenses)
+import GHC.Generics          (Generic)
+import Lens.Micro            (Lens')
 
 data SummaryT f  = Summary { _summaryId          :: Columnar f Int
                            , _summaryHash        :: Columnar f ByteString
@@ -35,6 +36,12 @@ type Summary = SummaryT Identity
 
 deriving instance Show Summary
 
+summaryId          :: (Functor f) => Lens' (SummaryT f) (Columnar f Int)
+summaryHash        :: (Functor f) => Lens' (SummaryT f) (Columnar f ByteString)
+summaryLink        :: (Functor f) => Lens' (SummaryT f) (Columnar f Text)
+summaryTitle       :: (Functor f) => Lens' (SummaryT f) (Columnar f Text)
+summaryDescription :: (Functor f) => Lens' (SummaryT f) (Columnar f Text)
+summaryPubDate     :: (Functor f) => Lens' (SummaryT f) (Columnar f UTCTime)
 Summary (LensFor summaryId)
         (LensFor summaryHash)
         (LensFor summaryLink)
