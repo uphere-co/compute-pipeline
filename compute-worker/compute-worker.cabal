@@ -76,7 +76,7 @@ library
                     SemanticParserAPI.Compute.Type.Status
                     SemanticParserAPI.Compute.Worker
                     SemanticParserAPI.CLI.Client
-  other-extensions: TemplateHaskell
+  -- other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded
                     -Wall
@@ -119,7 +119,6 @@ executable cell
                      , bytestring
                      , distributed-process
                      , distributed-process-lifted
-                     -- , distributed-static
                      , errors
                      , network-transport
                      , optparse-applicative
