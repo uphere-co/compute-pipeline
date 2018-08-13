@@ -12,7 +12,6 @@ import           Control.Distributed.Process         (Process,RemoteTable
 import           Control.Distributed.Process.Node    (initRemoteTable)
 import           Control.Distributed.Process.Serializable  (Serializable)
 import           Control.Distributed.Static          (registerStatic,staticPtr)
--- import           Control.Monad                       (forever)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Rank1Dynamic                   (toDynamic)
 --
