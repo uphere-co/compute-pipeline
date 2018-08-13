@@ -8,7 +8,6 @@ module SemanticParserAPI.Compute where
 import           Control.Concurrent.STM                    (TVar,atomically
                                                            ,newTVarIO,readTVarIO
                                                            ,readTVar,writeTVar)
--- import           Control.Distributed.Process               (Process,processNodeId)
 import           Control.Distributed.Process.Lifted        (Process,ProcessId,SendPort
                                                            ,processNodeId
                                                            ,expect,getSelfPid,send
@@ -19,7 +18,8 @@ import           Control.Distributed.Process.Serializable  (SerializableDict(..)
 import           Control.Distributed.Static                (staticClosure
                                                            ,staticPtr)
 import           Control.Exception                         (bracket)
-import           Control.Lens                              ((&),(.~),(^.),(^?),(%~),at,_Just)
+import           Control.Lens                              ((&),(.~),(^.),(^?),(%~)
+                                                           ,at,_Just,_1,_2)
 import           Control.Monad                             (forever,join,void)
 import           Control.Monad.IO.Class                    (liftIO)
 import qualified Data.HashMap.Strict                 as HM
@@ -38,8 +38,7 @@ import           CloudHaskell.Util                         (RequestDuplex
                                                            ,expectSafe
                                                            ,ioWorker
                                                            ,tryCreateTransport
-                                                           ,spawnChannelLocalDuplex
-                                                           )
+                                                           ,spawnChannelLocalDuplex)
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           Task.CoreNLP (QCoreNLP(..),RCoreNLP(..))
 --this package
@@ -48,6 +47,7 @@ import           SemanticParserAPI.Compute.Task            (remoteDaemonCoreNLP,
 import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
                                                            ,nodeStatusMainProcessId
                                                            ,nodeStatusIsServing
+                                                           ,nodeStatusNumServed
                                                            ,nodeStatusDuplex
                                                            ,Status
                                                            ,statusNodes)
@@ -73,18 +73,19 @@ addLinkedProcess ::
 addLinkedProcess ref (cname,pid,duplex) =
   liftIO $ atomically $ do
     m <- readTVar ref
-    let nstat = NodeStatus pid False duplex
+    let nstat = NodeStatus pid False 0 duplex
         m' = m & (statusNodes . at cname .~ Just (Just nstat))
     writeTVar ref m'
 
-updateLinkedProcessStatus :: TVar Status -> (Text,Bool) -> Pipeline ()
+updateLinkedProcessStatus :: TVar Status -> (Text,(Bool,Int)) -> Pipeline ()
 updateLinkedProcessStatus ref (cname,status) =
   liftIO $ atomically $ do
     m <- readTVar ref
     let mnstat = m ^. statusNodes . at cname
     case mnstat of
       Just (Just nstat) -> do
-        let nstat' = nstat & nodeStatusIsServing .~ status
+        let nstat' = nstat & nodeStatusIsServing .~ (status^._1)
+                           & nodeStatusNumServed .~ (status^._2)
             m' = m & (statusNodes . at cname .~ Just (Just nstat'))
         writeTVar ref m'
       _ -> pure ()
@@ -103,7 +104,7 @@ launchTask ref cname pid = do
           (capply'
             (staticPtr (static (SerializableDict @(SendPort RCoreNLP) )))
             (capply'
-              (staticPtr (static (SerializableDict @(SendPort Bool))))
+              (staticPtr (static (SerializableDict @(SendPort (Bool,Int)))))
               (staticClosure (staticPtr (static remoteDaemonCoreNLP)))
               sstat
             )
@@ -111,8 +112,8 @@ launchTask ref cname pid = do
           )
   -- for monitoring
   spawnLocal $ forever $ do
-    b <- receiveChan rstat
-    updateLinkedProcessStatus ref (cname,b)
+    (b,n) <- receiveChan rstat
+    updateLinkedProcessStatus ref (cname,(b,n))
   let duplex = (sq,rr)
   addLinkedProcess ref (cname,pid,duplex)
 
