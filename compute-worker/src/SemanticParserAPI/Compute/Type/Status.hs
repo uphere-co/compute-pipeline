@@ -18,22 +18,21 @@ import Task.CoreNLP (QCoreNLP,RCoreNLP)
 data NodeStatus = NodeStatus {
                     _nodeStatusMainProcessId :: ProcessId
                   , _nodeStatusIsServing :: Bool
+                  , _nodeStatusNumServed :: Int
                   , _nodeStatusDuplex :: RequestDuplex QCoreNLP RCoreNLP -- TODO: Generalize this!
-                  -- , _nodeStatusRPortStatus :: ReceivePort Bool
                   }
-                -- deriving (Show)
 
 makeLenses ''NodeStatus
 
 data Status = Status {
                 _statusNodes :: HashMap Text (Maybe NodeStatus)
               }
-              -- deriving (Show)
+
 makeLenses ''Status
 
 data StatusQuery = SQ
                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 
-data StatusResult = SR [(Text,(Maybe Bool))]
+data StatusResult = SR [(Text,(Maybe (Bool,Int)))]
                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
 

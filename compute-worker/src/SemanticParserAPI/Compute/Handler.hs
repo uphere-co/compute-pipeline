@@ -22,6 +22,7 @@ import           Task.CoreNLP                              (QCoreNLP,RCoreNLP)
 import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
                                                            ,ComputeResult(..))
 import           SemanticParserAPI.Compute.Type.Status     (nodeStatusIsServing
+                                                           ,nodeStatusNumServed
                                                            ,Status
                                                            ,StatusQuery(..)
                                                            ,StatusResult(..)
@@ -34,13 +35,14 @@ statusQuery ::
   -> Pipeline StatusResult
 statusQuery ref _ = do
   m <- liftIO $ readTVarIO ref
-  let lst = map (\(k,v) -> (k,fmap (^.nodeStatusIsServing) v)) (m^.statusNodes.to HM.toList)
+  let getStatus x = (x^.nodeStatusIsServing,x^.nodeStatusNumServed)
+      lst = map (\(k,v) -> (k,fmap getStatus v)) (m^.statusNodes.to HM.toList)
   pure (SR lst)
 
 requestHandler ::
      TVar Status
   -> RequestDuplex ComputeQuery ComputeResult
-  -> RequestDuplex QCoreNLP RCoreNLP -- (SendPort QCoreNLP, ReceivePort RCoreNLP)
+  -> RequestDuplex QCoreNLP RCoreNLP
   -> Pipeline ()
 requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp) = do
   them_ping :: ProcessId <- expectSafe
