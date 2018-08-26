@@ -29,6 +29,7 @@ executable store
                      , aeson
                      , bytestring
                      , optparse-applicative
+                     , transformers
                      --
                      , storage-manager
   hs-source-dirs:      app
