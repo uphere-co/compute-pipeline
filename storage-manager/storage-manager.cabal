@@ -18,9 +18,11 @@ Library
                      --
                      , aeson
                      , text
-  Exposed-Modules:
-                   Storage.Config
-                   Storage.Type
+                     , transformers
+                     , uuid
+  Exposed-Modules:     Storage.Config
+                     , Storage.Operation
+                     , Storage.Type
 
 executable store
   main-is:             store.hs
@@ -30,6 +32,7 @@ executable store
                      , bytestring
                      , optparse-applicative
                      , transformers
+                     , uuid
                      --
                      , storage-manager
   hs-source-dirs:      app
