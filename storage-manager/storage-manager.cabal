@@ -17,6 +17,8 @@ Library
   Build-Depends:       base > 4
                      --
                      , aeson
+                     , directory-tree
+                     , filepath
                      , text
                      , transformers
                      , uuid

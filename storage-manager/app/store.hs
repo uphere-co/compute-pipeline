@@ -23,18 +23,21 @@ data ProgOption = ProgOption {
                  deriving (Show)
 
 
-data ProgCommand = Register ProgOption
+data ProgCommand = Register ProgOption FilePath
                  | Install  ProgOption
 
 
 pOptions :: Parser ProgOption
 pOptions = ProgOption <$> strOption (long "config" <> short 'c' <> help "store option config file")
 
+pFilePath :: Parser FilePath
+pFilePath = strOption (long "directory" <> short 'd' <> help "filepath to make a target package")
+
 
 pCommand :: Parser ProgCommand
 pCommand =
   subparser
-    ( command "register" (info (Register <$> pOptions) (progDesc "register new package"))
+    ( command "register" (info (Register <$> pOptions <*> pFilePath) (progDesc "register new package"))
    <> command "install"  (info (Install  <$> pOptions) (progDesc "install package into current directory")))
 
 
@@ -48,9 +51,9 @@ main :: IO ()
 main = do
   cmd <- execParser (info (pCommand <**> helper) (progDesc "store management CLI tool"))
   r <- case cmd of
-         Register opt -> runExceptT $ do
+         Register opt fp -> runExceptT $ do
            cfg <- parseConfig opt
-           register cfg
+           register cfg fp
          Install  opt -> runExceptT $ do
            cfg <- parseConfig opt
            install cfg
