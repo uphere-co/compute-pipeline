@@ -19,7 +19,9 @@ import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
 import           Data.UUID                         (UUID,toString)
 import           Data.UUID.V4                      (nextRandom)
-import           System.Directory                  (copyFile,createDirectory,createDirectoryIfMissing)
+import           System.Directory                  (copyFile
+                                                   ,createDirectory,createDirectoryIfMissing
+                                                   ,getCurrentDirectory)
 import           System.Directory.Tree             (AnchoredDirTree(..),DirTree(..)
                                                    ,dirTree,flattenDir,readDirectory)
 import           System.FilePath                   ((</>))
@@ -83,12 +85,14 @@ register cfg fp = do
     TIO.writeFile md5sum (T.pack (hshstr <> "  contents.tar.gz\n"))
 
 
-install :: StorageConfig -> UUID -> ExceptT String IO ()
-install cfg uuid = do
+install :: StorageConfig -> UUID -> Bool  -> ExceptT String IO ()
+install cfg uuid isshared = do
   liftIO $ putStrLn $ "install package: " <> toString uuid
   --
+  installpath <- case isshared of
+    True -> pure (storageSharedLocal cfg </> toString uuid)
+    False -> ((</> toString uuid) <$> liftIO getCurrentDirectory )
   let pkgpath = storagePath cfg </> toString uuid
-      installpath = storageSharedLocal cfg </> toString uuid
   liftIO $ createDirectoryIfMissing True installpath
   --
   liftIO $

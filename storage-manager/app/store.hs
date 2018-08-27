@@ -11,7 +11,8 @@ import           Data.UUID                  (UUID,fromString)
 import           Options.Applicative        (Parser,(<**>)
                                             ,command,execParser,help,helper,info,long
                                             ,progDesc
-                                            ,short,strOption,subparser)
+                                            ,short,strOption,subparser
+                                            ,switch)
 --
 import           Storage.Config             (StorageConfig)
 import           Storage.Operation          (register,install)
@@ -29,6 +30,7 @@ data RegisterOption = RegisterOption {
 
 data InstallOption = InstallOption {
                        installUUID :: Maybe UUID
+                     , isShared :: Bool
                      }
                    deriving (Show)
 
@@ -46,12 +48,17 @@ pUUID :: Parser (Maybe UUID)
 pUUID = fromString <$> strOption (long "uuid" <> short 'u' <> help "UUID for a package")
 
 
+-- | check whether store will install package onto shared directory. By default, it installs
+--   a package on the CWD.
+pIsShared :: Parser Bool
+pIsShared = switch (long "shared" <> short 's' <> help "install onto shared directory")
+
 pCommand :: Parser ProgCommand
 pCommand =
   subparser
     ( command "register" (info (Register <$> pOptions <*> (RegisterOption <$> pFilePath))
                                (progDesc "register new package"))
-   <> command "install"  (info (Install  <$> pOptions <*> (InstallOption <$> pUUID))
+   <> command "install"  (info (Install  <$> pOptions <*> (InstallOption <$> pUUID <*> pIsShared))
                                (progDesc "install package into current directory")))
 
 
@@ -68,10 +75,10 @@ main = do
          Register opt (RegisterOption fp) -> runExceptT $ do
            cfg <- parseConfig opt
            register cfg fp
-         Install  opt (InstallOption muuid) -> runExceptT $ do
+         Install  opt (InstallOption muuid isshared) -> runExceptT $ do
            case muuid of
              Nothing   -> throwE "UUID is not valid"
              Just uuid -> do
                cfg <- parseConfig opt
-               install cfg uuid
+               install cfg uuid isshared
   print r
