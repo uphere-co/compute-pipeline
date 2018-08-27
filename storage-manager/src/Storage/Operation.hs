@@ -19,20 +19,23 @@ import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
 import           Data.UUID                         (UUID,toString)
 import           Data.UUID.V4                      (nextRandom)
-import           System.Directory                  (createDirectory)
+import           System.Directory                  (copyFile,createDirectory,createDirectoryIfMissing)
 import           System.Directory.Tree             (AnchoredDirTree(..),DirTree(..)
                                                    ,dirTree,flattenDir,readDirectory)
 import           System.FilePath                   ((</>))
 --
 import           Storage.Config                    (StorageConfig(..))
 
+
 mkFileList :: FilePath -> DirTree a -> [FilePath]
 mkFileList fp (Dir n cs)    = (fp </> n) : concatMap (mkFileList (fp </> n)) cs
 mkFileList fp (File n _)    = [fp </> n]
 mkFileList _  (Failed _  _) = []
 
+
 mkManifest :: DirTree a -> Text
 mkManifest d = T.unlines (map T.pack (mkFileList "" d))
+
 
 tarGz :: AnchoredDirTree a -> ExceptT String IO BL.ByteString
 tarGz adir = do
@@ -43,6 +46,11 @@ tarGz adir = do
   lift (GZip.compress . Tar.write <$> Tar.pack (anchor adir) [dir])
 
 
+unTarGz ::  FilePath -> BL.ByteString -> IO ()
+unTarGz dir lbs =
+  Tar.unpack dir . Tar.read . GZip.decompress $ lbs
+
+
 calcMD5sum :: FilePath -> IO String
 calcMD5sum fp = show . md5 <$> BL.readFile fp
 
@@ -50,6 +58,7 @@ calcMD5sum fp = show . md5 <$> BL.readFile fp
 register :: StorageConfig -> FilePath -> ExceptT String IO ()
 register cfg fp = do
   liftIO $ putStrLn "register"
+  -- issue a new random UUID
   uuid <- liftIO nextRandom
   --
   let pkgpath = storagePath cfg </> toString uuid
@@ -77,4 +86,15 @@ register cfg fp = do
 install :: StorageConfig -> UUID -> ExceptT String IO ()
 install cfg uuid = do
   liftIO $ putStrLn $ "install package: " <> toString uuid
-  liftIO $ print cfg
+  --
+  let pkgpath = storagePath cfg </> toString uuid
+      installpath = storageLocalPath cfg </> toString uuid
+  liftIO $ createDirectoryIfMissing True installpath
+  --
+  liftIO $
+    mapM_
+      (\x -> copyFile (pkgpath </> x) (installpath </> x))
+      ["MANIFEST","README.md"]
+  liftIO $ do
+   lbs <- BL.readFile (pkgpath </> "contents.tar.gz")
+   unTarGz installpath lbs
