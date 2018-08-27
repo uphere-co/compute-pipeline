@@ -17,7 +17,7 @@ import           Data.Semigroup                    ((<>))
 import           Data.Text                         (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
-import           Data.UUID                         (toString)
+import           Data.UUID                         (UUID,toString)
 import           Data.UUID.V4                      (nextRandom)
 import           System.Directory                  (createDirectory)
 import           System.Directory.Tree             (AnchoredDirTree(..),DirTree(..)
@@ -74,7 +74,7 @@ register cfg fp = do
     TIO.writeFile md5sum (T.pack (hshstr <> "  contents.tar.gz\n"))
 
 
-install :: StorageConfig -> ExceptT String IO ()
-install cfg = do
-  liftIO $ putStrLn "install"
+install :: StorageConfig -> UUID -> ExceptT String IO ()
+install cfg uuid = do
+  liftIO $ putStrLn $ "install package: " <> toString uuid
   liftIO $ print cfg
