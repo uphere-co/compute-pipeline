@@ -7,13 +7,52 @@ License-file:	LICENSE
 Author:		Ian-Woo Kim
 Maintainer: 	Ian-Woo Kim <ianwookim@gmail.com>
 Build-Type: 	Simple
-Cabal-Version:  >= 1.2
+Cabal-Version:  >= 1.10
 
 
 Library
   hs-source-dirs: src
   ghc-options: 	-Wall -O2 -threaded -funbox-strict-fields -fno-warn-unused-do-bind
   ghc-prof-options: -caf-all -auto-all
-  Build-Depends: base > 4
-  Exposed-Modules:
-                   Storage.Type
+  Build-Depends:       base > 4
+                     --
+                     , aeson
+                     , base16-bytestring
+                     , bytestring
+                     , directory
+                     , directory-tree
+                     , errors
+                     , filepath
+                     , pureMD5
+                     , tar
+                     , text
+                     , transformers
+                     , uuid
+                     , zlib
+  Exposed-Modules:     Storage.Config
+                     , Storage.Operation
+                     , Storage.Type
+
+executable store
+  main-is:             store.hs
+  build-depends:       base
+                     --
+                     , aeson
+                     , bytestring
+                     , optparse-applicative
+                     , transformers
+                     , uuid
+                     --
+                     , storage-manager
+  hs-source-dirs:      app
+  default-language:    Haskell2010
+  ghc-options:      -threaded
+                    -Wall
+                    -Werror
+                    -fno-warn-unused-do-bind
+                    -fwarn-tabs
+                    -funbox-strict-fields
+                    -fno-warn-orphans
+                    -O2
+                    -rtsopts
+
