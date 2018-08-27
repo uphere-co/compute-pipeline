@@ -20,7 +20,7 @@ instance FromJSON AWSCredential
 data StorageConfig = StorageConfig {
                        storageAWS :: AWSCredential
                      , storagePath :: FilePath
-                     , storageLocalPath :: FilePath
+                     , storageSharedLocal :: FilePath
                      }
                    deriving (Generic,Show)
 

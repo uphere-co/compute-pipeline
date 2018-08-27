@@ -88,7 +88,7 @@ install cfg uuid = do
   liftIO $ putStrLn $ "install package: " <> toString uuid
   --
   let pkgpath = storagePath cfg </> toString uuid
-      installpath = storageLocalPath cfg </> toString uuid
+      installpath = storageSharedLocal cfg </> toString uuid
   liftIO $ createDirectoryIfMissing True installpath
   --
   liftIO $

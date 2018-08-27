@@ -19,12 +19,21 @@ import           Storage.Operation          (register,install)
 
 data ProgOption = ProgOption {
                      storeConfig :: FilePath
-                     }
+                  }
                  deriving (Show)
 
+data RegisterOption = RegisterOption {
+                        registerSourceDirectory :: FilePath
+                      }
+                    deriving (Show)
 
-data ProgCommand = Register ProgOption FilePath
-                 | Install  ProgOption (Maybe UUID)
+data InstallOption = InstallOption {
+                       installUUID :: Maybe UUID
+                     }
+                   deriving (Show)
+
+data ProgCommand = Register ProgOption RegisterOption
+                 | Install  ProgOption InstallOption
 
 
 pOptions :: Parser ProgOption
@@ -40,9 +49,9 @@ pUUID = fromString <$> strOption (long "uuid" <> short 'u' <> help "UUID for a p
 pCommand :: Parser ProgCommand
 pCommand =
   subparser
-    ( command "register" (info (Register <$> pOptions <*> pFilePath)
+    ( command "register" (info (Register <$> pOptions <*> (RegisterOption <$> pFilePath))
                                (progDesc "register new package"))
-   <> command "install"  (info (Install  <$> pOptions <*> pUUID)
+   <> command "install"  (info (Install  <$> pOptions <*> (InstallOption <$> pUUID))
                                (progDesc "install package into current directory")))
 
 
@@ -56,10 +65,10 @@ main :: IO ()
 main = do
   cmd <- execParser (info (pCommand <**> helper) (progDesc "store management CLI tool"))
   r <- case cmd of
-         Register opt fp -> runExceptT $ do
+         Register opt (RegisterOption fp) -> runExceptT $ do
            cfg <- parseConfig opt
            register cfg fp
-         Install  opt muuid -> runExceptT $ do
+         Install  opt (InstallOption muuid) -> runExceptT $ do
            case muuid of
              Nothing   -> throwE "UUID is not valid"
              Just uuid -> do
