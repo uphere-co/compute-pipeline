@@ -17,11 +17,18 @@ Library
   Build-Depends:       base > 4
                      --
                      , aeson
+                     , base16-bytestring
+                     , bytestring
+                     , directory
                      , directory-tree
+                     , errors
                      , filepath
+                     , pureMD5
+                     , tar
                      , text
                      , transformers
                      , uuid
+                     , zlib
   Exposed-Modules:     Storage.Config
                      , Storage.Operation
                      , Storage.Type
