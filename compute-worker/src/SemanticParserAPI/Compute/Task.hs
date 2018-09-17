@@ -2,6 +2,7 @@
 {-# LANGUAGE MonoLocalBinds       #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE StaticPointers       #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module SemanticParserAPI.Compute.Task where
 
@@ -14,6 +15,7 @@ import           Control.Distributed.Process.Serializable  (Serializable)
 import           Control.Distributed.Static          (registerStatic,staticPtr)
 import           Control.Monad.IO.Class              (liftIO)
 import           Data.Rank1Dynamic                   (toDynamic)
+import           Development.GitRev                  (gitHash)
 --
 import           CloudHaskell.QueryQueue             (QQVar)
 import           CloudHaskell.Util                   (ioWorker
@@ -76,3 +78,6 @@ rtable =
     "$remoteDaemonCoreNLP"
     (toDynamic (staticPtr (static remoteDaemonCoreNLP)))
     initRemoteTable
+
+gitRev :: String
+gitRev = $(gitHash)
