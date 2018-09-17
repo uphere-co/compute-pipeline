@@ -5,13 +5,15 @@
 {-# LANGUAGE RecordWildCards          #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TemplateHaskell          #-}
-
+{-# LANGUAGE TypeApplications         #-}
 module SemanticParserAPI.Compute.Worker where
 
 import           Control.Concurrent.STM         (atomically,retry,modifyTVar',readTVar,writeTVar)
 import           Control.Lens                   ((&),(^.),(^..),(.~),_Just,makeLenses)
 import           Control.Monad                  (forever)
+import           Data.Aeson                     (eitherDecode')
 import qualified Data.ByteString.Char8  as B
+import qualified Data.ByteString.Lazy   as BL
 import           Data.Default                   (def)
 import           Data.IntMap                    (IntMap)
 import qualified Data.IntMap            as IM
@@ -24,12 +26,12 @@ import           System.Environment             (getEnv)
 import           CoreNLP.Simple                 (prepare)
 import           CoreNLP.Simple.Type            (tokenizer,words2sentences,postagger
                                                 ,lemma,sutime,constituency,ner)
-import           Lexicon.Data                   (loadLexDataConfig)
 import           NER.Type                       (CompanyInfo)
 import           NLP.Shared.Type                (PathConfig(..))
 import           NLP.Syntax.Type.XBar           (lemmaList)
 import           NLP.Type.CoreNLP               (Sentence)
 import           SRL.Analyze                    (loadConfig,consoleOutput)
+import           SRL.Analyze.Config             (SRLConfig)
 import qualified SRL.Analyze.Config as Analyze
 import           SRL.Analyze.CoreNLP            (runParser)
 import           SRL.Analyze.Match.MeaningGraph (meaningGraph,tagMG)
@@ -86,8 +88,10 @@ runSRLQueryDaemon ::
     -> IO ()
 runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
   let acfg  = Analyze.Config False False bypassNER bypassTEXTNER lcfg
-  cfg <- loadLexDataConfig (acfg^. Analyze.configFile) >>= \case Left err -> error err
-                                                                 Right x  -> return x
+  cfg <- do e <- eitherDecode' @SRLConfig <$> BL.readFile (acfg ^. Analyze.configFile)
+            case e of
+              Left err -> error err
+              Right x -> return x
   (apdat,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg
   clspath <- getEnv "CLASSPATH"
   J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do

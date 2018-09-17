@@ -18,7 +18,7 @@ import           CloudHaskell.Client                (heartBeatHandshake,client,r
 import           CloudHaskell.Type                  (TCPPort(..),Gateway(..))
 import           CloudHaskell.Util                  (lookupRouter)
 --
-import           SemanticParserAPI.Compute.Task     (rtable)
+import           SemanticParserAPI.Compute.Task     (gitRev,rtable)
 import           SemanticParserAPI.Compute.Type     (CellConfig(..)
                                                     ,ComputeConfig(..)
                                                     ,NetworkConfig(..))
@@ -37,8 +37,8 @@ cellOption =
                 <*> strOption (long "name" <> short 'n' <> help "Cell name"))
     (fullDesc <> progDesc "Cell")
 
-main :: IO ()
-main = do
+main1 :: IO ()
+main1 = do
   opt <- execParser cellOption
   r <- runExceptT $ do
     compcfg :: ComputeConfig <- ExceptT $ eitherDecodeStrict <$> B.readFile (cellOptComputeConfig opt)
@@ -66,3 +66,7 @@ main = do
   case r of
     Left e -> print e
     Right _ -> pure ()
+
+main :: IO ()
+main = do
+  print gitRev
