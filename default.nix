@@ -72,7 +72,7 @@ in
             in if ghc.ghc.isGhcjs or false then [] else [ corenlpenv ] ;
 
   shells = {
-    ghc8_2_1 = [
+    ghc = [
       "cloud-haskell-util"
       "compute-worker"
       "jobqueue-client"
