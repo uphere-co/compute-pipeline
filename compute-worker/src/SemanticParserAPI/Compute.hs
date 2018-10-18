@@ -162,7 +162,7 @@ initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
 computeMain :: Status
             -> (TCPPort,Text,Text)
             -> (Bool,Bool)  -- ^ (bypassNER, bypassTEXTNER)
-            -> FilePath -- ^ configjson "/home/wavewave/repo/srcp/lexicon-builder/config.json.mark"
+            -> FilePath -- ^ lang config
             -> IO ()
 computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
     ref <- liftIO $ newTVarIO stat
