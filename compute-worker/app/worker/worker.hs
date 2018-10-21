@@ -86,25 +86,29 @@ pCommand =
 main :: IO ()
 main = do
   cmd <- execParser (info (pCommand <**> helper) (progDesc "compute-pipeline daemon"))
-  -- TODO: wrap everything inside ExceptT
+
   case cmd of
     Master opt -> do
-      ecompcfg :: Either String ComputeConfig <-
-        eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
-      case ecompcfg of
-        Left err -> print err
-        Right compcfg -> do
-          let hostGlobalIP = hostg (computeServer compcfg)
-              hostLocalIP = hostl (computeServer compcfg)
-              hostPort = port (computeServer compcfg)
-              bypassNER = computeBypassNER compcfg
-              bypassTEXTNER = computeBypassTEXTNER compcfg
-              initStatus = Status (HM.fromList $ map (\c -> (cellName c,Nothing))  (computeCells compcfg))
+      r <- runExceptT $ do
+        compcfg :: ComputeConfig <-
+          ExceptT $
+            eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
+        let hostGlobalIP = hostg (computeServer compcfg)
+            hostLocalIP = hostl (computeServer compcfg)
+            hostPort = port (computeServer compcfg)
+            bypassNER = computeBypassNER compcfg
+            bypassTEXTNER = computeBypassTEXTNER compcfg
+            initStatus = Status (HM.fromList $ map (\c -> (cellName c,Nothing))  (computeCells compcfg))
+        liftIO $
           computeMain
             initStatus
             (TCPPort hostPort,hostGlobalIP,hostLocalIP)
             (bypassNER,bypassTEXTNER)
             (servLangConfig opt)
+      case r of
+        Left e -> print e
+        Right _ -> pure ()
+
     Slave cname opt -> do
       r <- runExceptT $ do
         compcfg :: ComputeConfig
