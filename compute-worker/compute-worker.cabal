@@ -77,7 +77,6 @@ library
                     SemanticParserAPI.Compute.Type.Status
                     SemanticParserAPI.Compute.Worker
                     SemanticParserAPI.CLI.Client
-  -- other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded
                     -Wall
@@ -89,18 +88,22 @@ library
                     -O2
                     -ddump-splices
 
-executable compute-server
-  main-is:             compute-server.hs
+executable worker
+  main-is:             worker.hs
   build-depends:       base
                      , aeson
                      , bytestring
+                     , distributed-process-lifted
+                     , errors
                      , optparse-applicative
+                     , text
+                     , transformers
                      , unordered-containers
                      --
                      , cloud-haskell-util
                      --
                      , compute-worker
-  hs-source-dirs:      app
+  hs-source-dirs:      app/worker
   default-language:    Haskell2010
   ghc-options:      -threaded
                     -Wall
@@ -113,31 +116,31 @@ executable compute-server
                     -rtsopts
 
 
-executable cell
-  main-is:             cell.hs
-  build-depends:       base
-                     , aeson
-                     , bytestring
-                     , distributed-process
-                     , distributed-process-lifted
-                     , errors
-                     , network-transport
-                     , optparse-applicative
-                     , text
-                     , transformers
-                     --
-                     , network-transport-uphere
-                     , cloud-haskell-util
-                     --
-                     , compute-worker
-  hs-source-dirs:      app
-  default-language:    Haskell2010
-  ghc-options:      -threaded
-                    -Wall
-                    -Werror
-                    -fno-warn-unused-do-bind
-                    -fwarn-tabs
-                    -funbox-strict-fields
-                    -fno-warn-orphans
-                    -O2
-                    -rtsopts
+-- executable cell
+--   main-is:             cell.hs
+--   build-depends:       base
+--                      , aeson
+--                      , bytestring
+--                      , distributed-process
+--                      , distributed-process-lifted
+--                      , errors
+--                      , network-transport
+--                      , optparse-applicative
+--                      , text
+--                      , transformers
+--                      --
+--                      , network-transport-uphere
+--                      , cloud-haskell-util
+--                      --
+--                      , compute-worker
+--   hs-source-dirs:      app
+--   default-language:    Haskell2010
+--   ghc-options:      -threaded
+--                     -Wall
+--                     -Werror
+--                     -fno-warn-unused-do-bind
+--                     -fwarn-tabs
+--                     -funbox-strict-fields
+--                     -fno-warn-orphans
+--                     -O2
+--                     -rtsopts
