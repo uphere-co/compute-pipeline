@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Task.CoreNLP where
+module Task.SemanticParser where
 
 import           Control.Concurrent.STM (atomically,modifyTVar',readTVar,writeTVar,retry)
 import           Control.DeepSeq      (NFData)
@@ -30,7 +30,7 @@ import           CoreNLP.Simple.Type  (PipelineConfig(..)
                                       ,constituency
                                       ,ner
                                       ,isShiftReduce)
-import           SRL.Analyze.CoreNLP  (runParser)        -- TODO: this should be located outside SRL.
+import           SRL.Analyze.CoreNLP  (runParser)
 import           SRL.Analyze.Type     (DocAnalysisInput)
 --
 import           CloudHaskell.QueryQueue (QQVar(..),QueryStatus(..),next)

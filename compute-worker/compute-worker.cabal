@@ -64,6 +64,7 @@ library
                 , syntactic-analysis
                 , task-corenlp
                 , task-reuters
+                , task-semantic-parser
                 , uphere-network-util
                 , wiki-ner
 

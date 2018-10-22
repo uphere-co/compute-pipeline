@@ -7,4 +7,5 @@ packages:
   storage-manager/
   task-corenlp/
   task-reuters/
+  task-semantic-parser/
   uphere-db/
