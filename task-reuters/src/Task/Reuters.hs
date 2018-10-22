@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
-module SemanticParserAPI.Compute.Reuters where
+module Task.Reuters where
 
 import           Control.Lens                      ((^.),(^..),_1,_2,_Left,_Right,to,traverse)
 import           Control.Monad                     (forM,when)

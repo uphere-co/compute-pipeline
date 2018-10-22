@@ -6,6 +6,8 @@
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TemplateHaskell          #-}
 {-# LANGUAGE TypeApplications         #-}
+
+-- TODO: This module should be moved to task-semantic-parser
 module SemanticParserAPI.Compute.Worker where
 
 import           Control.Concurrent.STM         (atomically,retry,modifyTVar',readTVar,writeTVar)
@@ -43,7 +45,7 @@ import           SRL.Analyze.Type               (AnalyzePredata,ConsoleOutput,Do
 import           WikiEL.Type                    (EntityMention)
 --
 import           CloudHaskell.QueryQueue        (QQVar,QueryStatus(..),next)
-import           SemanticParserAPI.Compute.Reuters (loadExistingMG)
+import           Task.Reuters                   (loadExistingMG)
 import           SemanticParserAPI.Compute.Type (ComputeQuery(..)
                                                 ,ComputeResult(..)
                                                 ,ResultSentence(..)
