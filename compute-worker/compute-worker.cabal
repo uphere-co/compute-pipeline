@@ -64,19 +64,18 @@ library
                 , syntactic-analysis
                 , task-corenlp
                 , task-reuters
+                , task-semantic-parser
                 , uphere-network-util
                 , wiki-ner
 
   exposed-modules:
                     SemanticParserAPI.Compute
-                    SemanticParserAPI.Compute.Handler
-                    SemanticParserAPI.Compute.Reuters
-                    SemanticParserAPI.Compute.Network
-                    SemanticParserAPI.Compute.Task
-                    SemanticParserAPI.Compute.Type
-                    SemanticParserAPI.Compute.Type.Status
-                    SemanticParserAPI.Compute.Worker
-                    SemanticParserAPI.CLI.Client
+                  , SemanticParserAPI.Compute.Handler
+                  , SemanticParserAPI.Compute.Network
+                  , SemanticParserAPI.Compute.Task
+                  , SemanticParserAPI.Compute.Type
+                  , SemanticParserAPI.Compute.Type.Status
+                  , SemanticParserAPI.CLI.Client
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded
                     -Wall

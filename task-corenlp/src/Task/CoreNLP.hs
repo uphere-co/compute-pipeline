@@ -30,7 +30,7 @@ import           CoreNLP.Simple.Type  (PipelineConfig(..)
                                       ,constituency
                                       ,ner
                                       ,isShiftReduce)
-import           SRL.Analyze.CoreNLP  (runParser)
+import           SRL.Analyze.CoreNLP  (runParser)        -- TODO: this should be located outside SRL.
 import           SRL.Analyze.Type     (DocAnalysisInput)
 --
 import           CloudHaskell.QueryQueue (QQVar(..),QueryStatus(..),next)

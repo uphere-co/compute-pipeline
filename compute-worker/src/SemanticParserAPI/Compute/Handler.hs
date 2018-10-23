@@ -3,30 +3,39 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module SemanticParserAPI.Compute.Handler where
 
-import           Control.Concurrent.STM                    (TVar,readTVarIO)
-import           Control.Distributed.Process.Lifted        (ProcessId,SendPort,ReceivePort
-                                                           ,expect,send
-                                                           ,sendChan,receiveChan)
-import           Control.Lens                              ((^.),to)
-import           Control.Monad.IO.Class                    (liftIO)
+import           Control.Concurrent.STM                    ( TVar, readTVarIO )
+import           Control.Distributed.Process.Lifted        ( ProcessId
+                                                           , SendPort
+                                                           , ReceivePort
+                                                           , expect
+                                                           , send
+                                                           , sendChan
+                                                           , receiveChan
+                                                           )
+import           Control.Lens                              ( (^.), to )
+import           Control.Monad.IO.Class                    ( liftIO )
 import qualified Data.HashMap.Strict                 as HM
 --
-import           CloudHaskell.Server                       (serverUnit,withHeartBeat)
-import           CloudHaskell.Type                         (Pipeline,Router(..))
-import           CloudHaskell.Util                         (RequestDuplex
-                                                           ,tellLog
-                                                           ,expectSafe
-                                                           ,spawnChannelLocalSend)
-import           Task.CoreNLP                              (QCoreNLP,RCoreNLP)
+import           CloudHaskell.Server                       ( serverUnit, withHeartBeat )
+import           CloudHaskell.Type                         ( Pipeline, Router(..) )
+import           CloudHaskell.Util                         ( RequestDuplex
+                                                           , tellLog
+                                                           , expectSafe
+                                                           , spawnChannelLocalSend
+                                                           )
+import           Task.CoreNLP                              ( QCoreNLP, RCoreNLP )
+import           Task.SemanticParser                       ( ComputeQuery(..)
+                                                           , ComputeResult(..)
+                                                           )
 --
-import           SemanticParserAPI.Compute.Type            (ComputeQuery(..)
-                                                           ,ComputeResult(..))
-import           SemanticParserAPI.Compute.Type.Status     (nodeStatusIsServing
-                                                           ,nodeStatusNumServed
-                                                           ,Status
-                                                           ,StatusQuery(..)
-                                                           ,StatusResult(..)
-                                                           ,statusNodes)
+import           SemanticParserAPI.Compute.Type
+import           SemanticParserAPI.Compute.Type.Status     ( nodeStatusIsServing
+                                                           , nodeStatusNumServed
+                                                           , Status
+                                                           , StatusQuery(..)
+                                                           , StatusResult(..)
+                                                           , statusNodes
+                                                           )
 
 
 statusQuery ::
@@ -73,4 +82,3 @@ requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp) = do
     sendChan slock2 ()
     () <- expect  -- wait indefinitely
     pure ()
-

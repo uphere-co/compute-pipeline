@@ -4,33 +4,39 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
-module SemanticParserAPI.Compute.Reuters where
+module Task.Reuters where
 
-import           Control.Lens                      ((^.),(^..),_1,_2,_Left,_Right,to,traverse)
-import           Control.Monad                     (forM,when)
+import           Control.Lens                      ( (^.), (^..)
+                                                   , _1, _2, _Left, _Right
+                                                   , to, traverse
+                                                   )
+import           Control.Monad                     ( forM, when )
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy.Char8 as BL
 
-import           Data.Function                     (on)
-import           Data.List                         (groupBy,sortBy)
-import           Data.Text                         (Text)
+import           Data.Function                     ( on )
+import           Data.List                         ( groupBy, sortBy )
+import           Data.Text                         ( Text )
 import qualified Data.Text                  as T
-import           Data.Time.Clock                   (UTCTime)
+import           Data.Time.Clock                   ( UTCTime )
 --
-import           NLP.Shared.Type                   (EventClass(..)
-                                                   ,PathConfig(..)
-                                                   ,Summary
-                                                   ,mgstore
+import           NLP.Shared.Type                   ( EventClass(..)
+                                                   , PathConfig(..)
+                                                   , Summary
+                                                   , mgstore
                                                    )
-import           NLP.Semantics.Type                (ARB(..)
-                                                   ,objectB,predicateR,subjectA,po_main
+import           NLP.Semantics.Type                ( ARB(..)
+                                                   , objectB
+                                                   , predicateR
+                                                   , subjectA
+                                                   , po_main
                                                    )
-import           NLP.Type.TagPos                   (TagPos,TokIdx)
-import           SRL.Analyze.Type                  (MeaningGraph)
-import           WikiEL.Type                       (EntityMention)
+import           NLP.Type.TagPos                   ( TagPos, TokIdx )
+import           SRL.Analyze.Type                  ( MeaningGraph )
+import           WikiEL.Type                       ( EntityMention )
 --
-import           Pipeline.Load                     (getFileListRecursively)
+import           Pipeline.Load                     ( getFileListRecursively )
 
 
 type EventCard = (FilePath,(UTCTime,([ARB],[TagPos TokIdx (EntityMention Text)],[EventClass])), Maybe Summary)

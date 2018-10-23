@@ -41,15 +41,16 @@ in
 
 {
   packages = {
-    cloud-haskell-util = ./cloud-haskell-util;
-    compute-worker  = ./compute-worker;
-    jobqueue-client = ./jobqueue-client;
-    jobqueue-server = ./jobqueue-server;
-    jobqueue-types  = ./jobqueue-types;
-    storage-manager = ./storage-manager;
-    task-corenlp    = ./task-corenlp;
-    task-reuters    = ./task-reuters;
-    uphere-db       = ./uphere-db;
+    cloud-haskell-util   = ./cloud-haskell-util;
+    compute-worker       = ./compute-worker;
+    jobqueue-client      = ./jobqueue-client;
+    jobqueue-server      = ./jobqueue-server;
+    jobqueue-types       = ./jobqueue-types;
+    storage-manager      = ./storage-manager;
+    task-corenlp         = ./task-corenlp;
+    task-reuters         = ./task-reuters;
+    task-semantic-parser = ./task-semantic-parser;
+    uphere-db            = ./uphere-db;
   };
 
 
@@ -96,6 +97,7 @@ in
       "storage-manager"
       "task-corenlp"
       "task-reuters"
+      "task-semantic-parser"
       "uphere-db"
     ];
   };

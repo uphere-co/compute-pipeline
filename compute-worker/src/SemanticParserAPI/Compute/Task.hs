@@ -20,12 +20,15 @@ import           Development.GitRev                  (gitHash)
 import           CloudHaskell.QueryQueue             (QQVar)
 import           CloudHaskell.Util                   (ioWorker
                                                      ,spawnChannelLocalDuplex)
-import           Task.CoreNLP                        (QCoreNLP(..),RCoreNLP(..)
-                                                     ,daemonCoreNLP)
---
-import           SemanticParserAPI.Compute.Type      (ComputeQuery(..)
-                                                     ,ComputeResult(..))
-import           SemanticParserAPI.Compute.Worker    (runSRLQueryDaemon)
+import           Task.CoreNLP                        ( QCoreNLP(..)
+                                                     , RCoreNLP(..)
+                                                     , daemonCoreNLP
+                                                     )
+import           Task.SemanticParser                 ( ComputeQuery(..)
+                                                     , ComputeResult(..)
+                                                     , runSRLQueryDaemon
+                                                     )
+
 
 
 mkRemoteDaemon ::

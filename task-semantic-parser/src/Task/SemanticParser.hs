@@ -1,53 +1,89 @@
 {-# LANGUAGE DataKinds                #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
-{-# LANGUAGE LambdaCase               #-}
+{-# LANGUAGE DeriveAnyClass           #-}
+{-# LANGUAGE DeriveGeneric            #-}
 {-# LANGUAGE OverloadedStrings        #-}
-{-# LANGUAGE RecordWildCards          #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TemplateHaskell          #-}
 {-# LANGUAGE TypeApplications         #-}
-module SemanticParserAPI.Compute.Worker where
 
-import           Control.Concurrent.STM         (atomically,retry,modifyTVar',readTVar,writeTVar)
-import           Control.Lens                   ((&),(^.),(^..),(.~),_Just,makeLenses)
-import           Control.Monad                  (forever)
-import           Data.Aeson                     (eitherDecode')
+module Task.SemanticParser where
+
+import           Control.Concurrent.STM         ( atomically
+                                                , retry
+                                                , modifyTVar'
+                                                , readTVar
+                                                , writeTVar
+                                                )
+import           Control.DeepSeq                ( NFData )
+import           Control.Lens                   ( (&), (^.), (^..), (.~)
+                                                , _Just, makeLenses
+                                                )
+import           Control.Monad                  ( forever )
+import           Data.Aeson                     ( FromJSON, ToJSON
+                                                , eitherDecode'
+                                                )
+import           Data.Binary                    ( Binary )
 import qualified Data.ByteString.Char8  as B
 import qualified Data.ByteString.Lazy   as BL
-import           Data.Default                   (def)
-import           Data.IntMap                    (IntMap)
+import           Data.Default                   ( def )
+import           Data.IntMap                    ( IntMap )
 import qualified Data.IntMap            as IM
-import           Data.Maybe                     (catMaybes)
-import           Data.Text                      (Text)
-import           Data.Tree                      (Forest)
+import           Data.Maybe                     ( catMaybes )
+import           Data.Text                      ( Text )
+import           Data.Tree                      ( Forest )
+import           GHC.Generics                   ( Generic )
 import qualified Language.Java          as J
-import           System.Environment             (getEnv)
+import           System.Environment             ( getEnv )
 --
-import           CoreNLP.Simple                 (prepare)
-import           CoreNLP.Simple.Type            (tokenizer,words2sentences,postagger
-                                                ,lemma,sutime,constituency,ner)
-import           NER.Type                       (CompanyInfo)
-import           NLP.Shared.Type                (PathConfig(..))
-import           NLP.Syntax.Type.XBar           (lemmaList)
-import           NLP.Type.CoreNLP               (Sentence)
-import           SRL.Analyze                    (loadConfig,consoleOutput)
-import           SRL.Analyze.Config             (SRLConfig)
-import qualified SRL.Analyze.Config as Analyze
-import           SRL.Analyze.CoreNLP            (runParser)
-import           SRL.Analyze.Match.MeaningGraph (meaningGraph,tagMG)
-import           SRL.Analyze.SentenceStructure  (docStructure,mkWikiList)
-import           SRL.Analyze.Type               (AnalyzePredata,ConsoleOutput,DocStructure,MeaningGraph
-                                                ,analyze_framedb
-                                                ,ds_mtokenss,ds_sentStructures,ss_tagged
+import           CoreNLP.Simple                 ( prepare )
+import           CoreNLP.Simple.Type            ( tokenizer, words2sentences, postagger
+                                                , lemma, sutime, constituency, ner
                                                 )
-import           WikiEL.Type                    (EntityMention)
+import           NER.Type                       ( CompanyInfo )
+import           NLP.Shared.Type                ( PathConfig(..) )
+import           NLP.Syntax.Type.XBar           ( lemmaList )
+import           NLP.Type.CoreNLP               ( Sentence )
+import           SRL.Analyze                    ( loadConfig, consoleOutput )
+import           SRL.Analyze.Config             ( SRLConfig )
+import qualified SRL.Analyze.Config as Analyze
+import           SRL.Analyze.CoreNLP            ( runParser )
+import           SRL.Analyze.Match.MeaningGraph ( meaningGraph, tagMG )
+import           SRL.Analyze.SentenceStructure  ( docStructure, mkWikiList )
+import           SRL.Analyze.Type               ( AnalyzePredata
+                                                , ConsoleOutput
+                                                , DocStructure
+                                                , MeaningGraph
+                                                , analyze_framedb
+                                                , ds_mtokenss, ds_sentStructures
+                                                , ss_tagged
+                                                )
+import           WikiEL.Type                    ( EntityMention )
 --
-import           CloudHaskell.QueryQueue        (QQVar,QueryStatus(..),next)
-import           SemanticParserAPI.Compute.Reuters (loadExistingMG)
-import           SemanticParserAPI.Compute.Type (ComputeQuery(..)
-                                                ,ComputeResult(..)
-                                                ,ResultSentence(..)
-                                                ,ResultReuters(..))
+import           CloudHaskell.QueryQueue        ( QQVar, QueryStatus(..), next )
+import           Task.Reuters                   ( loadExistingMG )
+
+
+data ComputeQuery = CQ_Sentence Text
+                  | CQ_Reuters Int
+                  deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
+
+data ResultSentence = ResultSentence { _sentence_query :: Text
+                                     , _sentence_token :: [[(Int,Text)]]
+                                     , _sentence_meaning_graph :: [MeaningGraph]
+                                     , _sentence_output :: ConsoleOutput
+                                     }
+                    deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
+
+data ResultReuters = ResultReuters { _reuters_query :: Int
+                                   , _reuters_mgs :: [MeaningGraph]
+                                   }
+                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
+
+data ComputeResult = CR_Sentence ResultSentence
+                   | CR_Reuters  ResultReuters
+                   deriving (Generic,Show,Binary,ToJSON,FromJSON,NFData)
+
+
 
 data SRLData = SRLData { _aconfig :: Analyze.Config
                        , _pipeline :: J.J ('J.Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
@@ -81,6 +117,8 @@ runSRL sdat sent = do
   return (tokenss,mgs,cout)
 
 
+
+-- TODO: use ExceptT
 runSRLQueryDaemon ::
       (Bool,Bool)
     -> FilePath
@@ -127,15 +165,14 @@ runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
         CQ_Reuters n -> do
           putStrLn ("CQ_Reuters " ++ show n)
+          -- TODO: no more testPathConfig
           lst <- catMaybes <$> loadExistingMG testPathConfig n
-          -- mapM_ print lst
           print (length lst)
-          -- rtxt <- runReuters n
           let r = CR_Reuters (ResultReuters n lst)
           atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
           return ()
 
-
+-- TODO: remove this.
 testPathConfig :: PathConfig
 testPathConfig = PathConfig
   { _corenlpstore  = "/scratch/wavewave/run_webapp/data/newsapianalyzed"
