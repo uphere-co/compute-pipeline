@@ -75,7 +75,6 @@ library
                   , SemanticParserAPI.Compute.Task
                   , SemanticParserAPI.Compute.Type
                   , SemanticParserAPI.Compute.Type.Status
-                  , SemanticParserAPI.Compute.Worker
                   , SemanticParserAPI.CLI.Client
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded

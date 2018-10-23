@@ -40,7 +40,8 @@ import           CloudHaskell.Util                         (RequestDuplex
                                                            ,tryCreateTransport
                                                            ,spawnChannelLocalDuplex)
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
-import           Task.CoreNLP (QCoreNLP(..),RCoreNLP(..))
+import           Task.CoreNLP                              (QCoreNLP(..),RCoreNLP(..))
+import           Task.SemanticParser                       ( runSRLQueryDaemon )
 --this package
 import           SemanticParserAPI.Compute.Handler         (requestHandler)
 import           SemanticParserAPI.Compute.Task            (remoteDaemonCoreNLP,rtable)
@@ -51,7 +52,6 @@ import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
                                                            ,nodeStatusDuplex
                                                            ,Status
                                                            ,statusNodes)
-import           SemanticParserAPI.Compute.Worker          (runSRLQueryDaemon)
 
 
 elimLinkedProcess :: TVar Status -> ProcessId -> Pipeline ()
