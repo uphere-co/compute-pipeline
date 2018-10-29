@@ -113,3 +113,30 @@ executable worker
                     -fno-warn-orphans
                     -O2
                     -rtsopts
+
+executable compute
+  main-is:             Main.hs
+  build-depends:       base
+                     , aeson
+                     , bytestring
+                     , distributed-process-lifted
+                     , errors
+                     , optparse-applicative
+                     , text
+                     , transformers
+                     , unordered-containers
+                     --
+                     , cloud-haskell-util
+                     --
+                     , compute-worker
+  hs-source-dirs:      app/compute
+  default-language:    Haskell2010
+  ghc-options:      -threaded
+                    -Wall
+                    -Werror
+                    -fno-warn-unused-do-bind
+                    -fwarn-tabs
+                    -funbox-strict-fields
+                    -fno-warn-orphans
+                    -O2
+                    -rtsopts
