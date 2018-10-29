@@ -48,35 +48,44 @@ statusQuery ref _ = do
       lst = map (\(k,v) -> (k,fmap getStatus v)) (m^.statusNodes.to HM.toList)
   pure (SR lst)
 
+
+-- | communicate with SPAPI server
+-- NOTE: this whole handler will be replaced by RESTful API.
+-- TODO: (short-term) deprecate duplex. use disposable send channel.
 requestHandler ::
      TVar Status
   -> RequestDuplex ComputeQuery ComputeResult
   -> RequestDuplex QCoreNLP RCoreNLP
   -> Pipeline ()
-requestHandler ref (sq,rr) (sqcorenlp,rrcorenlp) = do
+requestHandler ref (sq_sempar,rr_sempar) (sq_corenlp,rr_corenlp) = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got client ping pid : " ++ show them_ping)
   withHeartBeat them_ping (const (pure ())) $ \them_main -> do
-
     (slock0,pid0) <-
       spawnChannelLocalSend $ \rlock0 ->
         serverUnit rlock0 $ \q -> do
-          sendChan sq q
-          receiveChan rr
+          sendChan sq_sempar q
+          receiveChan rr_sempar
+
     (slock1,pid1) <-
       spawnChannelLocalSend $ \rlock1 ->
         serverUnit rlock1 (statusQuery ref)
+
     (slock2,pid2) <-
       spawnChannelLocalSend $ \rlock2 ->
         serverUnit rlock2 $ \q -> do
-          sendChan sqcorenlp q
-          receiveChan rrcorenlp
-    let router = Router $
-                   HM.insert "corenlp" pid2 $
-                   HM.insert "test"    pid1 $
-                   HM.insert "query"   pid0 $
-                   HM.empty
-    send them_main router
+          sendChan sq_corenlp q
+          receiveChan rr_corenlp
+
+    -- Send routing information
+    send them_main $
+      Router $
+        HM.fromList
+          [ ("query"  , pid0)
+          , ("test"   , pid1)
+          , ("corenlp", pid2)
+          ]
+
     sendChan slock0 ()
     sendChan slock1 ()
     sendChan slock2 ()

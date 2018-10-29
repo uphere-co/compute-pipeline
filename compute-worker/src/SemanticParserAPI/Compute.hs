@@ -90,8 +90,8 @@ updateLinkedProcessStatus ref (cname,status) =
         writeTVar ref m'
       _ -> pure ()
 
-launchTask :: TVar Status -> Text -> ProcessId -> Pipeline ()
-launchTask ref cname pid = do
+launchCoreNLP :: TVar Status -> Text -> ProcessId -> Pipeline ()
+launchCoreNLP ref cname pid = do
   let nid = processNodeId pid
   tellLog $ "node id = " ++ show nid
   (sr,rr) <- newChan
@@ -124,11 +124,11 @@ taskManager ref = do
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (elimLinkedProcess ref) $ \them_main -> do
     themaster <- getSelfPid
-    let router = Router $ HM.insert "master" themaster mempty
+    let router = Router $ HM.fromList [ ("master", themaster) ]
     send them_main router
     cname :: Text <- expectSafe
     tellLog $ "taskManager: got " ++ show cname
-    launchTask ref cname them_main
+    launchCoreNLP ref cname them_main
     () <- expect  -- for idling
     pure ()
 
@@ -169,10 +169,9 @@ computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
     let chport = show (unTCPPort (bcastport+1))
         dhpp = DHPP (T.unpack hostg,chport) (T.unpack hostl,chport)
     bracket
-            (tryCreateTransport dhpp)
-            closeTransport
-            (\transport ->
-                    newLocalNode transport rtable
-                >>= \node -> runProcess node
-                               (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
-            )
+      (tryCreateTransport dhpp)
+      closeTransport
+      (\transport -> do
+         node <- newLocalNode transport rtable
+         runProcess node (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
+      )
