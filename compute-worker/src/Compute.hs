@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TypeApplications    #-}
-module SemanticParserAPI.Compute where
+module Compute where
 
 import           Control.Concurrent.STM                    (TVar,atomically
                                                            ,newTVarIO,readTVarIO
@@ -43,9 +43,9 @@ import           Network.Transport.UpHere                  (DualHostPortPair(..)
 import           Task.CoreNLP                              (QCoreNLP(..),RCoreNLP(..))
 import           Task.SemanticParser                       ( runSRLQueryDaemon )
 --this package
-import           SemanticParserAPI.Compute.Handler         (requestHandler)
-import           SemanticParserAPI.Compute.Task            (remoteDaemonCoreNLP,rtable)
-import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
+import           Compute.Handler         (requestHandler)
+import           Compute.Task            (remoteDaemonCoreNLP,rtable)
+import           Compute.Type.Status     (NodeStatus(..)
                                                            ,nodeStatusMainProcessId
                                                            ,nodeStatusIsServing
                                                            ,nodeStatusNumServed

@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-module SemanticParserAPI.Compute.Type where
+module Compute.Type where
 
 import           Data.Aeson                     (FromJSON,ToJSON)
 import           Data.Text                      (Text)

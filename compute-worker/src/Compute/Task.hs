@@ -4,7 +4,7 @@
 {-# LANGUAGE StaticPointers       #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module SemanticParserAPI.Compute.Task where
+module Compute.Task where
 
 import           Control.Concurrent (threadDelay)
 import           Control.Distributed.Process         (Process,RemoteTable

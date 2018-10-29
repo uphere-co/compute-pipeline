@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module SemanticParserAPI.Compute.Network where
+module Compute.Network where
 
 import           Data.ByteString.Char8                     (ByteString)
 import qualified Data.ByteString.Lazy.Char8          as BL

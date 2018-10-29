@@ -46,13 +46,13 @@ import           CloudHaskell.Type                     ( TCPPort(..)
                                                        )
 import           CloudHaskell.Util                     ( lookupRouter )
 -----------------
-import           SemanticParserAPI.Compute             ( computeMain )
-import           SemanticParserAPI.Compute.Task        ( rtable )
-import           SemanticParserAPI.Compute.Type        ( ComputeConfig(..)
+import           Compute             ( computeMain )
+import           Compute.Task        ( rtable )
+import           Compute.Type        ( ComputeConfig(..)
                                                        , NetworkConfig(..)
                                                        , CellConfig(..)
                                                        )
-import           SemanticParserAPI.Compute.Type.Status ( Status(..) )
+import           Compute.Type.Status ( Status(..) )
 
 
 data ComputeWorkerOption =
