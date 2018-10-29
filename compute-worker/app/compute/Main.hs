@@ -129,18 +129,13 @@ main =
                       , masterGlobalIP      = hostg (computeServer compcfg)
                       , masterLocalIP       = hostl (computeServer compcfg)
                       }
-            bypassNER = computeBypassNER compcfg
-            bypassTEXTNER = computeBypassTEXTNER compcfg
+            -- bypassNER = computeBypassNER compcfg
+            -- bypassTEXTNER = computeBypassTEXTNER compcfg
             initStatus =
               Status $
                 HM.fromList $
                   map (\c -> (cellName c,Nothing)) (computeCells compcfg)
-        liftIO $
-          masterMain
-            initStatus
-            mConfig
-            (bypassNER,bypassTEXTNER)
-            (servLangConfig opt)
+        liftIO $ masterMain initStatus mConfig
       Slave cname opt -> do
         compcfg :: ComputeConfig
           <- ExceptT $

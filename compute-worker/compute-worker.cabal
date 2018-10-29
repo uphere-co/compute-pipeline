@@ -70,6 +70,8 @@ library
 
   exposed-modules:
                     Compute
+                  -- TODO: remove old
+                  , ComputeOld
                   , Compute.Handler
                   , Compute.Network
                   , Compute.Task

@@ -50,7 +50,7 @@ statusQuery ref _ = do
 
 
 -- | communicate with SPAPI server
--- NOTE: this whole handler will be replaced by RESTful API.
+-- TODO: this whole handler will be replaced by RESTful API.
 -- TODO: (short-term) deprecate duplex. use disposable send channel.
 requestHandler ::
      TVar Status
