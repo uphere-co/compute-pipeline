@@ -10,48 +10,48 @@
 -- Once ready, master will start a required process as ordered by REST API.
 module Main where
 
-import           Control.Distributed.Process.Lifted    ( expect, send )
-import           Control.Error.Util                    ( failWith )
-import           Control.Monad.IO.Class                ( liftIO )
-import           Control.Monad.Trans.Except            ( ExceptT(..), runExceptT )
-import           Data.Aeson                            ( eitherDecodeStrict )
+import           Control.Distributed.Process.Lifted
+                                     ( expect, send )
+import           Control.Error.Util  ( failWith )
+import           Control.Monad.IO.Class ( liftIO )
+import           Control.Monad.Trans.Except
+                                     ( ExceptT(..), runExceptT )
+import           Data.Aeson          ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
 import qualified Data.HashMap.Strict   as HM
-import           Data.List                             ( find )
-import           Data.Semigroup                        ( (<>) )
-import           Data.Text                             ( Text )
+import           Data.List           ( find )
+import           Data.Semigroup      ( (<>) )
+import           Data.Text           ( Text )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import           Options.Applicative                   ( Parser
-                                                       , (<**>)
-                                                       , command
-                                                       , execParser
-                                                       , help
-                                                       , helper
-                                                       , info
-                                                       , long
-                                                       , progDesc
-                                                       , short
-                                                       , strOption
-                                                       , subparser
-                                                       )
-import           System.IO                             ( stderr )
+import           Options.Applicative ( Parser
+                                     , (<**>)
+                                     , command
+                                     , execParser
+                                     , help
+                                     , helper
+                                     , info
+                                     , long
+                                     , progDesc
+                                     , short
+                                     , strOption
+                                     , subparser
+                                     )
+import           System.IO           ( stderr )
 -----------------
-import           CloudHaskell.Client                   ( client
-                                                       , heartBeatHandshake
-                                                       , routerHandshake
-                                                       )
-import           CloudHaskell.Type                     ( TCPPort(..)
-                                                       , Gateway(gatewayMaster)
-                                                       )
-import           CloudHaskell.Util                     ( lookupRouter )
+import           CloudHaskell.Client ( heartBeatHandshake, routerHandshake )
+import           CloudHaskell.Type   ( TCPPort(..)
+                                     , Gateway(gatewayMaster)
+                                     )
+import           CloudHaskell.Util   ( lookupRouter )
 -----------------
-import           Compute             ( computeMain )
-import           Compute.Task        ( rtable )
+import           Compute             ( masterMain, slaveMain )
 import           Compute.Type        ( ComputeConfig(..)
-                                                       , NetworkConfig(..)
-                                                       , CellConfig(..)
-                                                       )
+                                     , NetworkConfig(..)
+                                     , CellConfig(..)
+                                     , MasterConfig(..)
+                                     , SlaveConfig(..)
+                                     )
 import           Compute.Type.Status ( Status(..) )
 
 
@@ -124,9 +124,11 @@ main =
         compcfg :: ComputeConfig <-
           ExceptT $
             eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
-        let hostGlobalIP = hostg (computeServer compcfg)
-            hostLocalIP = hostl (computeServer compcfg)
-            hostPort = port (computeServer compcfg)
+        let mConfig = MasterConfig
+                      { masterBroadcastPort = TCPPort (port (computeServer compcfg))
+                      , masterGlobalIP      = hostg (computeServer compcfg)
+                      , masterLocalIP       = hostl (computeServer compcfg)
+                      }
             bypassNER = computeBypassNER compcfg
             bypassTEXTNER = computeBypassTEXTNER compcfg
             initStatus =
@@ -134,9 +136,9 @@ main =
                 HM.fromList $
                   map (\c -> (cellName c,Nothing)) (computeCells compcfg)
         liftIO $
-          computeMain
+          masterMain
             initStatus
-            (TCPPort hostPort,hostGlobalIP,hostLocalIP)
+            mConfig
             (bypassNER,bypassTEXTNER)
             (servLangConfig opt)
       Slave cname opt -> do
@@ -147,16 +149,18 @@ main =
           failWith "no such cell" $
             find (\c -> cellName c == cname) (computeCells compcfg)
 
-        let
-          cport  = port  (cellAddress cellcfg)
-          chostg = hostg (cellAddress cellcfg)
-          chostl = hostl (cellAddress cellcfg)
-          shostg = hostg (computeServer compcfg)
-          sport  = TCPPort (port (computeServer compcfg))
+        let mConfig = MasterConfig
+                      { masterBroadcastPort = TCPPort (port (computeServer compcfg))
+                      , masterGlobalIP      = hostg (computeServer compcfg)
+                      , masterLocalIP       = hostl (computeServer compcfg)
+                      }
+            sConfig = SlaveConfig
+                      { slavePort     = TCPPort (port  (cellAddress cellcfg))
+                      , slaveGlobalIP = hostg (cellAddress cellcfg)
+                      , slaveLocalIP  = hostl (cellAddress cellcfg)
+                      }
         liftIO $
-          client
-            rtable
-            (cport,chostg,chostl,shostg,sport)
+          slaveMain mConfig sConfig
             -- TODO: this is not a correct implementation. we should change it.
             (\gw -> do
                heartBeatHandshake (gatewayMaster gw) $

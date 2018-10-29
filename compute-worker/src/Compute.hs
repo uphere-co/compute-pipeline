@@ -8,12 +8,13 @@ module Compute where
 import           Control.Concurrent.STM                    (TVar,atomically
                                                            ,newTVarIO,readTVarIO
                                                            ,readTVar,writeTVar)
-import           Control.Distributed.Process.Lifted        (Process,ProcessId,SendPort
-                                                           ,processNodeId
-                                                           ,expect,getSelfPid,send
-                                                           ,newChan,sendChan,receiveChan
-                                                           ,spawnLocal,spawnChannel)
-import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
+import           Control.Distributed.Process.Lifted        ( Process, ProcessId, SendPort
+                                                           , processNodeId
+                                                           , expect, getSelfPid, send
+                                                           , newChan, sendChan, receiveChan
+                                                           , spawnLocal, spawnChannel
+                                                           )
+import           Control.Distributed.Process.Node          ( newLocalNode,runProcess)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
 import           Control.Distributed.Static                (staticClosure
                                                            ,staticPtr)
@@ -27,12 +28,17 @@ import           Data.Foldable                             (find)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
--- language-engine
-import SRL.Analyze.Type (DocAnalysisInput(..))
--- compute-pipeline
-import           CloudHaskell.Closure                      (capply')
+---------------- language-engine
+import           SRL.Analyze.Type                          ( DocAnalysisInput(..) )
+---------------- compute-pipeline
+import           CloudHaskell.Client                       ( client )
+import           CloudHaskell.Closure                      ( capply' )
 import           CloudHaskell.Server                       (server,withHeartBeat)
-import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
+import           CloudHaskell.Type                         ( Gateway(..)
+                                                           , Pipeline
+                                                           , TCPPort(..)
+                                                           , Router(..)
+                                                           )
 import           CloudHaskell.Util                         (RequestDuplex
                                                            ,tellLog
                                                            ,expectSafe
@@ -43,15 +49,21 @@ import           Network.Transport.UpHere                  (DualHostPortPair(..)
 import           Task.CoreNLP                              (QCoreNLP(..),RCoreNLP(..))
 import           Task.SemanticParser                       ( runSRLQueryDaemon )
 --this package
-import           Compute.Handler         (requestHandler)
-import           Compute.Task            (remoteDaemonCoreNLP,rtable)
-import           Compute.Type.Status     (NodeStatus(..)
-                                                           ,nodeStatusMainProcessId
-                                                           ,nodeStatusIsServing
-                                                           ,nodeStatusNumServed
-                                                           ,nodeStatusDuplex
-                                                           ,Status
-                                                           ,statusNodes)
+import           Compute.Handler                           ( requestHandler )
+import           Compute.Task                              ( remoteDaemonCoreNLP
+                                                           , rtable
+                                                           )
+import           Compute.Type                              ( MasterConfig(..)
+                                                           , SlaveConfig(..)
+                                                           )
+import           Compute.Type.Status                       ( NodeStatus(..)
+                                                           , nodeStatusMainProcessId
+                                                           , nodeStatusIsServing
+                                                           , nodeStatusNumServed
+                                                           , nodeStatusDuplex
+                                                           , Status
+                                                           , statusNodes
+                                                           )
 
 
 elimLinkedProcess :: TVar Status -> ProcessId -> Pipeline ()
@@ -175,3 +187,38 @@ computeMain stat (bcastport,hostg,hostl) (bypassNER,bypassTEXTNER) lcfg = do
          node <- newLocalNode transport rtable
          runProcess node (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
       )
+
+masterMain
+  :: Status
+  -> MasterConfig
+  -> (Bool,Bool)  -- ^ (bypassNER, bypassTEXTNER)
+  -> FilePath     -- ^ lang config
+  -> IO ()
+masterMain stat mConfig (bypassNER,bypassTEXTNER) lcfg = do
+    let bcastport = masterBroadcastPort mConfig
+        hostg = masterGlobalIP mConfig
+        hostl = masterLocalIP mConfig
+    ref <- liftIO $ newTVarIO stat
+    let chport = show (unTCPPort (bcastport+1))
+        dhpp = DHPP (T.unpack hostg,chport) (T.unpack hostl,chport)
+    bracket
+      (tryCreateTransport dhpp)
+      closeTransport
+      (\transport -> do
+         node <- newLocalNode transport rtable
+         runProcess node (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
+      )
+
+slaveMain
+  :: MasterConfig
+  -> SlaveConfig                  -- ^ network info
+  -> (Gateway -> Pipeline ())     -- ^ client process
+  -> IO ()
+slaveMain mConfig sConfig process =
+  let
+    TCPPort portnum = slavePort sConfig
+    hostg = slaveGlobalIP sConfig
+    hostl = slaveLocalIP sConfig
+    serverip = masterGlobalIP mConfig
+    serverport = masterBroadcastPort mConfig
+  in client rtable (portnum,hostg,hostl,serverip,serverport) process
