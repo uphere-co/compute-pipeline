@@ -143,13 +143,6 @@ taskManager ref = do
     () <- expect  -- for idling
     pure ()
 
-{-
-init :: TVar Status -> TCPPort -> FilePath -> Process ()
-init ref port lcfg = do
-  server port (taskManager ref)
-  -- init -- (requestHandler ref (sqcorenlp,rrcorenlp)) (taskManager ref)
--}
-
 
 masterMain
   :: Status
@@ -168,7 +161,6 @@ masterMain stat mConfig = do
       (\transport -> do
          node <- newLocalNode transport rtable
          runProcess node (server bcastport (pure ()) (taskManager ref))
-         -- (initDaemonAndServer ref bcastport (bypassNER,bypassTEXTNER) lcfg)
       )
 
 slaveMain
