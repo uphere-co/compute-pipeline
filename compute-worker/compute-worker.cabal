@@ -121,7 +121,9 @@ executable compute
                      , aeson
                      , bytestring
                      , distributed-process-lifted
+                     , filepath
                      , errors
+                     , hinotify
                      , optparse-applicative
                      , text
                      , transformers
