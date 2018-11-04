@@ -130,14 +130,22 @@ executable compute
                      , cloud-haskell-util
                      --
                      , compute-worker
+                     --
+                     , ghc
+                     , ghc-hotswap
+                     , ghc-hotswap-types
   hs-source-dirs:      app/compute
   default-language:    Haskell2010
-  ghc-options:      -threaded
-                    -Wall
-                    -Werror
-                    -fno-warn-unused-do-bind
-                    -fwarn-tabs
-                    -funbox-strict-fields
-                    -fno-warn-orphans
-                    -O2
-                    -rtsopts
+  extra-libraries:     pthread
+
+  c-sources:           app/compute/HotswapMain.c
+  -- ghc-options:      -threaded
+  --                   -Wall
+  --                   -Werror
+  --                   -fno-warn-unused-do-bind
+  --                   -fwarn-tabs
+  --                   -funbox-strict-fields
+  --                  -fno-warn-orphans
+  --                  -O2
+  --                  -rtsopts
+  ghc-options: -rdynamic -fwhole-archive-hs-libs -no-hs-main

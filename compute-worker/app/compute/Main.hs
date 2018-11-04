@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances        #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings        #-}
+{-# LANGUAGE RecordWildCards          #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TypeSynonymInstances     #-}
 -- compute-worker is the main distributed computing process for a generic
@@ -52,6 +53,15 @@ import           Compute.Type        ( ComputeConfig(..)
 import           Compute.Type.Status ( Status(..) )
 
 
+--
+import Control.Concurrent
+import Control.Exception
+import Control.Monad
+import System.Environment
+import GHC.Hotswap
+import Types
+
+
 data ComputeWorkerOption =
   ComputeWorkerOption
   { servLangConfig :: FilePath
@@ -98,8 +108,8 @@ pCommand =
      )
 
 
-main :: IO ()
-main =
+main' :: IO ()
+main' =
   handleError $ do
     cmd <- liftIO $ execParser (info (pCommand <**> helper) (progDesc "compute"))
     case cmd of
@@ -146,3 +156,31 @@ main =
                    () <- expect -- this is a kill signal.
                    pure ()
             )
+
+
+looper :: UpdatableSO SOHandles -> IO ()
+looper so = do
+  threadDelay 2000000
+  withSO so $ \SOHandles{..} -> do
+    putStrLn $ "someData = " ++ show someData
+    someFn 7
+
+
+update so so_path = do
+  forever $ do
+    putStrLn "Next SO to use: "
+    nextSO <- getLine
+    swapSO so nextSO
+
+
+main :: IO ()
+main = do
+  args <- getArgs
+  so_path <- case args of
+    [p] -> return p
+    _ -> throwIO (ErrorCall "must give file path of first .so as an arg")
+
+  so <- registerHotswap "hs_soHandles" so_path
+
+
+  bracket (forkIO (forever $ looper so)) killThread $ \_ -> update so so_path
