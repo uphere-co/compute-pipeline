@@ -69,13 +69,14 @@ library
                 , wiki-ner
 
   exposed-modules:
-                    SemanticParserAPI.Compute
-                  , SemanticParserAPI.Compute.Handler
-                  , SemanticParserAPI.Compute.Network
-                  , SemanticParserAPI.Compute.Task
-                  , SemanticParserAPI.Compute.Type
-                  , SemanticParserAPI.Compute.Type.Status
-                  , SemanticParserAPI.CLI.Client
+                    Compute
+                  -- TODO: remove old
+                  , ComputeOld
+                  , Compute.Handler
+                  , Compute.Network
+                  , Compute.Task
+                  , Compute.Type
+                  , Compute.Type.Status
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded
                     -Wall
@@ -103,6 +104,33 @@ executable worker
                      --
                      , compute-worker
   hs-source-dirs:      app/worker
+  default-language:    Haskell2010
+  ghc-options:      -threaded
+                    -Wall
+                    -Werror
+                    -fno-warn-unused-do-bind
+                    -fwarn-tabs
+                    -funbox-strict-fields
+                    -fno-warn-orphans
+                    -O2
+                    -rtsopts
+
+executable compute
+  main-is:             Main.hs
+  build-depends:       base
+                     , aeson
+                     , bytestring
+                     , distributed-process-lifted
+                     , errors
+                     , optparse-applicative
+                     , text
+                     , transformers
+                     , unordered-containers
+                     --
+                     , cloud-haskell-util
+                     --
+                     , compute-worker
+  hs-source-dirs:      app/compute
   default-language:    Haskell2010
   ghc-options:      -threaded
                     -Wall

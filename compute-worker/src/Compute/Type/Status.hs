@@ -1,19 +1,19 @@
 {-# LANGUAGE DeriveAnyClass  #-}
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE TemplateHaskell #-}
-module SemanticParserAPI.Compute.Type.Status where
+module Compute.Type.Status where
 
-import           Control.DeepSeq             (NFData)
-import           Control.Distributed.Process (ProcessId)
-import           Control.Lens                (makeLenses)
-import           Data.Aeson                  (FromJSON,ToJSON)
-import           Data.Binary                 (Binary)
-import           Data.HashMap.Strict         (HashMap)
-import           Data.Text                   (Text)
-import           GHC.Generics                (Generic)
---
-import CloudHaskell.Util (RequestDuplex)
-import Task.CoreNLP (QCoreNLP,RCoreNLP)
+import           Control.DeepSeq             ( NFData )
+import           Control.Distributed.Process ( ProcessId )
+import           Control.Lens                ( makeLenses )
+import           Data.Aeson                  ( FromJSON,ToJSON )
+import           Data.Binary                 ( Binary )
+import           Data.HashMap.Strict         ( HashMap )
+import           Data.Text                   ( Text )
+import           GHC.Generics                ( Generic )
+-----------------
+import           CloudHaskell.Util           ( RequestDuplex )
+import           Task.CoreNLP                ( QCoreNLP, RCoreNLP )
 
 data NodeStatus = NodeStatus {
                     _nodeStatusMainProcessId :: ProcessId

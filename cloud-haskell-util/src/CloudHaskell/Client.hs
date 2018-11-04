@@ -5,8 +5,11 @@ module CloudHaskell.Client where
 import           Control.Concurrent                (threadDelay)
 import           Control.Concurrent.STM            (atomically,retry
                                                    ,readTVar,writeTVar,modifyTVar')
-import           Control.Distributed.Process       (ProcessId,SendPort,ReceivePort
-                                                   ,RemoteTable)
+import           Control.Distributed.Process       ( ProcessId
+                                                   , SendPort
+                                                   , ReceivePort
+                                                   , RemoteTable
+                                                   )
 import           Control.Distributed.Process.Lifted(expectTimeout,spawnLocal
                                                    ,getSelfPid,send
                                                    ,newChan,receiveChan,sendChan

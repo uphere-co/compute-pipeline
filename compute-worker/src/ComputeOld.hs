@@ -3,17 +3,18 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TypeApplications    #-}
-module SemanticParserAPI.Compute where
+module ComputeOld where
 
 import           Control.Concurrent.STM                    (TVar,atomically
                                                            ,newTVarIO,readTVarIO
                                                            ,readTVar,writeTVar)
-import           Control.Distributed.Process.Lifted        (Process,ProcessId,SendPort
-                                                           ,processNodeId
-                                                           ,expect,getSelfPid,send
-                                                           ,newChan,sendChan,receiveChan
-                                                           ,spawnLocal,spawnChannel)
-import           Control.Distributed.Process.Node          (newLocalNode,runProcess)
+import           Control.Distributed.Process.Lifted        ( Process, ProcessId, SendPort
+                                                           , processNodeId
+                                                           , expect, getSelfPid, send
+                                                           , newChan, sendChan, receiveChan
+                                                           , spawnLocal, spawnChannel
+                                                           )
+import           Control.Distributed.Process.Node          ( newLocalNode,runProcess)
 import           Control.Distributed.Process.Serializable  (SerializableDict(..))
 import           Control.Distributed.Static                (staticClosure
                                                            ,staticPtr)
@@ -27,12 +28,15 @@ import           Data.Foldable                             (find)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
--- language-engine
-import SRL.Analyze.Type (DocAnalysisInput(..))
--- compute-pipeline
-import           CloudHaskell.Closure                      (capply')
+---------------- language-engine
+import           SRL.Analyze.Type                          ( DocAnalysisInput(..) )
+---------------- compute-pipeline
+import           CloudHaskell.Closure                      ( capply' )
 import           CloudHaskell.Server                       (server,withHeartBeat)
-import           CloudHaskell.Type                         (Pipeline,TCPPort(..),Router(..))
+import           CloudHaskell.Type                         ( Pipeline
+                                                           , TCPPort(..)
+                                                           , Router(..)
+                                                           )
 import           CloudHaskell.Util                         (RequestDuplex
                                                            ,tellLog
                                                            ,expectSafe
@@ -43,15 +47,18 @@ import           Network.Transport.UpHere                  (DualHostPortPair(..)
 import           Task.CoreNLP                              (QCoreNLP(..),RCoreNLP(..))
 import           Task.SemanticParser                       ( runSRLQueryDaemon )
 --this package
-import           SemanticParserAPI.Compute.Handler         (requestHandler)
-import           SemanticParserAPI.Compute.Task            (remoteDaemonCoreNLP,rtable)
-import           SemanticParserAPI.Compute.Type.Status     (NodeStatus(..)
-                                                           ,nodeStatusMainProcessId
-                                                           ,nodeStatusIsServing
-                                                           ,nodeStatusNumServed
-                                                           ,nodeStatusDuplex
-                                                           ,Status
-                                                           ,statusNodes)
+import           Compute.Handler                           ( requestHandler )
+import           Compute.Task                              ( remoteDaemonCoreNLP
+                                                           , rtable
+                                                           )
+import           Compute.Type.Status                       ( NodeStatus(..)
+                                                           , nodeStatusMainProcessId
+                                                           , nodeStatusIsServing
+                                                           , nodeStatusNumServed
+                                                           , nodeStatusDuplex
+                                                           , Status
+                                                           , statusNodes
+                                                           )
 
 
 elimLinkedProcess :: TVar Status -> ProcessId -> Pipeline ()

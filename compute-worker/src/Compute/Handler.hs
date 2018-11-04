@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
-module SemanticParserAPI.Compute.Handler where
+module Compute.Handler where
 
 import           Control.Concurrent.STM                    ( TVar, readTVarIO )
 import           Control.Distributed.Process.Lifted        ( ProcessId
@@ -28,8 +28,8 @@ import           Task.SemanticParser                       ( ComputeQuery(..)
                                                            , ComputeResult(..)
                                                            )
 --
-import           SemanticParserAPI.Compute.Type
-import           SemanticParserAPI.Compute.Type.Status     ( nodeStatusIsServing
+import           Compute.Type
+import           Compute.Type.Status                       ( nodeStatusIsServing
                                                            , nodeStatusNumServed
                                                            , Status
                                                            , StatusQuery(..)
@@ -50,7 +50,7 @@ statusQuery ref _ = do
 
 
 -- | communicate with SPAPI server
--- NOTE: this whole handler will be replaced by RESTful API.
+-- TODO: this whole handler will be replaced by RESTful API.
 -- TODO: (short-term) deprecate duplex. use disposable send channel.
 requestHandler ::
      TVar Status
