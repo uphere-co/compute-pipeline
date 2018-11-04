@@ -35,6 +35,17 @@ import           Options.Applicative ( Parser
                                      , strOption
                                      , subparser
                                      )
+import           System.FilePath     ( (</>)
+                                     , takeDirectory
+                                     , takeExtension
+                                     )
+import           System.INotify      ( Event(..)
+                                     , EventVariety(..)
+                                     , INotify(..)
+                                     , addWatch
+                                     , withINotify
+                                     )
+import           System.IO           ( hPutStrLn, stderr )
 -----------------
 import           CloudHaskell.Client ( heartBeatHandshake, routerHandshake )
 import           CloudHaskell.Type   ( TCPPort(..)
@@ -166,11 +177,15 @@ looper so = do
     someFn 7
 
 
-update so so_path = do
-  forever $ do
-    putStrLn "Next SO to use: "
-    nextSO <- getLine
-    swapSO so nextSO
+notified :: UpdatableSO SOHandles -> FilePath -> Event -> IO ()
+notified so basepath e =
+ case e of
+   Created _ fp_bs -> do
+     let fp =  basepath </> B.unpack fp_bs
+     when (takeExtension fp == ".o") $ do
+       hPutStrLn stderr ("swap SO file: " ++ fp)
+       swapSO so fp
+   _ -> pure ()
 
 
 main :: IO ()
@@ -180,7 +195,17 @@ main = do
     [p] -> return p
     _ -> throwIO (ErrorCall "must give file path of first .so as an arg")
 
+  let so_dir = takeDirectory so_path
+      so_dir_bs = B.pack (so_dir)
+
   so <- registerHotswap "hs_soHandles" so_path
 
 
-  bracket (forkIO (forever $ looper so)) killThread $ \_ -> update so so_path
+  bracket (forkIO (forever $ looper so)) killThread $ \_ -> do
+    -- forkIO $
+    withINotify $ \inotify -> do
+      addWatch inotify [Create] so_dir_bs (notified so so_dir)
+      -- idling
+      forever $ do
+        threadDelay 1000000
+        pure ()

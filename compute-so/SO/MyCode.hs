@@ -9,4 +9,4 @@ module SO.MyCode
   ) where
 
 myFunction :: Int -> IO ()
-myFunction i = putStrLn $ "testing123: to 10: " ++ show (10 + i)
+myFunction i = putStrLn $ "testingABCDE: to 10: " ++ show (10 + i)
