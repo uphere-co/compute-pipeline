@@ -1,5 +1,6 @@
 packages:
   cloud-haskell-util/
+  compute-so/
   compute-worker/
   jobqueue-client/
   jobqueue-server/
@@ -9,3 +10,6 @@ packages:
   task-reuters/
   task-semantic-parser/
   uphere-db/
+
+package compute-so
+  library-for-ghci: true
