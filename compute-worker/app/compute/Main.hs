@@ -14,16 +14,13 @@ import           Control.Distributed.Process.Lifted
                                      ( expect, send )
 import           Control.Error.Util  ( failWith )
 import           Control.Monad.IO.Class ( liftIO )
-import           Control.Monad.Trans.Except
-                                     ( ExceptT(..), runExceptT )
+import           Control.Monad.Trans.Except ( ExceptT(..) )
 import           Data.Aeson          ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
 import qualified Data.HashMap.Strict   as HM
 import           Data.List           ( find )
 import           Data.Semigroup      ( (<>) )
 import           Data.Text           ( Text )
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import           Options.Applicative ( Parser
                                      , (<**>)
                                      , command
@@ -37,11 +34,11 @@ import           Options.Applicative ( Parser
                                      , strOption
                                      , subparser
                                      )
-import           System.IO           ( stderr )
 -----------------
 import           CloudHaskell.Client ( heartBeatHandshake, routerHandshake )
 import           CloudHaskell.Type   ( TCPPort(..)
                                      , Gateway(gatewayMaster)
+                                     , handleError
                                      )
 import           CloudHaskell.Util   ( lookupRouter )
 -----------------
@@ -99,20 +96,6 @@ pCommand =
            (progDesc "running as slave")
          )
      )
-
-class RenderError e where
-  renderError :: e -> Text
-
--- TODO: We should refrain from using String error.
-instance RenderError String where
-  renderError = T.pack
-
-handleError :: (RenderError e) => ExceptT e IO a -> IO ()
-handleError m = do
-  r <- runExceptT m
-  case r of
-    Left e -> TIO.hPutStrLn stderr (renderError e)
-    Right _ -> pure ()
 
 
 main :: IO ()
