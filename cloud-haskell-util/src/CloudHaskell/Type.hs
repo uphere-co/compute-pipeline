@@ -66,6 +66,27 @@ data Gateway = Gateway { gatewayWeb :: ProcessId
 instance Binary Gateway
 instance NFData Gateway
 
+
+data MasterConfig =
+  MasterConfig
+  { masterBroadcastPort :: TCPPort
+  , masterGlobalIP      :: Text
+  , masterLocalIP       :: Text
+  }
+  deriving (Generic,Show)
+
+data SlaveConfig =
+  SlaveConfig
+  { slavePort         :: TCPPort
+  , slaveGlobalIP     :: Text
+  , slaveLocalIP      :: Text
+  }
+  deriving (Generic,Show)
+
+
+--------------------
+-- Error Handling --
+--------------------
 -- | For error handling
 class RenderError e where
   renderError :: e -> Text

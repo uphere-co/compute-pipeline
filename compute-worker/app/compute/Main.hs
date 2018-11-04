@@ -38,6 +38,8 @@ import           Options.Applicative ( Parser
 import           CloudHaskell.Client ( heartBeatHandshake, routerHandshake )
 import           CloudHaskell.Type   ( TCPPort(..)
                                      , Gateway(gatewayMaster)
+                                     , MasterConfig(..)
+                                     , SlaveConfig(..)
                                      , handleError
                                      )
 import           CloudHaskell.Util   ( lookupRouter )
@@ -46,8 +48,6 @@ import           Compute             ( masterMain, slaveMain )
 import           Compute.Type        ( ComputeConfig(..)
                                      , NetworkConfig(..)
                                      , CellConfig(..)
-                                     , MasterConfig(..)
-                                     , SlaveConfig(..)
                                      )
 import           Compute.Type.Status ( Status(..) )
 
@@ -112,8 +112,6 @@ main =
                       , masterGlobalIP      = hostg (computeServer compcfg)
                       , masterLocalIP       = hostl (computeServer compcfg)
                       }
-            -- bypassNER = computeBypassNER compcfg
-            -- bypassTEXTNER = computeBypassTEXTNER compcfg
             initStatus =
               Status $
                 HM.fromList $
@@ -138,7 +136,7 @@ main =
                       , slaveLocalIP  = hostl (cellAddress cellcfg)
                       }
         liftIO $
-          slaveMain mConfig sConfig
+          slaveMain (mConfig,sConfig)
             -- TODO: this is not a correct implementation. we should change it.
             (\gw -> do
                heartBeatHandshake (gatewayMaster gw) $
