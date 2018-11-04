@@ -34,8 +34,15 @@ import           Network.Transport.UpHere          (DualHostPortPair(..))
 --
 import           CloudHaskell.QueryQueue           (QQVar,QueryStatus(..),next)
 import           CloudHaskell.Socket               (recvAndUnpack)
-import           CloudHaskell.Type                 (LogLock,Pipeline,HeartBeat(..)
-                                                   ,Router(..),Gateway(..),TCPPort(..))
+import           CloudHaskell.Type                 ( LogLock
+                                                   , Pipeline
+                                                   , HeartBeat(..)
+                                                   , Router(..)
+                                                   , Gateway(..)
+                                                   , TCPPort(..)
+                                                   , MasterConfig(..)
+                                                   , SlaveConfig(..)
+                                                   )
 import           CloudHaskell.Util                 (tellLog,atomicLog,newLogLock
                                                    ,onesecond,expectSafe
                                                    ,spawnChannelLocalReceive
@@ -146,13 +153,18 @@ heartBeatHandshake them_ping main = do
   void $ pingHeartBeat [p1] them_ping 0
 
 
-client ::
+slaveMain ::
      RemoteTable                  -- ^ remote table
-  -> (Int,Text,Text,Text,TCPPort) -- ^ network info
+  -> (MasterConfig,SlaveConfig) -- (Int,Text,Text,Text,TCPPort) -- ^ network info
   -> (Gateway -> Pipeline ())     -- ^ client process
   -> IO ()
-client rtable (portnum,hostg,hostl,serverip,serverport) process = do
-  let dhpp = DHPP (T.unpack hostg,show portnum) (T.unpack hostl,show portnum)
+slaveMain rtable (mcfg,scfg) process = do
+  let TCPPort portnum = slavePort scfg
+      hostg = slaveGlobalIP scfg
+      hostl = slaveLocalIP scfg
+      serverip = masterGlobalIP mcfg
+      serverport = masterBroadcastPort mcfg
+      dhpp = DHPP (T.unpack hostg,show portnum) (T.unpack hostl,show portnum)
   bracket
     (tryCreateTransport dhpp)
     closeTransport

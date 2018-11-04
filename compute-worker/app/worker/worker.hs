@@ -27,18 +27,20 @@ import           Options.Applicative                   ( Parser
                                                        , subparser
                                                        )
 --
-import           CloudHaskell.Client                   ( client
+import           CloudHaskell.Client                   ( slaveMain
                                                        , heartBeatHandshake
                                                        , routerHandshake
                                                        )
 import           CloudHaskell.Type                     ( TCPPort(..)
                                                        , Gateway(gatewayMaster)
+                                                       , MasterConfig(..)
+                                                       , SlaveConfig(..)
                                                        )
 import           CloudHaskell.Util                     ( lookupRouter )
 --
-import           ComputeOld             ( computeMain )
-import           Compute.Task        ( rtable )
-import           Compute.Type        ( ComputeConfig(..)
+import           ComputeOld                            ( computeMain )
+import           Compute.Task                          ( rtable )
+import           Compute.Type                          ( ComputeConfig(..)
                                                        , NetworkConfig(..)
                                                        , CellConfig(..)
                                                        )
@@ -119,15 +121,21 @@ main = do
             find (\c -> cellName c == cname) (computeCells compcfg)
 
         let
-          cport  = port  (cellAddress cellcfg)
-          chostg = hostg (cellAddress cellcfg)
-          chostl = hostl (cellAddress cellcfg)
-          shostg = hostg (computeServer compcfg)
-          sport  = TCPPort (port (computeServer compcfg))
+          mConfig = MasterConfig
+                      { masterBroadcastPort = TCPPort (port (computeServer compcfg))
+                      , masterGlobalIP      = hostg (computeServer compcfg)
+                      , masterLocalIP       = hostl (computeServer compcfg)
+                      }
+          sConfig = SlaveConfig
+                      { slavePort     = TCPPort (port  (cellAddress cellcfg))
+                      , slaveGlobalIP = hostg (cellAddress cellcfg)
+                      , slaveLocalIP  = hostl (cellAddress cellcfg)
+                      }
         liftIO $
-          client
+          slaveMain
             rtable
-            (cport,chostg,chostl,shostg,sport)
+            (mConfig,sConfig)
+            -- (cport,chostg,chostl,shostg,sport)
             -- TODO: this is not a correct implementation. we should change it.
             (\gw -> do
                heartBeatHandshake (gatewayMaster gw) $

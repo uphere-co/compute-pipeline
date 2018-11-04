@@ -5,8 +5,7 @@ module Compute.Type where
 import           Data.Aeson                     ( FromJSON, ToJSON )
 import           Data.Text                      ( Text)
 import           GHC.Generics                   ( Generic )
----------------- compute-pipeline
-import           CloudHaskell.Type              ( TCPPort )
+
 
 data NetworkConfig = NetworkConfig {
                        hostg :: Text
@@ -29,20 +28,3 @@ data ComputeConfig = ComputeConfig {
                      , computeBypassTEXTNER :: Bool
                      }
                    deriving (Generic,Show,FromJSON,ToJSON)
-
-
-data MasterConfig =
-  MasterConfig
-  { masterBroadcastPort :: TCPPort
-  , masterGlobalIP      :: Text
-  , masterLocalIP       :: Text
-  }
-  deriving (Generic,Show)
-
-data SlaveConfig =
-  SlaveConfig
-  { slavePort         :: TCPPort
-  , slaveGlobalIP     :: Text
-  , slaveLocalIP      :: Text
-  }
-  deriving (Generic,Show)

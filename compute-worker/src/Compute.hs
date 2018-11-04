@@ -34,13 +34,15 @@ import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
 ---------------- compute-pipeline
-import           CloudHaskell.Client                       ( client )
+import qualified CloudHaskell.Client                       ( slaveMain )
 import           CloudHaskell.Closure                      ( capply' )
 import           CloudHaskell.Server                       (server,withHeartBeat)
 import           CloudHaskell.Type                         ( Gateway(..)
                                                            , Pipeline
                                                            , TCPPort(..)
                                                            , Router(..)
+                                                           , MasterConfig(..)
+                                                           , SlaveConfig(..)
                                                            )
 import           CloudHaskell.Util                         ( RequestDuplex
                                                            , tellLog
@@ -52,9 +54,6 @@ import           Task.CoreNLP                              (QCoreNLP(..),RCoreNL
 ---------------- this package
 import           Compute.Task                              ( remoteDaemonCoreNLP
                                                            , rtable
-                                                           )
-import           Compute.Type                              ( MasterConfig(..)
-                                                           , SlaveConfig(..)
                                                            )
 import           Compute.Type.Status                       ( NodeStatus(..)
                                                            , nodeStatusMainProcessId
@@ -163,16 +162,9 @@ masterMain stat mConfig = do
          runProcess node (server bcastport (pure ()) (taskManager ref))
       )
 
+
 slaveMain
-  :: MasterConfig
-  -> SlaveConfig                  -- ^ network info
+  :: (MasterConfig, SlaveConfig)
   -> (Gateway -> Pipeline ())     -- ^ client process
   -> IO ()
-slaveMain mConfig sConfig process =
-  let
-    TCPPort portnum = slavePort sConfig
-    hostg = slaveGlobalIP sConfig
-    hostl = slaveLocalIP sConfig
-    serverip = masterGlobalIP mConfig
-    serverport = masterBroadcastPort mConfig
-  in client rtable (portnum,hostg,hostl,serverip,serverport) process
+slaveMain = CloudHaskell.Client.slaveMain rtable
