@@ -45,19 +45,24 @@ looper so = do
     run 3994 $ someApplication visitorCount
 
 
-notified :: UpdatableSO SOHandles -> FilePath -> Event -> IO ()
-notified so basepath e =
+notified :: UpdatableSO SOHandles -> FilePath -> MVar () -> ThreadId -> Event -> IO ()
+notified so basepath lock tid e =
  case e of
    Created _ fp_bs -> do
      let fp =  basepath </> B.unpack fp_bs
      when (takeExtension fp == ".o") $ do
        hPutStrLn stderr ("swap SO file: " ++ fp)
+       killThread tid
        swapSO so fp
+       putStrLn "notified: reach here1"
+       putMVar lock ()
+       putStrLn "notified: reach here"
    _ -> pure ()
 
 
 main :: IO ()
 main = do
+  putStrLn "start orchestrator"
   args <- getArgs
   so_path <- case args of
     [p] -> return p
@@ -68,11 +73,13 @@ main = do
 
   so <- registerHotswap "hs_soHandles" so_path
 
+  forever $ do
+    tid <- forkIO $ looper so
 
-  bracket (forkIO (forever $ looper so)) killThread $ \_ -> do
     withINotify $ \inotify -> do
-      addWatch inotify [Create] so_dir_bs (notified so so_dir)
+      lock <- newEmptyMVar
+      addWatch inotify [Create] so_dir_bs (notified so so_dir lock tid)
       -- idling
-      forever $ do
-        threadDelay 1000000
-        pure ()
+
+      takeMVar lock
+      putStrLn "reach here"

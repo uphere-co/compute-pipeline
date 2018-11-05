@@ -12,7 +12,7 @@ import Network.Wai (Application, responseBuilder)
 myApp :: MVar Int -> Application
 myApp countRef _ respond = do
   modifyMVar countRef $ \count -> do
-    let count' = count + 100
+    let count' = count + 1102
         msg = fromByteString $ B.pack (show count')
     r <- respond $ responseBuilder
            status200
