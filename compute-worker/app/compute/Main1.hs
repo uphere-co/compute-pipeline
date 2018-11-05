@@ -31,6 +31,17 @@ import Worker.Type
 
 
 
+        {- let mConfig = MasterConfig
+                      { masterBroadcastPort = TCPPort (port (computeServer compcfg))
+                      , masterGlobalIP      = hostg (computeServer compcfg)
+                      , masterLocalIP       = hostl (computeServer compcfg)
+                      }
+            initStatus =
+              Status $
+                HM.fromList $
+                  map (\c -> (cellName c,Nothing)) (computeCells compcfg)
+-}
+
 {-
 workerMain :: IO ()
 workerMain =
