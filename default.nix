@@ -43,6 +43,7 @@ in
   packages = {
     cloud-haskell-util   = ./cloud-haskell-util;
     compute-so           = ./compute-so;
+    compute-so-types     = ./compute-so-types;
     compute-worker       = ./compute-worker;
     jobqueue-client      = ./jobqueue-client;
     jobqueue-server      = ./jobqueue-server;
@@ -92,6 +93,7 @@ in
     ghc = [
       "cloud-haskell-util"
       "compute-so"
+      "compute-so-types"
       "compute-worker"
       "jobqueue-client"
       "jobqueue-server"
