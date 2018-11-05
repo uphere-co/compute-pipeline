@@ -16,10 +16,10 @@ myApp countRef _ respond = do
   modifyMVar countRef $ \count -> do
     let count' = count + 1102
         msg = fromByteString $ B.pack (show count')
-    fmap
-      (count',)
+    responseReceived <-
       respond $
         responseBuilder
           status200
           [("Content-Type", "text/plain")]
           msg
+    pure (count',responseReceived)

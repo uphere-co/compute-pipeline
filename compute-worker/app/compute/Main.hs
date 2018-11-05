@@ -32,19 +32,19 @@ import           System.INotify      ( Event(..)
                                      )
 import           System.IO           ( hPutStrLn, stderr )
 -----------------
-import           Types              ( SOHandles(..) )
+import           Worker.Type         ( SOHandle(..) )
 -----------------
 
 
-looper :: UpdatableSO SOHandles -> IO ()
+looper :: UpdatableSO SOHandle -> IO ()
 looper so = do
   visitorCount <- newMVar 0
 
-  withSO so $ \SOHandles{..} ->
-    run 3994 $ someApplication visitorCount
+  withSO so $ \SOHandle{..} ->
+    run 3994 $ soApplication visitorCount
 
 
-notified :: UpdatableSO SOHandles -> FilePath -> MVar () -> ThreadId -> Event -> IO ()
+notified :: UpdatableSO SOHandle -> FilePath -> MVar () -> ThreadId -> Event -> IO ()
 notified so basepath lock tid e =
  case e of
    Created _ fp_bs -> do
