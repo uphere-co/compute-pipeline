@@ -126,7 +126,6 @@ executable compute
                      , filepath
                      , errors
                      , hinotify
-                     , http-reverse-proxy
                      , http-types
                      , optparse-applicative
                      , text
@@ -138,10 +137,11 @@ executable compute
                      , cloud-haskell-util
                      --
                      , compute-worker
+                     , compute-so-types
                      --
                      , ghc
                      , ghc-hotswap
-                     , ghc-hotswap-types
+                     -- , ghc-hotswap-types
   hs-source-dirs:      app/compute
   default-language:    Haskell2010
   extra-libraries:     pthread

@@ -33,17 +33,16 @@ import Types
 -----------------
 import Blaze.ByteString.Builder (fromByteString)
 import Network.HTTP.Types (status200)
-import Network.HTTP.ReverseProxy ()
 import Network.Wai (responseBuilder)
 import Network.Wai.Handler.Warp (run)
 
 
 looper :: UpdatableSO SOHandles -> IO ()
 looper so = do
-  threadDelay 2000000
-  withSO so $ \SOHandles{..} -> do
-    putStrLn $ "someData = " ++ show someData
-    someFn 7
+  visitorCount <- newMVar 0
+
+  withSO so $ \SOHandles{..} ->
+    run 3994 $ someApplication visitorCount
 
 
 notified :: UpdatableSO SOHandles -> FilePath -> Event -> IO ()
@@ -57,8 +56,8 @@ notified so basepath e =
    _ -> pure ()
 
 
-main' :: IO ()
-main' = do
+main :: IO ()
+main = do
   args <- getArgs
   so_path <- case args of
     [p] -> return p
@@ -71,28 +70,9 @@ main' = do
 
 
   bracket (forkIO (forever $ looper so)) killThread $ \_ -> do
-    -- forkIO $
     withINotify $ \inotify -> do
       addWatch inotify [Create] so_dir_bs (notified so so_dir)
       -- idling
       forever $ do
         threadDelay 1000000
         pure ()
-
-
-application countRef _ respond = do
-  modifyMVar countRef $ \count -> do
-    let count' = count +1
-        msg = fromByteString $ B.pack (show count')
-    r <- respond $ responseBuilder
-           status200
-           [("Content-Type", "text/plain")]
-           msg
-    pure (count', r)
-
-main :: IO ()
-main = do
-  visitorCount <- newMVar 0
-
-  run 3994 $
-    application visitorCount

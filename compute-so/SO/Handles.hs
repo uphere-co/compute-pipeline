@@ -10,17 +10,16 @@ module SO.Handles
   ( hsNewSOHandle
   ) where
 
-import Foreign
+import Foreign (StablePtr(..),newStablePtr)
 
-import Types
+import Types (SOHandles(..))
 
-import SO.MyCode
+import SO.MyCode (myApp)
 
 foreign export ccall "hs_soHandles"
   hsNewSOHandle :: IO (StablePtr SOHandles)
 
 hsNewSOHandle :: IO (StablePtr SOHandles)
 hsNewSOHandle = newStablePtr SOHandles
-  { someData = "I live in a shared object"
-  , someFn = myFunction
+  { someApplication = myApp
   }

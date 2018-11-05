@@ -1,12 +1,21 @@
--- Copyright 2017-present, Facebook, Inc.
--- All rights reserved.
---
--- This source code is licensed under the license found in the
--- LICENSE file in the root directory of this source tree.
-
+{-# LANGUAGE OverloadedStrings #-}
 module SO.MyCode
-  ( myFunction
+  ( myApp
   ) where
 
-myFunction :: Int -> IO ()
-myFunction i = putStrLn $ "testingABCDE: to 10: " ++ show (10 + i)
+import Blaze.ByteString.Builder (fromByteString)
+import Control.Concurrent.MVar (MVar,modifyMVar)
+import qualified Data.ByteString.Char8 as B
+import Network.HTTP.Types (status200)
+import Network.Wai (Application, responseBuilder)
+
+myApp :: MVar Int -> Application
+myApp countRef _ respond = do
+  modifyMVar countRef $ \count -> do
+    let count' = count + 100
+        msg = fromByteString $ B.pack (show count')
+    r <- respond $ responseBuilder
+           status200
+           [("Content-Type", "text/plain")]
+           msg
+    pure (count', r)

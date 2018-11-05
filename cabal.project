@@ -1,6 +1,7 @@
 packages:
   cloud-haskell-util/
   compute-so/
+  compute-so-types/
   compute-worker/
   jobqueue-client/
   jobqueue-server/
