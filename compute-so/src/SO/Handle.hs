@@ -3,18 +3,19 @@ module SO.Handle
   ( hsNewSOHandle
   ) where
 
-import Foreign     ( StablePtr(..), newStablePtr )
-import Worker.Type ( SOHandle(..) )
+import Control.Concurrent ( newMVar )
+import Foreign            ( StablePtr(..), newStablePtr )
+import Worker.Type        ( SOHandle(..) )
 ------
 import SO.MyCode ( myApp )
 
 
-foreign export ccall "hs_soHandles"
+foreign export ccall "hs_soHandle"
   hsNewSOHandle :: IO (StablePtr SOHandle)
 
-
 hsNewSOHandle :: IO (StablePtr SOHandle)
-hsNewSOHandle =
+hsNewSOHandle = do
+  countRef <- newMVar (0 :: Int)
   newStablePtr SOHandle
-               { soApplication = myApp
+               { soApplication = myApp countRef
                }

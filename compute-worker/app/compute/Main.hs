@@ -13,14 +13,31 @@ module Main where
 
 import           Control.Concurrent  ( MVar, ThreadId
                                      , forkIO, killThread
-                                     , newEmptyMVar, newMVar, putMVar, takeMVar
+                                     , newEmptyMVar, putMVar, takeMVar
                                      )
-import           Control.Exception   ( throwIO, ErrorCall(..) )
+import           Control.Error.Util  ( failWith )
 import           Control.Monad       ( forever, void, when )
+import           Control.Monad.IO.Class ( liftIO )
+import           Control.Monad.Trans.Except ( ExceptT(..) )
+import           Data.Aeson          ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
-import           GHC.Hotswap        ( UpdatableSO, registerHotswap, swapSO, withSO )
+import           Data.List           ( find )
+import           GHC.Hotswap         ( UpdatableSO
+                                     , registerHotswap, swapSO, withSO )
 import           Network.Wai.Handler.Warp ( run )
-import           System.Environment  ( getArgs )
+import           Options.Applicative ( Parser
+                                     , (<**>)
+                                     , command
+                                     , execParser
+                                     , help
+                                     , helper
+                                     , info
+                                     , long
+                                     , progDesc
+                                     , short
+                                     , strOption
+                                     , subparser
+                                     )
 import           System.FilePath     ( (</>)
                                      , takeDirectory
                                      , takeExtension
@@ -32,16 +49,57 @@ import           System.INotify      ( Event(..)
                                      )
 import           System.IO           ( hPutStrLn, stderr )
 -----------------
-import           Worker.Type         ( SOHandle(..) )
+import           CloudHaskell.Type   ( handleError )
+import           Worker.Type         ( ComputeConfig(..)
+                                     , ComputeWorkerOption(..)
+                                     , SOHandle(..)
+                                     , WorkerRole(..)
+                                     , cellName
+                                     )
 -----------------
 
 
-looper :: UpdatableSO SOHandle -> IO ()
-looper so = do
-  visitorCount <- newMVar 0
+pOptions :: Parser ComputeWorkerOption
+pOptions = ComputeWorkerOption
+           <$> strOption ( long "lang"
+                        <> short 'l'
+                        <> help "Language engine configuration"
+                         )
+           <*> strOption ( long "compute"
+                        <> short 'c'
+                        <> help "Compute pipeline configuration"
+                         )
 
+pSOFile :: Parser FilePath
+pSOFile = strOption ( long "sofile"
+                   <> short 's'
+                   <> help "SO File"
+                    )
+
+
+pCommand :: Parser WorkerRole
+pCommand =
+  subparser
+     ( command "master"
+         (info
+           (Master <$> pOptions <*> pSOFile)
+           (progDesc "running as master")
+         )
+    <> command "slave"
+         (info
+           (Slave  <$> strOption (long "name" <> short 'n' <> help "Cell name")
+                   <*> pOptions
+                   <*> pSOFile
+           )
+           (progDesc "running as slave")
+         )
+     )
+
+
+looper :: UpdatableSO SOHandle -> WorkerRole -> IO ()
+looper so role =
   withSO so $ \SOHandle{..} ->
-    run 3994 $ soApplication visitorCount
+    run 3994 $ soApplication role
 
 
 notified :: UpdatableSO SOHandle -> FilePath -> MVar () -> ThreadId -> Event -> IO ()
@@ -59,22 +117,37 @@ notified so basepath lock tid e =
 
 main :: IO ()
 main = do
-  putStrLn "start orchestrator"
-  args <- getArgs
-  so_path <- case args of
-    [p] -> return p
-    _ -> throwIO (ErrorCall "must give file path of first .so as an arg")
 
-  let so_dir = takeDirectory so_path
-      so_dir_bs = B.pack (so_dir)
+  handleError $ do
+    cmd <- liftIO $ execParser (info (pCommand <**> helper) (progDesc "compute"))
+    case cmd of
+      role@(Master opt so_path) -> do
+        _compcfg :: ComputeConfig <-
+          ExceptT $
+            eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
+        liftIO $ do
+          putStrLn "start orchestrator"
+          let so_dir = takeDirectory so_path
+              so_dir_bs = B.pack (so_dir)
 
-  so <- registerHotswap "hs_soHandles" so_path
+          so <- registerHotswap "hs_soHandle" so_path
 
-  forever $ do
-    tid <- forkIO $ looper so
+          forever $ do
+            tid <- forkIO $ looper so role
 
-    withINotify $ \inotify -> do
-      lock <- newEmptyMVar
-      addWatch inotify [Create] so_dir_bs (notified so so_dir lock tid)
-      -- idling
-      void $ takeMVar lock
+            withINotify $ \inotify -> do
+              lock <- newEmptyMVar
+              addWatch inotify [Create] so_dir_bs (notified so so_dir lock tid)
+              -- idling
+              void $ takeMVar lock
+
+      Slave cname opt _ -> do
+        compcfg :: ComputeConfig
+          <- ExceptT $
+               eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
+        _cellcfg <-
+          failWith "no such cell" $
+            find (\c -> cellName c == cname) (computeCells compcfg)
+
+
+        pure ()

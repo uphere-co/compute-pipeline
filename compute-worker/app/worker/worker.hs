@@ -37,13 +37,13 @@ import           CloudHaskell.Type                     ( TCPPort(..)
                                                        , SlaveConfig(..)
                                                        )
 import           CloudHaskell.Util                     ( lookupRouter )
---
-import           ComputeOld                            ( computeMain )
-import           Compute.Task                          ( rtable )
-import           Compute.Type                          ( ComputeConfig(..)
+import           Worker.Type                           ( ComputeConfig(..)
                                                        , NetworkConfig(..)
                                                        , CellConfig(..)
                                                        )
+--
+import           ComputeOld                            ( computeMain )
+import           Compute.Task                          ( rtable )
 import           Compute.Type.Status ( Status(..) )
 
 

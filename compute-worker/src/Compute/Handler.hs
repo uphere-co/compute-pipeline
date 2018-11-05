@@ -27,8 +27,8 @@ import           Task.CoreNLP                              ( QCoreNLP, RCoreNLP 
 import           Task.SemanticParser                       ( ComputeQuery(..)
                                                            , ComputeResult(..)
                                                            )
+-- import           Worker.Type                               ()
 --
-import           Compute.Type
 import           Compute.Type.Status                       ( nodeStatusIsServing
                                                            , nodeStatusNumServed
                                                            , Status
