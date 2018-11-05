@@ -13,7 +13,7 @@ module Main where
 
 import           Control.Concurrent  ( MVar, ThreadId
                                      , forkIO, killThread
-                                     , newEmptyMVar, newMVar, putMVar, takeMVar
+                                     , newEmptyMVar, putMVar, takeMVar
                                      )
 import           Control.Exception   ( throwIO, ErrorCall(..) )
 import           Control.Monad       ( forever, void, when )
@@ -38,10 +38,10 @@ import           Worker.Type         ( SOHandle(..) )
 
 looper :: UpdatableSO SOHandle -> IO ()
 looper so = do
-  visitorCount <- newMVar 0
+  -- visitorCount <- newMVar 0
 
   withSO so $ \SOHandle{..} ->
-    run 3994 $ soApplication visitorCount
+    run 3994 soApplication
 
 
 notified :: UpdatableSO SOHandle -> FilePath -> MVar () -> ThreadId -> Event -> IO ()
@@ -68,7 +68,7 @@ main = do
   let so_dir = takeDirectory so_path
       so_dir_bs = B.pack (so_dir)
 
-  so <- registerHotswap "hs_soHandles" so_path
+  so <- registerHotswap "hs_soHandle" so_path
 
   forever $ do
     tid <- forkIO $ looper so
