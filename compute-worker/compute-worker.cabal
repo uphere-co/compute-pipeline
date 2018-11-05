@@ -117,6 +117,7 @@ executable worker
 
 executable compute
   main-is:             Main.hs
+  other-modules:       Main1
   build-depends:       base
                      , aeson
                      , bytestring
@@ -141,4 +142,9 @@ executable compute
   extra-libraries:     pthread
 
   c-sources:           app/compute/HotswapMain.c
-  ghc-options: -rdynamic -fwhole-archive-hs-libs -no-hs-main
+  ghc-options:         -rdynamic
+                       -fwhole-archive-hs-libs
+                       -no-hs-main
+                       -Wall
+                       -Werror
+                       -fno-warn-unused-do-bind
