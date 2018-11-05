@@ -138,4 +138,3 @@ main' =
                    () <- expect -- this is a kill signal.
                    pure ()
             )
-

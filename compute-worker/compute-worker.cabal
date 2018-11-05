@@ -120,15 +120,20 @@ executable compute
   other-modules:       Main1
   build-depends:       base
                      , aeson
+                     , blaze-builder
                      , bytestring
                      , distributed-process-lifted
                      , filepath
                      , errors
                      , hinotify
+                     , http-reverse-proxy
+                     , http-types
                      , optparse-applicative
                      , text
                      , transformers
                      , unordered-containers
+                     , wai
+                     , warp
                      --
                      , cloud-haskell-util
                      --

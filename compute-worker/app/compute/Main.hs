@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards          #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TypeSynonymInstances     #-}
+{-# OPTIONS_GHC -w #-}
 -- compute-worker is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
 -- With configuration, master and named slave will be assigned with
@@ -29,8 +30,12 @@ import Control.Monad
 import System.Environment
 import GHC.Hotswap
 import Types
-
-
+-----------------
+import Blaze.ByteString.Builder (fromByteString)
+import Network.HTTP.Types (status200)
+import Network.HTTP.ReverseProxy ()
+import Network.Wai (responseBuilder)
+import Network.Wai.Handler.Warp (run)
 
 
 looper :: UpdatableSO SOHandles -> IO ()
@@ -52,8 +57,8 @@ notified so basepath e =
    _ -> pure ()
 
 
-main :: IO ()
-main = do
+main' :: IO ()
+main' = do
   args <- getArgs
   so_path <- case args of
     [p] -> return p
@@ -73,3 +78,21 @@ main = do
       forever $ do
         threadDelay 1000000
         pure ()
+
+
+application countRef _ respond = do
+  modifyMVar countRef $ \count -> do
+    let count' = count +1
+        msg = fromByteString $ B.pack (show count')
+    r <- respond $ responseBuilder
+           status200
+           [("Content-Type", "text/plain")]
+           msg
+    pure (count', r)
+
+main :: IO ()
+main = do
+  visitorCount <- newMVar 0
+
+  run 3994 $
+    application visitorCount
