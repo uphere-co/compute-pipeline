@@ -141,11 +141,9 @@ executable compute
                      --
                      , ghc
                      , ghc-hotswap
-                     -- , ghc-hotswap-types
   hs-source-dirs:      app/compute
   default-language:    Haskell2010
   extra-libraries:     pthread
-
   c-sources:           app/compute/HotswapMain.c
   ghc-options:         -rdynamic
                        -fwhole-archive-hs-libs
