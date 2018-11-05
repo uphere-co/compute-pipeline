@@ -67,6 +67,7 @@ library
                 , task-semantic-parser
                 , uphere-network-util
                 , wiki-ner
+                , compute-so-types
 
   exposed-modules:
                     Compute
@@ -75,7 +76,6 @@ library
                   , Compute.Handler
                   , Compute.Network
                   , Compute.Task
-                  , Compute.Type
                   , Compute.Type.Status
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded
@@ -101,6 +101,7 @@ executable worker
                      , unordered-containers
                      --
                      , cloud-haskell-util
+                     , compute-so-types
                      --
                      , compute-worker
   hs-source-dirs:      app/worker
