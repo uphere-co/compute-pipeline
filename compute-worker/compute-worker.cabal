@@ -46,6 +46,7 @@ library
                 , optparse-applicative
                 , process
                 , rank1dynamic
+                , servant
                 , stm
                 , text
                 , time
@@ -76,6 +77,7 @@ library
                   , Compute.Handler
                   , Compute.Network
                   , Compute.Task
+                  , Compute.Type
                   , Compute.Type.Status
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded
@@ -129,6 +131,7 @@ executable compute
                      , hinotify
                      , http-types
                      , optparse-applicative
+                     , servant-client
                      , text
                      , transformers
                      , unordered-containers

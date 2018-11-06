@@ -18,8 +18,7 @@ import           Options.Applicative      ( Parser, (<**>)
                                           , long, info, progDesc, short
                                           , strOption
                                           )
-import           Servant                  ( Capture, Handler, Get, JSON, Proxy(..), Server
-                                          , (:<|>)((:<|>)), (:>)
+import           Servant                  ( Handler, Server, (:<|>)((:<|>))
                                           , err404, throwError
                                           , serve
                                           )
@@ -27,15 +26,8 @@ import           System.IO                ( hPutStrLn, stderr )
 ------
 import           CloudHaskell.Type        ( handleError )
 import           Worker.Type              ( ComputeConfig(..), CellConfig(..) )
-
-
--- * api
-
-type OrcApi = "compute" :> Get '[JSON] ComputeConfig
-         :<|> "cell"    :> Capture "nodeName" Text :> Get '[JSON] CellConfig
-
-orcApi :: Proxy OrcApi
-orcApi = Proxy
+------
+import           Compute.Type             ( OrcApi, orcApi )
 
 
 -- * app
