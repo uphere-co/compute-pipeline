@@ -163,6 +163,8 @@ executable orchestrator
                      , errors
                      , http-types
                      , optparse-applicative
+                     , servant
+                     , servant-server
                      , text
                      , transformers
                      , unordered-containers
