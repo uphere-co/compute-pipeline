@@ -12,6 +12,7 @@ import           Data.Aeson               ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
 import           Data.List                ( find )
 import           Data.Text                ( Text )
+import qualified Data.Text as T
 import           Network.Wai.Handler.Warp ( runSettings, defaultSettings, setBeforeMainLoop, setPort )
 import           Options.Applicative      ( Parser, (<**>)
                                           , execParser, help, helper
@@ -32,17 +33,17 @@ import           Compute.Type             ( OrcApi, orcApi )
 
 -- * app
 
-runApp :: ComputeConfig -> IO ()
-runApp cfg = do
+runApp :: (ComputeConfig,FilePath) -> IO ()
+runApp (cfg,sofile) = do
   let port = 3123
       settings =
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-  runSettings settings $ serve orcApi (server cfg)
+  runSettings settings $ serve orcApi (server (cfg,sofile))
 
-server :: ComputeConfig -> Server OrcApi
-server cfg = getCompute cfg :<|> getCell cfg
+server :: (ComputeConfig,FilePath) -> Server OrcApi
+server (cfg,sofile) = getCompute cfg :<|> getCell cfg :<|> getSO sofile
 
 --  getItems :<|> getItemById
 
@@ -56,14 +57,22 @@ getCell cfg name =
        Nothing -> throwError err404
        Just c  -> pure c
 
+getSO :: FilePath -> Handler Text
+getSO fp = pure (T.pack fp)
 
-data OrcOpt = OrcOpt { computeConfigFile :: FilePath }
+data OrcOpt = OrcOpt { computeConfigFile :: FilePath
+                     , soFilePath :: FilePath
+                     }
             deriving Show
 
 pOptions :: Parser OrcOpt
 pOptions = OrcOpt <$> strOption ( long "compute"
                                <> short 'c'
                                <> help "Compute pipeline configuration"
+                                )
+                  <*> strOption ( long "so"
+                               <> short 's'
+                               <> help "SO file path"
                                 )
 
 
@@ -74,4 +83,4 @@ main = do
     compcfg :: ComputeConfig <-
       ExceptT $
         eitherDecodeStrict <$> B.readFile (computeConfigFile opt)
-    liftIO $ runApp compcfg
+    liftIO $ runApp (compcfg,soFilePath opt)

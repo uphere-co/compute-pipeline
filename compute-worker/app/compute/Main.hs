@@ -17,10 +17,10 @@ import           Control.Concurrent  ( MVar, ThreadId
                                      , forkIO, killThread
                                      , newEmptyMVar, putMVar, takeMVar
                                      )
-import           Control.Error.Util  ( failWith )
+import           Control.Error.Util  ( failWith, hoistEither )
 import           Control.Monad       ( forever, void, when )
 import           Control.Monad.IO.Class ( liftIO )
-import           Control.Monad.Trans.Except ( ExceptT(..) )
+import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
 import           Data.Aeson          ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
 import           Data.List           ( find )
@@ -67,7 +67,9 @@ import           Worker.Type         ( CellConfig(..)
 ------
 import           Compute.Type        ( OrcApi, orcApi )
 
-data WorkerConfig = WorkerConfig { workerConfigOrcURL :: Text }
+data WorkerConfig = WorkerConfig { workerConfigOrcURL :: Text
+                                 , workerConfigName :: Text
+                                 }
                   deriving Show
 
 pOptions :: Parser WorkerConfig
@@ -76,38 +78,15 @@ pOptions = WorkerConfig
                         <> short 'o'
                         <> help "URL for orchestrator"
                          )
+           <*> strOption ( long "name"
+                        <> short 'n'
+                        <> help "Name of this node"
+                         )
 
-{-
-pSOFile :: Parser FilePath
-pSOFile = strOption ( long "sofile"
-                   <> short 's'
-                   <> help "SO File"
-                    )
-
-
-pCommand :: Parser WorkerRole
-pCommand =
-  subparser
-     ( command "master"
-         (info
-           (Master <$> pOptions <*> pSOFile)
-           (progDesc "running as master")
-         )
-    <> command "slave"
-         (info
-           (Slave  <$> strOption (long "name" <> short 'n' <> help "Cell name")
-                   <*> pOptions
-                   <*> pSOFile
-           )
-           (progDesc "running as slave")
-         )
-     )
--}
-
-looper :: UpdatableSO SOHandle -> WorkerRole -> IO ()
-looper so role =
+looper :: UpdatableSO SOHandle -> IO ()
+looper so =
   withSO so $ \SOHandle{..} ->
-    run 3994 $ soApplication role
+    run 3994 $ soApplication
 
 
 notified :: UpdatableSO SOHandle -> FilePath -> MVar () -> ThreadId -> Event -> IO ()
@@ -125,8 +104,9 @@ notified so basepath lock tid e =
 
 getCompute :: ClientM ComputeConfig
 getCell :: Text -> ClientM CellConfig
+getSO :: ClientM Text
 
-getCompute :<|> getCell = client orcApi
+getCompute :<|> getCell :<|> getSO = client orcApi
 
 main :: IO ()
 main = do
@@ -138,26 +118,27 @@ main = do
     liftIO $ print url
     manager <- liftIO $ newManager defaultManagerSettings
     let env = ClientEnv manager baseurl Nothing
-    r <- liftIO $ runClientM getCompute env
-    liftIO $ print r
-    {-
-      ExceptT $
-        eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
+    cellcfg <-
+      withExceptT show $ ExceptT $
+        runClientM (getCell (workerConfigName cfg)) env
+    so_path <-
+      fmap T.unpack $
+        withExceptT show $ ExceptT $
+          runClientM (getSO) env
+    liftIO $ print (cellcfg,so_path)
 
-           _compcfg :: ComputeConfig <-
-        liftIO $ do
-          putStrLn "start orchestrator"
-          let so_dir = takeDirectory so_path
-              so_dir_bs = B.pack (so_dir)
+    liftIO $ do
+      putStrLn "start orchestrator"
+      let so_dir = takeDirectory so_path
+          so_dir_bs = B.pack (so_dir)
 
-          so <- registerHotswap "hs_soHandle" so_path
+      so <- registerHotswap "hs_soHandle" so_path
 
-          forever $ do
-            tid <- forkIO $ looper so role
+      forever $ do
+        tid <- forkIO $ looper so
 
-            withINotify $ \inotify -> do
-              lock <- newEmptyMVar
-              addWatch inotify [Create] so_dir_bs (notified so so_dir lock tid)
-              -- idling
-              void $ takeMVar lock
-  -}
+        withINotify $ \inotify -> do
+          lock <- newEmptyMVar
+          addWatch inotify [Create] so_dir_bs (notified so so_dir lock tid)
+          -- idling
+          void $ takeMVar lock

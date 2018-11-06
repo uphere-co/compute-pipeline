@@ -15,6 +15,7 @@ import           Worker.Type              ( ComputeConfig(..), CellConfig(..) )
 
 type OrcApi = "compute" :> Get '[JSON] ComputeConfig
          :<|> "cell"    :> Capture "nodeName" Text :> Get '[JSON] CellConfig
+         :<|> "so"      :> Get '[JSON] Text
 
 orcApi :: Proxy OrcApi
 orcApi = Proxy
