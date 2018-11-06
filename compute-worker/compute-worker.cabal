@@ -152,3 +152,31 @@ executable compute
                        -Wall
                        -Werror
                        -fno-warn-unused-do-bind
+
+executable orchestrator
+  main-is:             Main.hs
+  build-depends:       base
+                     , aeson
+                     , blaze-builder
+                     , bytestring
+                     , filepath
+                     , errors
+                     , http-types
+                     , optparse-applicative
+                     , servant
+                     , servant-server
+                     , text
+                     , transformers
+                     , unordered-containers
+                     , wai
+                     , warp
+                     --
+                     , cloud-haskell-util
+                     , compute-worker
+                     , compute-so-types
+  hs-source-dirs:      app/orchestrator
+  default-language:    Haskell2010
+  ghc-options:         -O2
+                       -Wall
+                       -Werror
+                       -fno-warn-unused-do-bind
