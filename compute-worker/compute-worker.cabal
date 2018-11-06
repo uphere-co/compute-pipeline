@@ -129,8 +129,10 @@ executable compute
                      , filepath
                      , errors
                      , hinotify
+                     , http-client
                      , http-types
                      , optparse-applicative
+                     , servant
                      , servant-client
                      , text
                      , transformers

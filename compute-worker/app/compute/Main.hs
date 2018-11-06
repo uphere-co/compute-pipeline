@@ -3,7 +3,9 @@
 {-# LANGUAGE OverloadedStrings        #-}
 {-# LANGUAGE RecordWildCards          #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
+{-# LANGUAGE TypeApplications         #-}
 {-# LANGUAGE TypeSynonymInstances     #-}
+{-# OPTIONS_GHC -w #-}
 -- compute-worker is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
 -- With configuration, master and named slave will be assigned with
@@ -22,8 +24,11 @@ import           Control.Monad.Trans.Except ( ExceptT(..) )
 import           Data.Aeson          ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
 import           Data.List           ( find )
+import           Data.Text           ( Text )
+import qualified Data.Text as T
 import           GHC.Hotswap         ( UpdatableSO
                                      , registerHotswap, swapSO, withSO )
+import           Network.HTTP.Client
 import           Network.Wai.Handler.Warp ( run )
 import           Options.Applicative ( Parser
                                      , (<**>)
@@ -38,6 +43,8 @@ import           Options.Applicative ( Parser
                                      , strOption
                                      , subparser
                                      )
+import           Servant.API
+import           Servant.Client
 import           System.FilePath     ( (</>)
                                      , takeDirectory
                                      , takeExtension
@@ -48,28 +55,29 @@ import           System.INotify      ( Event(..)
                                      , withINotify
                                      )
 import           System.IO           ( hPutStrLn, stderr )
------------------
+------
 import           CloudHaskell.Type   ( handleError )
-import           Worker.Type         ( ComputeConfig(..)
+import           Worker.Type         ( CellConfig(..)
+                                     , ComputeConfig(..)
                                      , ComputeWorkerOption(..)
                                      , SOHandle(..)
                                      , WorkerRole(..)
                                      , cellName
                                      )
------------------
+------
+import           Compute.Type        ( OrcApi, orcApi )
 
+data WorkerConfig = WorkerConfig { workerConfigOrcURL :: Text }
+                  deriving Show
 
-pOptions :: Parser ComputeWorkerOption
-pOptions = ComputeWorkerOption
-           <$> strOption ( long "lang"
-                        <> short 'l'
-                        <> help "Language engine configuration"
+pOptions :: Parser WorkerConfig
+pOptions = WorkerConfig
+           <$> strOption ( long "orc"
+                        <> short 'o'
+                        <> help "URL for orchestrator"
                          )
-           <*> strOption ( long "compute"
-                        <> short 'c'
-                        <> help "Compute pipeline configuration"
-                         )
 
+{-
 pSOFile :: Parser FilePath
 pSOFile = strOption ( long "sofile"
                    <> short 's'
@@ -94,7 +102,7 @@ pCommand =
            (progDesc "running as slave")
          )
      )
-
+-}
 
 looper :: UpdatableSO SOHandle -> WorkerRole -> IO ()
 looper so role =
@@ -115,16 +123,28 @@ notified so basepath lock tid e =
    _ -> pure ()
 
 
+getCompute :: ClientM ComputeConfig
+getCell :: Text -> ClientM CellConfig
+
+getCompute :<|> getCell = client orcApi
+
 main :: IO ()
 main = do
 
-  handleError $ do
-    cmd <- liftIO $ execParser (info (pCommand <**> helper) (progDesc "compute"))
-    case cmd of
-      role@(Master opt so_path) -> do
-        _compcfg :: ComputeConfig <-
-          ExceptT $
-            eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
+  handleError @String $ do
+    cfg <- liftIO $ execParser (info (pOptions <**> helper) (progDesc "worker"))
+    let url = workerConfigOrcURL cfg
+    baseurl <- liftIO $ parseBaseUrl (T.unpack url)
+    liftIO $ print url
+    manager <- liftIO $ newManager defaultManagerSettings
+    let env = ClientEnv manager baseurl Nothing
+    r <- liftIO $ runClientM getCompute env
+    liftIO $ print r
+    {-
+      ExceptT $
+        eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
+
+           _compcfg :: ComputeConfig <-
         liftIO $ do
           putStrLn "start orchestrator"
           let so_dir = takeDirectory so_path
@@ -140,14 +160,4 @@ main = do
               addWatch inotify [Create] so_dir_bs (notified so so_dir lock tid)
               -- idling
               void $ takeMVar lock
-
-      Slave cname opt _ -> do
-        compcfg :: ComputeConfig
-          <- ExceptT $
-               eitherDecodeStrict <$> B.readFile (servComputeConfig opt)
-        _cellcfg <-
-          failWith "no such cell" $
-            find (\c -> cellName c == cname) (computeCells compcfg)
-
-
-        pure ()
+  -}
