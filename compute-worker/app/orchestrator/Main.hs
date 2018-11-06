@@ -2,84 +2,84 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 module Main where
 
-import           Blaze.ByteString.Builder ( fromByteString )
-import           Control.Concurrent.MVar  ( MVar, modifyMVar, newMVar )
-import           Data.Aeson
+import           Control.Monad.IO.Class   ( liftIO )
+import           Control.Monad.Trans.Except ( ExceptT(ExceptT) )
+import           Data.Aeson               ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
+import           Data.List                ( find )
 import           Data.Text                ( Text )
-import           GHC.Generics
-import           Network.HTTP.Types       ( status200 )
-import           Network.Wai              ( Application, responseBuilder )
-import           Network.Wai.Handler.Warp ( run, runSettings, defaultSettings, setBeforeMainLoop, setPort )
-import           Servant
-import           System.IO
+import           Network.Wai.Handler.Warp ( runSettings, defaultSettings, setBeforeMainLoop, setPort )
+import           Options.Applicative      ( Parser, (<**>)
+                                          , execParser, help, helper
+                                          , long, info, progDesc, short
+                                          , strOption
+                                          )
+import           Servant                  ( Capture, Handler, Get, JSON, Proxy(..), Server
+                                          , (:<|>)((:<|>)), (:>)
+                                          , err404, throwError
+                                          , serve
+                                          )
+import           System.IO                ( hPutStrLn, stderr )
+------
+import           CloudHaskell.Type        ( handleError )
+import           Worker.Type              ( ComputeConfig(..), CellConfig(..) )
+
 
 -- * api
 
-type ItemApi =
-  "item" :> Get '[JSON] [Item] :<|>
-  "item" :> Capture "itemId" Integer :> Get '[JSON] Item
+type OrcApi = "compute" :> Get '[JSON] ComputeConfig
+         :<|> "cell"    :> Capture "nodeName" Text :> Get '[JSON] CellConfig
 
-itemApi :: Proxy ItemApi
-itemApi = Proxy
+orcApi :: Proxy OrcApi
+orcApi = Proxy
 
 
 -- * app
 
-runApp :: IO ()
-runApp = do
+runApp :: ComputeConfig -> IO ()
+runApp cfg = do
   let port = 3123
       settings =
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-  runSettings settings $ serve itemApi server
+  runSettings settings $ serve orcApi (server cfg)
 
-server :: Server ItemApi
-server = getItems :<|> getItemById
+server :: ComputeConfig -> Server OrcApi
+server cfg = getCompute cfg :<|> getCell cfg
 
-getItems :: Handler [Item]
-getItems = pure [exampleItem]
+--  getItems :<|> getItemById
 
-getItemById :: Integer -> Handler Item
-getItemById = \case
-  0 -> pure exampleItem
-  _ -> throwError err404
+getCompute :: ComputeConfig -> Handler ComputeConfig
+getCompute cfg = pure cfg
 
-exampleItem :: Item
-exampleItem = Item 0 "example item"
-
--- *
-
-data Item = Item { itemId :: Integer
-                 , itemText :: Text
-                 }
-          deriving (Eq, Show, Generic)
-
-instance ToJSON Item
-instance FromJSON Item
+getCell :: ComputeConfig -> Text -> Handler CellConfig
+getCell cfg name =
+  let mc = find (\c -> cellName c == name) (computeCells cfg)
+  in case mc of
+       Nothing -> throwError err404
+       Just c  -> pure c
 
 
-application :: MVar Int -> Application
-application countRef _ respond = do
-  modifyMVar countRef $ \count -> do
-    let count' = count + 1102
-        msg =    fromByteString (B.pack (show count'))
-    responseReceived <-
-      respond $
-        responseBuilder
-          status200
-          [("Content-Type", "text/plain")]
-          msg
-    pure (count',responseReceived)
+data OrcOpt = OrcOpt { computeConfigFile :: FilePath }
+            deriving Show
+
+pOptions :: Parser OrcOpt
+pOptions = OrcOpt <$> strOption ( long "compute"
+                               <> short 'c'
+                               <> help "Compute pipeline configuration"
+                                )
+
 
 main :: IO ()
 main = do
-  putStrLn "orchestrator starts"
-  {- ref <- newMVar (0 :: Int)
-  run 32929 $ application ref
-  -}
-  runApp
+  handleError $ do
+    opt <- liftIO $ execParser (info (pOptions <**> helper) (progDesc "orchestrator"))
+    compcfg :: ComputeConfig <-
+      ExceptT $
+        eitherDecodeStrict <$> B.readFile (computeConfigFile opt)
+    liftIO $ runApp compcfg
