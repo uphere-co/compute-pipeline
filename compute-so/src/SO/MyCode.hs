@@ -12,12 +12,12 @@ import           Network.Wai              ( Application, responseBuilder )
 ------
 import           Worker.Type (WorkerRole)
 
-myApp :: MVar Int -> WorkerRole -> Application
-myApp countRef role _ respond = do
+myApp :: MVar Int -> Application
+myApp countRef _ respond = do
   modifyMVar countRef $ \count -> do
     let count' = count + 1102
         msg =    fromByteString (B.pack (show count'))
-              <> fromByteString (B.pack (show role))
+--              <> fromByteString (B.pack (show role))
     responseReceived <-
       respond $
         responseBuilder

@@ -54,6 +54,6 @@ data WorkerRole =
 
 -- | The set of functions that you want to expose from your shared object
 data SOHandle = SOHandle
-                { soApplication :: WorkerRole -> Application
+                { soApplication :: Application
                 }
               deriving (Generic, NFData)
