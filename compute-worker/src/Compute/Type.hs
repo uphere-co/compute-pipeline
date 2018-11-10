@@ -14,12 +14,21 @@ import           Worker.Type              ( ComputeConfig(..), CellConfig(..) )
 
 -- * api
 
-type OrcApi = "compute" :> Get '[JSON] ComputeConfig
-         :<|> "cell"    :> Capture "nodeName" Text :> Get '[JSON] CellConfig
-         :<|> "so"      :> Get '[JSON] Text
-         :<|> "update"  :> ReqBody '[JSON] Text :> Post '[JSON] ()
-         :<|> "stream"  :> WebSocket
+type OrcApiNoStream =
+       "compute" :> Get '[JSON] ComputeConfig
+  :<|> "cell"    :> Capture "nodeName" Text :> Get '[JSON] CellConfig
+  :<|> "so"      :> Get '[JSON] Text
+  :<|> "update"  :> ReqBody '[JSON] Text :> Post '[JSON] ()
+
+
+type OrcApi =
+       "stream"  :> WebSocket
+  :<|> OrcApiNoStream
+
+
+orcApiNoStream :: Proxy OrcApiNoStream
+orcApiNoStream = Proxy
+
 
 orcApi :: Proxy OrcApi
 orcApi = Proxy
-

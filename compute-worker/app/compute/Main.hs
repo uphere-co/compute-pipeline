@@ -30,6 +30,7 @@ import           GHC.Hotswap         ( UpdatableSO
                                      , registerHotswap, swapSO, withSO )
 import           Network.HTTP.Client
 import           Network.Wai.Handler.Warp ( run )
+import           Network.WebSockets.Client ( receive, withConnection )
 import           Options.Applicative ( Parser
                                      , (<**>)
                                      , command
@@ -43,8 +44,10 @@ import           Options.Applicative ( Parser
                                      , strOption
                                      , subparser
                                      )
-import           Servant.API
-import           Servant.Client
+import           Servant.API         ((:<|>)((:<|>)))
+import           Servant.Client      ( ClientEnv(..), ClientM
+                                     , client, parseBaseUrl, runClientM
+                                     )
 import           System.FilePath     ( (</>)
                                      , takeDirectory
                                      , takeExtension
@@ -65,7 +68,7 @@ import           Worker.Type         ( CellConfig(..)
                                      , cellName
                                      )
 ------
-import           Compute.Type        ( OrcApi, orcApi )
+import           Compute.Type        ( OrcApiNoStream, orcApiNoStream )
 
 data WorkerConfig = WorkerConfig { workerConfigOrcURL :: Text
                                  , workerConfigName :: Text
@@ -105,12 +108,12 @@ notified so basepath lock tid e =
 getCompute :: ClientM ComputeConfig
 getCell :: Text -> ClientM CellConfig
 getSO :: ClientM Text
+postUpdate :: Text -> ClientM ()
+getCompute :<|> getCell :<|> getSO :<|> postUpdate = client orcApiNoStream
 
-getCompute :<|> getCell :<|> getSO = client orcApi
 
 main :: IO ()
 main = do
-
   handleError @String $ do
     cfg <- liftIO $ execParser (info (pOptions <**> helper) (progDesc "worker"))
     let url = workerConfigOrcURL cfg
@@ -128,14 +131,16 @@ main = do
     liftIO $ print (cellcfg,so_path)
 
     liftIO $ do
-      putStrLn "start orchestrator"
       let so_dir = takeDirectory so_path
           so_dir_bs = B.pack (so_dir)
 
       so <- registerHotswap "hs_soHandle" so_path
 
+
+
       forever $ do
         tid <- forkIO $ looper so
+
 
         withINotify $ \inotify -> do
           lock <- newEmptyMVar

@@ -140,6 +140,7 @@ executable compute
                      , unordered-containers
                      , wai
                      , warp
+                     , wss-client
                      --
                      , cloud-haskell-util
                      --

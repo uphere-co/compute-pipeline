@@ -56,11 +56,11 @@ server :: (ComputeConfig,FilePath)
        -> TChan FilePath  -- ^ write-only broadcast channel
        -> Server OrcApi
 server (cfg,sofile) ref chan =
-       getCompute cfg
+       wsStream chan
+  :<|> getCompute cfg
   :<|> getCell cfg
   :<|> getSO sofile
   :<|> postUpdate ref chan
-  :<|> wsStream chan
 
 
 getCompute :: ComputeConfig -> Handler ComputeConfig
