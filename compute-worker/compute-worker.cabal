@@ -172,6 +172,7 @@ executable orchestrator
                      , servant
                      , servant-server
                      , servant-websockets
+                     , stm
                      , text
                      , transformers
                      , unordered-containers

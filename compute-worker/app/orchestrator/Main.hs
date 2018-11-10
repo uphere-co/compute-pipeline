@@ -4,9 +4,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -w #-}
 module Main where
 
 import           Control.Concurrent       ( threadDelay )
+import           Control.Concurrent.STM   ( TVar, newTVarIO, readTVarIO, writeTVar
+                                          , atomically  )
+import           Control.Concurrent.STM.TChan ( TChan, newBroadcastTChanIO
+                                              , dupTChan, readTChan, writeTChan )
+import           Control.Monad            ( forever, when )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Except ( ExceptT(ExceptT) )
 import           Data.Aeson               ( eitherDecodeStrict )
@@ -26,7 +32,6 @@ import           Servant                  ( Handler, Server, (:<|>)((:<|>))
                                           , err404, throwError
                                           , serve
                                           )
--- import           Servant.API.WebSocket    ( WebSocket )
 import           System.IO                ( hPutStrLn, stderr )
 ------
 import           CloudHaskell.Type        ( handleError )
@@ -44,12 +49,21 @@ runApp (cfg,sofile) = do
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-  runSettings settings $ serve orcApi (server (cfg,sofile))
+  ref <- newTVarIO sofile
+  chan <- newBroadcastTChanIO
+  runSettings settings $ serve orcApi (server (cfg,sofile) ref chan)
 
-server :: (ComputeConfig,FilePath) -> Server OrcApi
-server (cfg,sofile) =
-  getCompute cfg :<|> getCell cfg :<|> getSO sofile :<|> wsStream
 
+server :: (ComputeConfig,FilePath)
+       -> TVar FilePath
+       -> TChan FilePath  -- ^ write-only broadcast channel
+       -> Server OrcApi
+server (cfg,sofile) ref chan =
+       getCompute cfg
+  :<|> getCell cfg
+  :<|> getSO sofile
+  :<|> postUpdate ref chan
+  :<|> wsStream chan
 
 
 getCompute :: ComputeConfig -> Handler ComputeConfig
@@ -65,14 +79,25 @@ getCell cfg name =
 getSO :: FilePath -> Handler Text
 getSO fp = pure (T.pack fp)
 
+postUpdate :: TVar FilePath -> TChan FilePath -> Text -> Handler ()
+postUpdate ref chan txt = liftIO $ do
+  let fp = T.unpack txt
+  fp' <- readTVarIO ref
+  when (fp /= fp') $ do
+    print fp
+    atomically $ do
+      writeTVar ref fp
+      writeTChan chan fp
 
-wsStream :: Connection -> Handler ()
-wsStream c = do
-  liftIO $ forkPingThread c 10
-  liftIO . for_ [1..] $ \i -> do
-    sendTextData c (T.pack $ show (i :: Int)) >> threadDelay 1000000
+
+wsStream :: TChan FilePath -> Connection -> Handler ()
+wsStream chan c = liftIO $ do
+  chan' <- atomically (dupTChan chan)
+  forkPingThread c 10
+  forever $ do
+    fp <- atomically $ readTChan chan'
+    sendTextData c (T.pack fp)
   
---   undefined
 
 data OrcOpt = OrcOpt { computeConfigFile :: FilePath
                      , soFilePath :: FilePath
