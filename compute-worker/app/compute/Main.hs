@@ -45,7 +45,7 @@ import           Options.Applicative ( Parser
                                      , subparser
                                      )
 import           Servant.API         ((:<|>)((:<|>)))
-import           Servant.Client      ( ClientEnv(..), ClientM
+import           Servant.Client      ( BaseUrl(..), ClientEnv(..), ClientM
                                      , client, parseBaseUrl, runClientM
                                      )
 import           System.FilePath     ( (</>)
@@ -112,13 +112,25 @@ postUpdate :: Text -> ClientM ()
 getCompute :<|> getCell :<|> getSO :<|> postUpdate = client orcApiNoStream
 
 
+mkWSURL :: BaseUrl -> String
+mkWSURL baseurl =
+     "ws://"
+  ++ baseUrlHost baseurl
+  ++ ":"
+  ++ show (baseUrlPort baseurl)
+  </> baseUrlPath baseurl
+  </> "stream"
+
+
 main :: IO ()
 main = do
   handleError @String $ do
     cfg <- liftIO $ execParser (info (pOptions <**> helper) (progDesc "worker"))
     let url = workerConfigOrcURL cfg
     baseurl <- liftIO $ parseBaseUrl (T.unpack url)
+    let wsurl = mkWSURL baseurl
     liftIO $ print url
+    liftIO $ print wsurl
     manager <- liftIO $ newManager defaultManagerSettings
     let env = ClientEnv manager baseurl Nothing
     cellcfg <-
@@ -138,7 +150,7 @@ main = do
       so <- registerHotswap "hs_soHandle" so_path
 
       forkIO $
-        WS.withConnection "ws://localhost:3123/stream" $ \conn ->
+        WS.withConnection wsurl $ \conn ->
           forever $ do
             txt :: SOInfo <- WS.receiveData conn
             print txt
