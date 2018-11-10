@@ -4,6 +4,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+
+-- Orchestrator and workers have websocket communictation.
+--
+-- Orchestrator has two APIs related to shared object update notification:
+--
+-- * `/update` post API and
+-- * `/streaming` websocket API.
+--
+-- Each compute worker clients are supposed to connect `/streaming` websocket API when
+-- they are initialized. They are initialized with the current state of shared object
+-- path information retrieved from orchestrator via `/so` API.
+--
+-- By `/update`, a client (potential deployment script) will post a new path of share
+-- object. Then, orchestrator broadcasts the update to all of its clients. Worker has
+-- an event loop to be awakened by the push notification (using TVar retry-when-different
+-- cycle), and then it reloads SO file.
 module Main where
 
 import           Control.Concurrent.STM   ( TVar, newTVarIO, readTVarIO, writeTVar
@@ -99,7 +115,7 @@ wsStream chan c = liftIO $ do
   forever $ do
     soinfo <- atomically $ readTChan chan'
     sendBinaryData c soinfo
-  
+
 
 data OrcOpt = OrcOpt { computeConfigFile :: FilePath
                      , soFilePath :: FilePath
