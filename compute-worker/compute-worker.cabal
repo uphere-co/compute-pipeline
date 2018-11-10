@@ -133,6 +133,7 @@ executable compute
                      , hinotify
                      , http-client
                      , http-types
+                     , monad-loops
                      , optparse-applicative
                      , servant
                      , servant-client

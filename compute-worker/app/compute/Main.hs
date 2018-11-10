@@ -25,6 +25,7 @@ import           Control.Concurrent.STM
 import           Control.Error.Util  ( failWith, hoistEither )
 import           Control.Monad       ( forever, void, when )
 import           Control.Monad.IO.Class ( liftIO )
+import           Control.Monad.Loops ( iterateM_ )
 import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
 import           Data.Aeson          ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
@@ -99,7 +100,11 @@ app sohandle =
     run 3994 $ soApplication
 
 
-looper :: TVar SOInfo -> UpdatableSO SOHandle -> Maybe (SOInfo,ThreadId) -> IO ()
+looper ::
+     TVar SOInfo
+  -> UpdatableSO SOHandle
+  -> Maybe (SOInfo,ThreadId)
+  -> IO (Maybe (SOInfo,ThreadId))
 looper ref sohandle mcurr  = do
   newso <-
     atomically $ do
@@ -113,7 +118,8 @@ looper ref sohandle mcurr  = do
     killThread tid
     swapSO sohandle (soinfoFilePath newso)
   tid' <- forkIO $ app sohandle
-  looper ref sohandle (Just (newso,tid'))
+  pure (Just (newso,tid'))
+
 
 
 getCompute :: ClientM ComputeConfig
@@ -168,4 +174,4 @@ main = do
             soinfo :: SOInfo <- WS.receiveData conn
             atomically $ writeTVar ref soinfo
 
-      looper ref so Nothing
+      iterateM_ (looper ref so) Nothing
