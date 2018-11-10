@@ -4,10 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
-{-# OPTIONS_GHC -w #-}
 module Main where
 
-import           Control.Concurrent       ( threadDelay )
 import           Control.Concurrent.STM   ( TVar, newTVarIO, readTVarIO, writeTVar
                                           , atomically  )
 import           Control.Concurrent.STM.TChan ( TChan, newBroadcastTChanIO
@@ -17,7 +15,6 @@ import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Except ( ExceptT(ExceptT) )
 import           Data.Aeson               ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
-import           Data.Foldable            ( for_ )
 import           Data.List                ( find )
 import           Data.Text                ( Text )
 import qualified Data.Text as T
