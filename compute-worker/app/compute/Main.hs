@@ -5,42 +5,34 @@
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TypeApplications         #-}
 {-# LANGUAGE TypeSynonymInstances     #-}
-{-# OPTIONS_GHC -w #-}
--- compute-worker is the main distributed computing process for a generic
+-- compute worker is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
--- With configuration, master and named slave will be assigned with
--- IP address and they automatically find each other.
--- Once ready, master will start a required process as ordered by REST API.
+-- Orchestrator will assign which mode a given compute worker should play a role of.
+--
+-- In Master mode, the worker has its own external communication channel via REST web
+-- API. Through the API, a client will order a command invoking computation and master
+-- is supervising slaves for the task.
 module Main where
 
-import           Control.Concurrent  ( MVar, ThreadId
-                                     , forkIO, killThread
-                                     , newEmptyMVar, putMVar, takeMVar
-                                     )
+import           Control.Concurrent  ( ThreadId, forkIO, killThread )
 import           Control.Concurrent.STM
                                      ( TVar, atomically
                                      , newTVarIO, readTVar, writeTVar
                                      , retry
                                      )
-import           Control.Error.Util  ( failWith, hoistEither )
-import           Control.Monad       ( forever, void, when )
+import           Control.Monad       ( forever )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
 import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
-import           Data.Aeson          ( eitherDecodeStrict )
-import qualified Data.ByteString.Char8 as B
 import           Data.Foldable       ( for_ )
-import           Data.List           ( find )
 import           Data.Text           ( Text )
 import qualified Data.Text as T
-import           GHC.Hotswap         ( UpdatableSO
-                                     , registerHotswap, swapSO, withSO )
+import           GHC.Hotswap         ( UpdatableSO, registerHotswap, swapSO, withSO )
 import           Network.HTTP.Client
 import           Network.Wai.Handler.Warp ( run )
 import qualified Network.WebSockets.Client as WS ( receiveData, withConnection )
 import           Options.Applicative ( Parser
                                      , (<**>)
-                                     , command
                                      , execParser
                                      , help
                                      , helper
@@ -49,33 +41,21 @@ import           Options.Applicative ( Parser
                                      , progDesc
                                      , short
                                      , strOption
-                                     , subparser
                                      )
 import           Servant.API         ((:<|>)((:<|>)))
 import           Servant.Client      ( BaseUrl(..), ClientEnv(..), ClientM
                                      , client, parseBaseUrl, runClientM
                                      )
-import           System.FilePath     ( (</>)
-                                     , takeDirectory
-                                     , takeExtension
-                                     )
-import           System.INotify      ( Event(..)
-                                     , EventVariety(..)
-                                     , addWatch
-                                     , withINotify
-                                     )
+import           System.FilePath     ( (</>) )
 import           System.IO           ( hPutStrLn, stderr )
 ------
 import           CloudHaskell.Type   ( handleError )
-import           Worker.Type         ( CellConfig(..)
+import           Worker.Type         ( CellConfig
                                      , ComputeConfig(..)
-                                     , ComputeWorkerOption(..)
                                      , SOHandle(..)
-                                     , WorkerRole(..)
-                                     , cellName
                                      )
 ------
-import           Compute.Type        ( OrcApiNoStream, SOInfo(..), orcApiNoStream )
+import           Compute.Type        ( SOInfo(..), orcApiNoStream )
 
 data WorkerConfig = WorkerConfig { workerConfigOrcURL :: Text
                                  , workerConfigName :: Text
@@ -111,10 +91,10 @@ looper ref sohandle mcurr  = do
       newso <- readTVar ref
       case mcurr of
         Nothing -> pure newso
-        Just (currso,tid) ->
+        Just (currso,_) ->
           if currso == newso then retry else pure newso
   for_ mcurr $ \(_,tid) -> do
-    putStrLn ("update to" ++ show newso)
+    hPutStrLn stderr ("update to" ++ show newso)
     killThread tid
     swapSO sohandle (soinfoFilePath newso)
   tid' <- forkIO $ app sohandle
@@ -158,12 +138,7 @@ main = do
         withExceptT show $ ExceptT $
           runClientM (getSO) env
     liftIO $ print (cellcfg,so_path)
-
-
     liftIO $ do
-      let so_dir = takeDirectory so_path
-          so_dir_bs = B.pack (so_dir)
-
       so <- registerHotswap "hs_soHandle" so_path
 
       ref <- newTVarIO (SOInfo so_path)
