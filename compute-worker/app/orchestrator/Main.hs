@@ -49,18 +49,18 @@ runApp (cfg,sofile) = do
       soinfo = SOInfo sofile
   ref <- newTVarIO soinfo
   chan <- newBroadcastTChanIO
-  runSettings settings $ serve orcApi (server (cfg,soinfo) ref chan)
+  runSettings settings $ serve orcApi (server cfg ref chan)
 
 
-server :: (ComputeConfig,SOInfo)
+server :: ComputeConfig
        -> TVar SOInfo
        -> TChan SOInfo  -- ^ write-only broadcast channel
        -> Server OrcApi
-server (cfg,soinfo) ref chan =
+server cfg ref chan =
        wsStream chan
   :<|> getCompute cfg
   :<|> getCell cfg
-  :<|> getSO soinfo
+  :<|> getSO ref
   :<|> postUpdate ref chan
 
 
@@ -74,8 +74,12 @@ getCell cfg name =
        Nothing -> throwError err404
        Just c  -> pure c
 
-getSO :: SOInfo -> Handler Text
-getSO (SOInfo fp) = pure (T.pack fp)
+
+getSO :: TVar SOInfo -> Handler Text
+getSO ref = liftIO $ do
+  SOInfo fp <- readTVarIO ref
+  pure (T.pack fp)
+
 
 postUpdate :: TVar SOInfo -> TChan SOInfo -> Text -> Handler ()
 postUpdate ref chan txt = liftIO $ do
@@ -94,7 +98,7 @@ wsStream chan c = liftIO $ do
   forkPingThread c 10
   forever $ do
     soinfo <- atomically $ readTChan chan'
-    sendBinaryData c soinfo -- (T.pack fp)
+    sendBinaryData c soinfo
   
 
 data OrcOpt = OrcOpt { computeConfigFile :: FilePath

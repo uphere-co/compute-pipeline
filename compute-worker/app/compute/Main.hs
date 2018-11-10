@@ -17,12 +17,18 @@ import           Control.Concurrent  ( MVar, ThreadId
                                      , forkIO, killThread
                                      , newEmptyMVar, putMVar, takeMVar
                                      )
+import           Control.Concurrent.STM
+                                     ( TVar, atomically
+                                     , newTVarIO, readTVar, writeTVar
+                                     , retry
+                                     )
 import           Control.Error.Util  ( failWith, hoistEither )
 import           Control.Monad       ( forever, void, when )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
 import           Data.Aeson          ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
+import           Data.Foldable       ( for_ )
 import           Data.List           ( find )
 import           Data.Text           ( Text )
 import qualified Data.Text as T
@@ -86,23 +92,28 @@ pOptions = WorkerConfig
                         <> help "Name of this node"
                          )
 
-looper :: UpdatableSO SOHandle -> IO ()
-looper so =
-  withSO so $ \SOHandle{..} ->
+
+app :: UpdatableSO SOHandle -> IO ()
+app sohandle =
+  withSO sohandle $ \SOHandle{..} ->
     run 3994 $ soApplication
 
 
-notified :: UpdatableSO SOHandle -> FilePath -> MVar () -> ThreadId -> Event -> IO ()
-notified so basepath lock tid e =
- case e of
-   Created _ fp_bs -> do
-     let fp =  basepath </> B.unpack fp_bs
-     when (takeExtension fp == ".o") $ do
-       hPutStrLn stderr ("swap SO file: " ++ fp)
-       killThread tid
-       swapSO so fp
-       putMVar lock ()
-   _ -> pure ()
+looper :: TVar SOInfo -> UpdatableSO SOHandle -> Maybe (SOInfo,ThreadId) -> IO ()
+looper ref sohandle mcurr  = do
+  newso <-
+    atomically $ do
+      newso <- readTVar ref
+      case mcurr of
+        Nothing -> pure newso
+        Just (currso,tid) ->
+          if currso == newso then retry else pure newso
+  for_ mcurr $ \(_,tid) -> do
+    putStrLn ("update to" ++ show newso)
+    killThread tid
+    swapSO sohandle (soinfoFilePath newso)
+  tid' <- forkIO $ app sohandle
+  looper ref sohandle (Just (newso,tid'))
 
 
 getCompute :: ClientM ComputeConfig
@@ -149,18 +160,12 @@ main = do
 
       so <- registerHotswap "hs_soHandle" so_path
 
+      ref <- newTVarIO (SOInfo so_path)
+
       forkIO $
         WS.withConnection wsurl $ \conn ->
           forever $ do
-            txt :: SOInfo <- WS.receiveData conn
-            print txt
+            soinfo :: SOInfo <- WS.receiveData conn
+            atomically $ writeTVar ref soinfo
 
-      forever $ do
-        tid <- forkIO $ looper so
-
-
-        withINotify $ \inotify -> do
-          lock <- newEmptyMVar
-          addWatch inotify [Create] so_dir_bs (notified so so_dir lock tid)
-          -- idling
-          void $ takeMVar lock
+      looper ref so Nothing

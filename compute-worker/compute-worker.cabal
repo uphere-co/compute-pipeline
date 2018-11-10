@@ -136,6 +136,7 @@ executable compute
                      , optparse-applicative
                      , servant
                      , servant-client
+                     , stm
                      , text
                      , transformers
                      , unordered-containers
