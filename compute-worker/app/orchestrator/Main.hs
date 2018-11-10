@@ -6,14 +6,17 @@
 {-# LANGUAGE TypeOperators #-}
 module Main where
 
+import           Control.Concurrent       ( threadDelay )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Except ( ExceptT(ExceptT) )
 import           Data.Aeson               ( eitherDecodeStrict )
 import qualified Data.ByteString.Char8 as B
+import           Data.Foldable            ( for_ )
 import           Data.List                ( find )
 import           Data.Text                ( Text )
 import qualified Data.Text as T
 import           Network.Wai.Handler.Warp ( runSettings, defaultSettings, setBeforeMainLoop, setPort )
+import           Network.WebSockets       ( Connection, forkPingThread, sendTextData )
 import           Options.Applicative      ( Parser, (<**>)
                                           , execParser, help, helper
                                           , long, info, progDesc, short
@@ -23,6 +26,7 @@ import           Servant                  ( Handler, Server, (:<|>)((:<|>))
                                           , err404, throwError
                                           , serve
                                           )
+-- import           Servant.API.WebSocket    ( WebSocket )
 import           System.IO                ( hPutStrLn, stderr )
 ------
 import           CloudHaskell.Type        ( handleError )
@@ -43,9 +47,10 @@ runApp (cfg,sofile) = do
   runSettings settings $ serve orcApi (server (cfg,sofile))
 
 server :: (ComputeConfig,FilePath) -> Server OrcApi
-server (cfg,sofile) = getCompute cfg :<|> getCell cfg :<|> getSO sofile
+server (cfg,sofile) =
+  getCompute cfg :<|> getCell cfg :<|> getSO sofile :<|> wsStream
 
---  getItems :<|> getItemById
+
 
 getCompute :: ComputeConfig -> Handler ComputeConfig
 getCompute cfg = pure cfg
@@ -59,6 +64,15 @@ getCell cfg name =
 
 getSO :: FilePath -> Handler Text
 getSO fp = pure (T.pack fp)
+
+
+wsStream :: Connection -> Handler ()
+wsStream c = do
+  liftIO $ forkPingThread c 10
+  liftIO . for_ [1..] $ \i -> do
+    sendTextData c (T.pack $ show (i :: Int)) >> threadDelay 1000000
+  
+--   undefined
 
 data OrcOpt = OrcOpt { computeConfigFile :: FilePath
                      , soFilePath :: FilePath

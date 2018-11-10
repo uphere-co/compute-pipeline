@@ -47,6 +47,7 @@ library
                 , process
                 , rank1dynamic
                 , servant
+                , servant-websockets
                 , stm
                 , text
                 , time
@@ -170,11 +171,13 @@ executable orchestrator
                      , optparse-applicative
                      , servant
                      , servant-server
+                     , servant-websockets
                      , text
                      , transformers
                      , unordered-containers
                      , wai
                      , warp
+                     , websockets
                      --
                      , cloud-haskell-util
                      , compute-worker
