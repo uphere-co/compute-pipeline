@@ -19,7 +19,7 @@ import           Data.List                ( find )
 import           Data.Text                ( Text )
 import qualified Data.Text as T
 import           Network.Wai.Handler.Warp ( runSettings, defaultSettings, setBeforeMainLoop, setPort )
-import           Network.WebSockets       ( Connection, forkPingThread, sendTextData )
+import           Network.WebSockets       ( Connection, forkPingThread, sendBinaryData )
 import           Options.Applicative      ( Parser, (<**>)
                                           , execParser, help, helper
                                           , long, info, progDesc, short
@@ -34,7 +34,7 @@ import           System.IO                ( hPutStrLn, stderr )
 import           CloudHaskell.Type        ( handleError )
 import           Worker.Type              ( ComputeConfig(..), CellConfig(..) )
 ------
-import           Compute.Type             ( OrcApi, orcApi )
+import           Compute.Type             ( OrcApi, SOInfo(..), orcApi )
 
 
 -- * app
@@ -46,20 +46,21 @@ runApp (cfg,sofile) = do
         setPort port $
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
-  ref <- newTVarIO sofile
+      soinfo = SOInfo sofile
+  ref <- newTVarIO soinfo
   chan <- newBroadcastTChanIO
-  runSettings settings $ serve orcApi (server (cfg,sofile) ref chan)
+  runSettings settings $ serve orcApi (server (cfg,soinfo) ref chan)
 
 
-server :: (ComputeConfig,FilePath)
-       -> TVar FilePath
-       -> TChan FilePath  -- ^ write-only broadcast channel
+server :: (ComputeConfig,SOInfo)
+       -> TVar SOInfo
+       -> TChan SOInfo  -- ^ write-only broadcast channel
        -> Server OrcApi
-server (cfg,sofile) ref chan =
+server (cfg,soinfo) ref chan =
        wsStream chan
   :<|> getCompute cfg
   :<|> getCell cfg
-  :<|> getSO sofile
+  :<|> getSO soinfo
   :<|> postUpdate ref chan
 
 
@@ -73,27 +74,27 @@ getCell cfg name =
        Nothing -> throwError err404
        Just c  -> pure c
 
-getSO :: FilePath -> Handler Text
-getSO fp = pure (T.pack fp)
+getSO :: SOInfo -> Handler Text
+getSO (SOInfo fp) = pure (T.pack fp)
 
-postUpdate :: TVar FilePath -> TChan FilePath -> Text -> Handler ()
+postUpdate :: TVar SOInfo -> TChan SOInfo -> Text -> Handler ()
 postUpdate ref chan txt = liftIO $ do
   let fp = T.unpack txt
-  fp' <- readTVarIO ref
+  SOInfo fp' <- readTVarIO ref
   when (fp /= fp') $ do
     print fp
     atomically $ do
-      writeTVar ref fp
-      writeTChan chan fp
+      writeTVar ref (SOInfo fp)
+      writeTChan chan (SOInfo fp)
 
 
-wsStream :: TChan FilePath -> Connection -> Handler ()
+wsStream :: TChan SOInfo -> Connection -> Handler ()
 wsStream chan c = liftIO $ do
   chan' <- atomically (dupTChan chan)
   forkPingThread c 10
   forever $ do
-    fp <- atomically $ readTChan chan'
-    sendTextData c (T.pack fp)
+    soinfo <- atomically $ readTChan chan'
+    sendBinaryData c soinfo -- (T.pack fp)
   
 
 data OrcOpt = OrcOpt { computeConfigFile :: FilePath

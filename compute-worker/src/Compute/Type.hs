@@ -1,9 +1,14 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 module Compute.Type where
 
+import           Data.Binary              ( Binary, decode, encode )
 import           Data.Proxy               ( Proxy(Proxy) )
 import           Data.Text                ( Text )
+import           GHC.Generics             ( Generic )
+import           Network.WebSockets       ( WebSocketsData(..), DataMessage(..) )
 import           Servant.API              ( Capture, Get, JSON, Post, ReqBody
                                           , (:<|>), (:>)
                                           )
@@ -32,3 +37,13 @@ orcApiNoStream = Proxy
 
 orcApi :: Proxy OrcApi
 orcApi = Proxy
+
+
+data SOInfo = SOInfo { soinfoFilePath :: FilePath }
+            deriving (Show, Eq, Generic, Binary)
+
+instance WebSocketsData SOInfo where
+  fromDataMessage (Text bl _) = decode bl
+  fromDataMessage (Binary bl) = decode bl
+  fromLazyByteString = decode
+  toLazyByteString = encode

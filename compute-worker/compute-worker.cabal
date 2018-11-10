@@ -53,6 +53,7 @@ library
                 , time
                 , transformers
                 , unordered-containers
+                , websockets
                 --
                 , cloud-haskell-util
                 , HCoreNLP

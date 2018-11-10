@@ -30,7 +30,7 @@ import           GHC.Hotswap         ( UpdatableSO
                                      , registerHotswap, swapSO, withSO )
 import           Network.HTTP.Client
 import           Network.Wai.Handler.Warp ( run )
-import           Network.WebSockets.Client ( receive, withConnection )
+import qualified Network.WebSockets.Client as WS ( receiveData, withConnection )
 import           Options.Applicative ( Parser
                                      , (<**>)
                                      , command
@@ -68,7 +68,7 @@ import           Worker.Type         ( CellConfig(..)
                                      , cellName
                                      )
 ------
-import           Compute.Type        ( OrcApiNoStream, orcApiNoStream )
+import           Compute.Type        ( OrcApiNoStream, SOInfo(..), orcApiNoStream )
 
 data WorkerConfig = WorkerConfig { workerConfigOrcURL :: Text
                                  , workerConfigName :: Text
@@ -130,13 +130,18 @@ main = do
           runClientM (getSO) env
     liftIO $ print (cellcfg,so_path)
 
+
     liftIO $ do
       let so_dir = takeDirectory so_path
           so_dir_bs = B.pack (so_dir)
 
       so <- registerHotswap "hs_soHandle" so_path
 
-
+      forkIO $
+        WS.withConnection "ws://localhost:3123/stream" $ \conn ->
+          forever $ do
+            txt :: SOInfo <- WS.receiveData conn
+            print txt
 
       forever $ do
         tid <- forkIO $ looper so
