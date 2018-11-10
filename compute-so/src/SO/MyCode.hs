@@ -15,7 +15,7 @@ import           Worker.Type (WorkerRole)
 myApp :: MVar Int -> Application
 myApp countRef _ respond = do
   modifyMVar countRef $ \count -> do
-    let count' = count + 1102
+    let count' = count + 13102
         msg =    fromByteString (B.pack (show count'))
 --              <> fromByteString (B.pack (show role))
     responseReceived <-
