@@ -74,7 +74,6 @@ looper ref sohandle mcurr  = do
   pure (Just (newso,tid'))
 
 
-
 getCompute :: ClientM ComputeConfig
 getCell :: Text -> ClientM CellConfig
 getSO :: ClientM Text
@@ -91,28 +90,30 @@ mkWSURL baseurl =
   </> baseUrlPath baseurl
   </> "stream"
 
-startWorker :: CellConfig -> BaseUrl -> FilePath -> IO ()
-startWorker cellcfg baseurl so_path = do
+
+-- | Actual worker implementation loading process.
+--   This loads shared object file and starts looping shared object update routine.
+loadWorkerSO :: CellConfig -> BaseUrl -> FilePath -> IO ()
+loadWorkerSO cellcfg baseurl so_path = do
   let wsurl = mkWSURL baseurl
   print wsurl
   print (cellcfg,so_path)
   so <- registerHotswap "hs_soHandle" so_path
-
   ref <- newTVarIO (SOInfo so_path)
-
   forkIO $
     WS.withConnection wsurl $ \conn ->
       forever $ do
         soinfo :: SOInfo <- WS.receiveData conn
         atomically $ writeTVar ref soinfo
-
   iterateM_ (looper ref so) Nothing
 
 
+-- | `runWorker` is the main function for a worker executable.
+--   With orchestrator URL and worker's name, it obtains the network information
+--   and its role from orchestrator and start actual worker routine.
 runWorker :: Text -> Text -> ExceptT String IO ()
 runWorker url name = do
   manager' <- liftIO $ newManager defaultManagerSettings
-  -- let url = workerConfigOrcURL cfg
   baseurl <- liftIO $ parseBaseUrl (T.unpack url)
   let env = ClientEnv manager' baseurl Nothing
   cellcfg <-
@@ -122,4 +123,4 @@ runWorker url name = do
     fmap T.unpack $
       withExceptT show $ ExceptT $
         runClientM (getSO) env
-  liftIO $ startWorker cellcfg baseurl so_path
+  liftIO $ loadWorkerSO cellcfg baseurl so_path
