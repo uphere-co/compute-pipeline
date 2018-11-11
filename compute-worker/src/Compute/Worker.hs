@@ -21,14 +21,20 @@ import           Control.Concurrent.STM
                                      , retry
                                      )
 import           Control.Monad       ( forever )
+import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
+import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
 import           Data.Foldable       ( for_ )
 import           Data.Text           ( Text )
+import qualified Data.Text as T
 import           GHC.Hotswap         ( UpdatableSO, registerHotswap, swapSO, withSO )
+import           Network.HTTP.Client ( defaultManagerSettings, newManager )
 import           Network.Wai.Handler.Warp ( run )
 import qualified Network.WebSockets.Client as WS ( receiveData, withConnection )
 import           Servant.API         ((:<|>)((:<|>)))
-import           Servant.Client      ( BaseUrl(..), ClientM, client )
+import           Servant.Client      ( BaseUrl(..), ClientM, ClientEnv(..)
+                                     , client, parseBaseUrl, runClientM
+                                     )
 import           System.FilePath     ( (</>) )
 import           System.IO           ( hPutStrLn, stderr )
 ------
@@ -85,8 +91,8 @@ mkWSURL baseurl =
   </> baseUrlPath baseurl
   </> "stream"
 
-runWorker :: CellConfig -> BaseUrl -> FilePath -> IO ()
-runWorker cellcfg baseurl so_path = do
+startWorker :: CellConfig -> BaseUrl -> FilePath -> IO ()
+startWorker cellcfg baseurl so_path = do
   let wsurl = mkWSURL baseurl
   print wsurl
   print (cellcfg,so_path)
@@ -102,3 +108,18 @@ runWorker cellcfg baseurl so_path = do
 
   iterateM_ (looper ref so) Nothing
 
+
+runWorker :: Text -> Text -> ExceptT String IO ()
+runWorker url name = do
+  manager' <- liftIO $ newManager defaultManagerSettings
+  -- let url = workerConfigOrcURL cfg
+  baseurl <- liftIO $ parseBaseUrl (T.unpack url)
+  let env = ClientEnv manager' baseurl Nothing
+  cellcfg <-
+    withExceptT show $ ExceptT $
+      runClientM (getCell name) env
+  so_path <-
+    fmap T.unpack $
+      withExceptT show $ ExceptT $
+        runClientM (getSO) env
+  liftIO $ startWorker cellcfg baseurl so_path
