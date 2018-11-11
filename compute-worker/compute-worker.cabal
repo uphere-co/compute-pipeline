@@ -30,7 +30,9 @@ library
                 , distributed-process
                 , distributed-process-lifted
                 , distributed-static
+                , errors
                 , filepath
+                , ghc-hotswap
                 , gitrev
                 , haskeline
                 , hashable
@@ -47,13 +49,18 @@ library
                 , process
                 , rank1dynamic
                 , servant
+                , servant-client
+                , servant-server
                 , servant-websockets
                 , stm
                 , text
                 , time
                 , transformers
                 , unordered-containers
+                , wai
+                , warp
                 , websockets
+                , wss-client
                 --
                 , cloud-haskell-util
                 , HCoreNLP
@@ -78,9 +85,11 @@ library
                   , ComputeOld
                   , Compute.Handler
                   , Compute.Network
+                  , Compute.Orchestrator
                   , Compute.Task
                   , Compute.Type
                   , Compute.Type.Status
+                  , Compute.Worker
   ghc-prof-options: -fprof-auto
   ghc-options:      -threaded
                     -Wall
@@ -130,20 +139,11 @@ executable compute
                      , distributed-process-lifted
                      , filepath
                      , errors
-                     , hinotify
-                     , http-client
-                     , http-types
-                     , monad-loops
                      , optparse-applicative
-                     , servant
-                     , servant-client
                      , stm
                      , text
                      , transformers
                      , unordered-containers
-                     , wai
-                     , warp
-                     , wss-client
                      --
                      , cloud-haskell-util
                      --
@@ -151,7 +151,6 @@ executable compute
                      , compute-so-types
                      --
                      , ghc
-                     , ghc-hotswap
   hs-source-dirs:      app/compute
   default-language:    Haskell2010
   extra-libraries:     pthread
@@ -167,26 +166,19 @@ executable orchestrator
   main-is:             Main.hs
   build-depends:       base
                      , aeson
-                     , blaze-builder
                      , bytestring
-                     , filepath
-                     , errors
                      , http-types
                      , optparse-applicative
                      , servant
                      , servant-server
                      , servant-websockets
-                     , stm
-                     , text
                      , transformers
                      , unordered-containers
-                     , wai
-                     , warp
                      , websockets
                      --
                      , cloud-haskell-util
-                     , compute-worker
                      , compute-so-types
+                     , compute-worker
   hs-source-dirs:      app/orchestrator
   default-language:    Haskell2010
   ghc-options:         -O2
