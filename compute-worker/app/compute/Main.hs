@@ -48,9 +48,10 @@ main = do
     let url = workerConfigOrcURL cfg
     baseurl <- liftIO $ parseBaseUrl (T.unpack url)
     let env = ClientEnv manager' baseurl Nothing
-    cellcfg <-
+    (role,cellcfg) <-
       withExceptT show $ ExceptT $
         runClientM (getCell (workerConfigName cfg)) env
+    liftIO $ print role
     so_path <-
       fmap T.unpack $
         withExceptT show $ ExceptT $

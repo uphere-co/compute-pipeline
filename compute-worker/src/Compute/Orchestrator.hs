@@ -25,11 +25,16 @@
 
 module Compute.Orchestrator where
 
-import           Control.Concurrent.STM   ( TVar, newTVarIO, readTVarIO, writeTVar
+import           Control.Concurrent.STM   ( TVar
+                                          , newTVarIO
+                                          , readTVar, readTVarIO
+                                          , writeTVar
                                           , atomically  )
 import           Control.Concurrent.STM.TChan ( TChan, newBroadcastTChanIO
                                               , dupTChan, readTChan, writeTChan )
-import           Control.Lens             ( (^.), makeLenses, view )
+import           Control.Lens             ( (&), (^.), (.~)
+                                          , makeLenses, view
+                                          )
 import           Control.Monad            ( forever, when )
 import           Control.Monad.IO.Class   ( liftIO )
 -- import           Data.HashMap.Strict      ( HashMap )
@@ -37,6 +42,7 @@ import           Data.List                ( find )
 import           Data.Monoid              ( mempty )
 import           Data.Text                ( Text )
 import qualified Data.Text as T
+import           Data.Traversable         ( for )
 import           Network.Wai.Handler.Warp ( runSettings, defaultSettings, setBeforeMainLoop, setPort )
 import           Network.WebSockets       ( Connection, forkPingThread, sendBinaryData )
 import           Servant                  ( Handler, Server, (:<|>)((:<|>))
@@ -98,13 +104,26 @@ getCompute sref = do
 
 getCell :: TVar OrcState -> Text -> Handler (WorkerRole,CellConfig)
 getCell sref name = do
-  state <- liftIO $ readTVarIO sref
-  let cfg = state ^. orcStateComputeConfig
-
-  let mc = find (\c -> cellName c == name) (computeCells cfg)
-  case mc of
+  mr <- liftIO $ atomically $ do
+    state <- readTVar sref
+    let cfg = state ^. orcStateComputeConfig
+    let mc = find (\c -> cellName c == name) (computeCells cfg)
+    -- use transformer
+    case mc of
+      Nothing -> pure Nothing
+      Just c -> do
+        case state ^. orcStateMasterWorker of
+          Nothing -> do
+            writeTVar sref (state & orcStateMasterWorker .~ Just name)
+            pure (Just (Master,c))
+          Just master ->
+            if name == master
+              then pure Nothing    -- TODO: use structured error
+              else pure (Just (Slave,c))
+  -- TODO: use structured error
+  case mr of
     Nothing -> throwError err404
-    Just c  -> pure (Master,c)
+    Just r -> pure r
 
 
 getSO :: TVar SOInfo -> Handler Text
@@ -131,5 +150,3 @@ wsStream chan c = liftIO $ do
   forever $ do
     soinfo <- atomically $ readTChan chan'
     sendBinaryData c soinfo
-
-
