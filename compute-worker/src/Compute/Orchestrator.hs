@@ -1,10 +1,12 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
-
+{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeOperators       #-}
+{-# OPTIONS_GHC -w #-}
+--
 -- Orchestrator and workers have websocket communictation.
 --
 -- Orchestrator has two APIs related to shared object update notification:
@@ -27,9 +29,12 @@ import           Control.Concurrent.STM   ( TVar, newTVarIO, readTVarIO, writeTV
                                           , atomically  )
 import           Control.Concurrent.STM.TChan ( TChan, newBroadcastTChanIO
                                               , dupTChan, readTChan, writeTChan )
+import           Control.Lens             ( (^.), makeLenses, view )
 import           Control.Monad            ( forever, when )
 import           Control.Monad.IO.Class   ( liftIO )
+-- import           Data.HashMap.Strict      ( HashMap )
 import           Data.List                ( find )
+import           Data.Monoid              ( mempty )
 import           Data.Text                ( Text )
 import qualified Data.Text as T
 import           Network.Wai.Handler.Warp ( runSettings, defaultSettings, setBeforeMainLoop, setPort )
@@ -40,9 +45,22 @@ import           Servant                  ( Handler, Server, (:<|>)((:<|>))
                                           )
 import           System.IO                ( hPutStrLn, stderr )
 ------
-import           Worker.Type              ( ComputeConfig(..), CellConfig(..) )
+import           Worker.Type              ( ComputeConfig(..)
+                                          , CellConfig(..)
+                                          , WorkerRole(..)
+                                          )
 ------
 import           Compute.Type             ( OrcApi, SOInfo(..), orcApi )
+
+
+
+data OrcState = OrcState  {
+    _orcStateComputeConfig :: ComputeConfig
+  , _orcStateMasterWorker :: Maybe Text
+  }
+  deriving (Show)
+
+makeLenses ''OrcState
 
 -- * app
 
@@ -54,32 +72,39 @@ runApp (cfg,sofile) = do
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
       soinfo = SOInfo sofile
+  sref <- newTVarIO (OrcState cfg mempty)
   ref <- newTVarIO soinfo
   chan <- newBroadcastTChanIO
-  runSettings settings $ serve orcApi (server cfg ref chan)
+  runSettings settings $ serve orcApi (server sref ref chan)
 
 
-server :: ComputeConfig
-       -> TVar SOInfo
-       -> TChan SOInfo  -- ^ write-only broadcast channel
+server :: TVar OrcState  -- ^ state
+       -> TVar SOInfo    -- ^ shared object
+       -> TChan SOInfo   -- ^ write-only broadcast channel
        -> Server OrcApi
-server cfg ref chan =
+server sref ref chan =
        wsStream chan
-  :<|> getCompute cfg
-  :<|> getCell cfg
+  :<|> getCompute sref
+  :<|> getCell sref
   :<|> getSO ref
   :<|> postUpdate ref chan
 
 
-getCompute :: ComputeConfig -> Handler ComputeConfig
-getCompute cfg = pure cfg
+getCompute :: TVar OrcState -> Handler ComputeConfig
+getCompute sref = do
+  state <- liftIO $ readTVarIO sref
+  pure (state^.orcStateComputeConfig)
 
-getCell :: ComputeConfig -> Text -> Handler CellConfig
-getCell cfg name =
+
+getCell :: TVar OrcState -> Text -> Handler (WorkerRole,CellConfig)
+getCell sref name = do
+  state <- liftIO $ readTVarIO sref
+  let cfg = state ^. orcStateComputeConfig
+
   let mc = find (\c -> cellName c == name) (computeCells cfg)
-  in case mc of
-       Nothing -> throwError err404
-       Just c  -> pure c
+  case mc of
+    Nothing -> throwError err404
+    Just c  -> pure (Master,c)
 
 
 getSO :: TVar SOInfo -> Handler Text

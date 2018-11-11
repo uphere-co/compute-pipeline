@@ -35,6 +35,7 @@ import           System.IO           ( hPutStrLn, stderr )
 import           Worker.Type         ( CellConfig
                                      , ComputeConfig(..)
                                      , SOHandle(..)
+                                     , WorkerRole(..)
                                      )
 ------
 import           Compute.Type        ( SOInfo(..), orcApiNoStream )
@@ -70,7 +71,7 @@ looper ref sohandle mcurr  = do
 
 
 getCompute :: ClientM ComputeConfig
-getCell :: Text -> ClientM CellConfig
+getCell :: Text -> ClientM (WorkerRole,CellConfig)
 getSO :: ClientM Text
 postUpdate :: Text -> ClientM ()
 getCompute :<|> getCell :<|> getSO :<|> postUpdate = client orcApiNoStream

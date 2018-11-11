@@ -43,13 +43,13 @@ data ComputeWorkerOption =
 
 data WorkerRole =
     Master
-      ComputeWorkerOption -- ^ options
-      FilePath            -- ^ so file
+{-      ComputeWorkerOption -- ^ options
+      FilePath            -- ^ so file -}
   | Slave
-      Text                -- ^ name
+{-      Text                -- ^ name
       ComputeWorkerOption -- ^ options
-      FilePath            -- ^ so file
-  deriving (Show,Eq,Ord,Generic,NFData)
+      FilePath            -- ^ so file -}
+  deriving (Show,Eq,Ord,Generic,NFData,FromJSON,ToJSON)
 
 
 -- | The set of functions that you want to expose from your shared object
