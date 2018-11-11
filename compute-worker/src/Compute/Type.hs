@@ -14,14 +14,17 @@ import           Servant.API              ( Capture, Get, JSON, Post, ReqBody
                                           )
 import           Servant.API.WebSocket    ( WebSocket )
 ------
-import           Worker.Type              ( ComputeConfig(..), CellConfig(..) )
+import           Worker.Type              ( ComputeConfig(..)
+                                          , CellConfig(..)
+                                          , WorkerRole(..)
+                                          )
 
 
 -- * api
 
 type OrcApiNoStream =
        "compute" :> Get '[JSON] ComputeConfig
-  :<|> "cell"    :> Capture "nodeName" Text :> Get '[JSON] CellConfig
+  :<|> "cell"    :> Capture "nodeName" Text :> Get '[JSON] (WorkerRole,CellConfig)
   :<|> "so"      :> Get '[JSON] Text
   :<|> "update"  :> ReqBody '[JSON] Text :> Post '[JSON] ()
 

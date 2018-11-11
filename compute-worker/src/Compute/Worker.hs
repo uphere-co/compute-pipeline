@@ -41,6 +41,7 @@ import           System.IO           ( hPutStrLn, stderr )
 import           Worker.Type         ( CellConfig
                                      , ComputeConfig(..)
                                      , SOHandle(..)
+                                     , WorkerRole(..)
                                      )
 ------
 import           Compute.Type        ( SOInfo(..), orcApiNoStream )
@@ -79,7 +80,7 @@ looper ref sohandle mcurr  = do
 
 
 getCompute :: ClientM ComputeConfig
-getCell :: Text -> ClientM CellConfig
+getCell :: Text -> ClientM (WorkerRole,CellConfig)
 getSO :: ClientM Text
 postUpdate :: Text -> ClientM ()
 getCompute :<|> getCell :<|> getSO :<|> postUpdate = client orcApiNoStream
@@ -120,9 +121,11 @@ runWorker (URL url) (NodeName name) = do
   manager' <- liftIO $ newManager defaultManagerSettings
   baseurl <- liftIO $ parseBaseUrl (T.unpack url)
   let env = ClientEnv manager' baseurl Nothing
-  cellcfg <-
+  (role,cellcfg) <-
     withExceptT show $ ExceptT $
       runClientM (getCell name) env
+  -- for debug
+  liftIO $ hPutStrLn stderr (show role)
   so_path <-
     fmap T.unpack $
       withExceptT show $ ExceptT $
