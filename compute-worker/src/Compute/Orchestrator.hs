@@ -109,6 +109,13 @@ getCompute sref = do
   pure (state^.orcStateComputeConfig)
 
 
+-- | getCell API is to determine the role and network configuration.
+--   Orchestrator has a state that reflects worker role assignments.
+--   When getCell is called, it first checks if the caller id is present in the
+--   configuration list, and if not, it throws an error.
+--   If no master has been assigned, then it assigns the master role  to the caller.
+--   Otherwise, it assigns slave to the caller. Orchestrator updates its state after
+--   this change. To be safe, this state update is done atomically in STM monad.
 getCell :: TVar OrcState -> Text -> Handler (WorkerRole,CellConfig)
 getCell sref name = do
   er <- liftIO $ atomically $ runExceptT $ do
