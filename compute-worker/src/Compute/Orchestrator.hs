@@ -33,14 +33,13 @@ import           Control.Concurrent.STM   ( TVar
 import           Control.Concurrent.STM.TChan ( TChan, newBroadcastTChanIO
                                               , dupTChan, readTChan, writeTChan )
 import           Control.Error.Util       ( failWith )
-import           Control.Lens             ( (&), (^.), (.~)
+import           Control.Lens             ( (&), (^.), (.~), (%~)
                                           , makeLenses, view
                                           )
 import           Control.Monad            ( forever, when )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Class ( lift )
 import           Control.Monad.Trans.Except ( runExceptT, throwE )
--- import           Data.HashMap.Strict      ( HashMap )
 import           Data.List                ( find )
 import           Data.Monoid              ( mempty )
 import           Data.Text                ( Text )
@@ -70,6 +69,7 @@ data OrchestratorError = OENoSuchCell Text
 data OrcState = OrcState  {
     _orcStateComputeConfig :: ComputeConfig
   , _orcStateMasterWorker :: Maybe Text
+  , _orcStateSlaveWorkers :: [Text]
   }
   deriving (Show)
 
@@ -85,7 +85,7 @@ runApp (cfg,sofile) = do
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
       soinfo = SOInfo sofile
-  sref <- newTVarIO (OrcState cfg mempty)
+  sref <- newTVarIO (OrcState cfg mempty mempty)
   ref <- newTVarIO soinfo
   chan <- newBroadcastTChanIO
   runSettings settings $ serve orcApi (server sref ref chan)
@@ -130,10 +130,19 @@ getCell sref name = do
       Just master ->
         if name == master
           then throwE (OERegisterCellTwice name)
-          else pure (Slave,c)
+          else do
+            lift $ writeTVar sref (state & orcStateSlaveWorkers %~ (name :))
+            pure (Slave,c)
   case er of
-    Left  e -> liftIO (print e) >> throwError err404
-    Right r -> pure r
+    Left  e -> do
+      -- for debug
+      liftIO (hPutStrLn stderr (show e))
+      throwError err404
+    Right r -> do
+      -- for debug
+      s <- liftIO $ readTVarIO sref
+      liftIO (hPutStrLn stderr (show s))
+      pure r
 
 
 getSO :: TVar SOInfo -> Handler Text
