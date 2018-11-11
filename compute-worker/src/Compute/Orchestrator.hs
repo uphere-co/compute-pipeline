@@ -32,11 +32,14 @@ import           Control.Concurrent.STM   ( TVar
                                           , atomically  )
 import           Control.Concurrent.STM.TChan ( TChan, newBroadcastTChanIO
                                               , dupTChan, readTChan, writeTChan )
+import           Control.Error.Util       ( failWith )
 import           Control.Lens             ( (&), (^.), (.~)
                                           , makeLenses, view
                                           )
 import           Control.Monad            ( forever, when )
 import           Control.Monad.IO.Class   ( liftIO )
+import           Control.Monad.Trans.Class ( lift )
+import           Control.Monad.Trans.Except ( runExceptT, throwE )
 -- import           Data.HashMap.Strict      ( HashMap )
 import           Data.List                ( find )
 import           Data.Monoid              ( mempty )
@@ -58,6 +61,10 @@ import           Worker.Type              ( ComputeConfig(..)
 ------
 import           Compute.Type             ( OrcApi, SOInfo(..), orcApi )
 
+
+data OrchestratorError = OENoSuchCell Text
+                       | OERegisterCellTwice Text
+                       deriving Show
 
 
 data OrcState = OrcState  {
@@ -104,26 +111,22 @@ getCompute sref = do
 
 getCell :: TVar OrcState -> Text -> Handler (WorkerRole,CellConfig)
 getCell sref name = do
-  mr <- liftIO $ atomically $ do
-    state <- readTVar sref
+  er <- liftIO $ atomically $ runExceptT $ do
+    state <- lift $ readTVar sref
     let cfg = state ^. orcStateComputeConfig
-    let mc = find (\c -> cellName c == name) (computeCells cfg)
-    -- use transformer
-    case mc of
-      Nothing -> pure Nothing
-      Just c -> do
-        case state ^. orcStateMasterWorker of
-          Nothing -> do
-            writeTVar sref (state & orcStateMasterWorker .~ Just name)
-            pure (Just (Master,c))
-          Just master ->
-            if name == master
-              then pure Nothing    -- TODO: use structured error
-              else pure (Just (Slave,c))
-  -- TODO: use structured error
-  case mr of
-    Nothing -> throwError err404
-    Just r -> pure r
+    c <- failWith (OENoSuchCell name) $
+           find (\c -> cellName c == name) (computeCells cfg)
+    case state ^. orcStateMasterWorker of
+      Nothing -> do
+        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just name)
+        pure (Master,c)
+      Just master ->
+        if name == master
+          then throwE (OERegisterCellTwice name)
+          else pure (Slave,c)
+  case er of
+    Left  e -> liftIO (print e) >> throwError err404
+    Right r -> pure r
 
 
 getSO :: TVar SOInfo -> Handler Text
