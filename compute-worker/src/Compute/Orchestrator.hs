@@ -41,7 +41,6 @@ import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Class ( lift )
 import           Control.Monad.Trans.Except ( runExceptT, throwE )
 import           Data.List                ( find )
-import           Data.Monoid              ( mempty )
 import           Data.Text                ( Text )
 import qualified Data.Text as T
 import           Data.Traversable         ( for )
@@ -68,7 +67,7 @@ data OrchestratorError = OENoSuchCell Text
 
 data OrcState = OrcState  {
     _orcStateComputeConfig :: ComputeConfig
-  , _orcStateMasterWorker :: Maybe Text
+  , _orcStateMasterWorker :: Maybe (Text,CellConfig)
   , _orcStateSlaveWorkers :: [Text]
   }
   deriving (Show)
@@ -85,7 +84,7 @@ runApp (cfg,sofile) = do
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
       soinfo = SOInfo sofile
-  sref <- newTVarIO (OrcState cfg mempty mempty)
+  sref <- newTVarIO (OrcState cfg Nothing [])
   ref <- newTVarIO soinfo
   chan <- newBroadcastTChanIO
   runSettings settings $ serve orcApi (server sref ref chan)
@@ -125,14 +124,14 @@ getCell sref name = do
            find (\c -> cellName c == name) (computeCells cfg)
     case state ^. orcStateMasterWorker of
       Nothing -> do
-        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just name)
+        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just (name,c))
         pure (Master,c)
-      Just master ->
+      Just (master,mcfg) ->
         if name == master
           then throwE (OERegisterCellTwice name)
           else do
             lift $ writeTVar sref (state & orcStateSlaveWorkers %~ (name :))
-            pure (Slave,c)
+            pure (Slave mcfg,c)
   case er of
     Left  e -> do
       -- for debug

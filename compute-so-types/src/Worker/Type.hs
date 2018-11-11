@@ -16,13 +16,13 @@ data NetworkConfig = NetworkConfig {
                      , hostl :: Text
                      , port :: Int
                      }
-                   deriving (Generic,Show,FromJSON,ToJSON)
+                   deriving (Generic,Show,Eq,Ord,NFData,FromJSON,ToJSON)
 
 data CellConfig = CellConfig {
                     cellName :: Text
                   , cellAddress :: NetworkConfig
                   }
-                deriving (Generic,Show,FromJSON,ToJSON)
+                deriving (Generic,Show,Eq,Ord,NFData,FromJSON,ToJSON)
 
 data ComputeConfig = ComputeConfig {
                        computeServer :: NetworkConfig
@@ -31,7 +31,7 @@ data ComputeConfig = ComputeConfig {
                      , computeBypassNER :: Bool
                      , computeBypassTEXTNER :: Bool
                      }
-                   deriving (Generic,Show,FromJSON,ToJSON)
+                   deriving (Generic,Show,Eq,Ord,NFData,FromJSON,ToJSON)
 
 data ComputeWorkerOption =
   ComputeWorkerOption
@@ -46,14 +46,16 @@ data WorkerRole =
 {-      ComputeWorkerOption -- ^ options
       FilePath            -- ^ so file -}
   | Slave
-{-      Text                -- ^ name
+      CellConfig -- ^ master config
+{-       Text                -- ^ name
       ComputeWorkerOption -- ^ options
-      FilePath            -- ^ so file -}
+      FilePath            -- ^ so file  -}
   deriving (Show,Eq,Ord,Generic,NFData,FromJSON,ToJSON)
 
 
 -- | The set of functions that you want to expose from your shared object
 data SOHandle = SOHandle
                 { soApplication :: Application
+                , soProcess :: (WorkerRole,CellConfig) -> IO ()
                 }
               deriving (Generic, NFData)

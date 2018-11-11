@@ -18,4 +18,5 @@ hsNewSOHandle = do
   countRef <- newMVar (0 :: Int)
   newStablePtr SOHandle
                { soApplication = myApp countRef
+               , soProcess = \_ -> pure ()
                }

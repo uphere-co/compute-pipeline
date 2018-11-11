@@ -1,11 +1,10 @@
--- {-# LANGUAGE FlexibleInstances        #-}
--- {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings        #-}
 {-# LANGUAGE RecordWildCards          #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TypeApplications         #-}
--- {-# LANGUAGE TypeSynonymInstances     #-}
--- compute worker is the main distributed computing process for a generic
+{-# OPTIONS_GHC -w #-}
+--
+-- `compute worker` is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
 -- Orchestrator will assign which mode a given compute worker should play a role of.
 --
@@ -20,7 +19,7 @@ import           Control.Concurrent.STM
                                      , newTVarIO, readTVar, writeTVar
                                      , retry
                                      )
-import           Control.Monad       ( forever )
+import           Control.Monad       ( forever, void )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
 import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
@@ -52,18 +51,21 @@ newtype URL = URL { unURL :: Text }
 newtype NodeName = NodeName { unNodeName :: Text }
 
 
-app :: UpdatableSO SOHandle -> IO ()
-app sohandle =
-  withSO sohandle $ \SOHandle{..} ->
-    run 3994 $ soApplication
-
+app :: (WorkerRole,CellConfig) ->  UpdatableSO SOHandle -> IO ()
+app (role,cellcfg) sohandle =
+  withSO sohandle $ \SOHandle{..} -> do
+    case role of
+      Master     -> void $ forkIO $ run 3994 $ soApplication
+      Slave mcfg -> hPutStrLn stderr $ "master config info = " ++ show mcfg
+    soProcess (role,cellcfg)
 
 looper ::
-     TVar SOInfo
+     (WorkerRole,CellConfig)
+  -> TVar SOInfo
   -> UpdatableSO SOHandle
   -> Maybe (SOInfo,ThreadId)
   -> IO (Maybe (SOInfo,ThreadId))
-looper ref sohandle mcurr  = do
+looper (role,cellcfg) ref sohandle mcurr  = do
   newso <-
     atomically $ do
       newso <- readTVar ref
@@ -75,7 +77,7 @@ looper ref sohandle mcurr  = do
     hPutStrLn stderr ("update to" ++ show newso)
     killThread tid
     swapSO sohandle (soinfoFilePath newso)
-  tid' <- forkIO $ app sohandle
+  tid' <- forkIO $ app (role,cellcfg) sohandle
   pure (Just (newso,tid'))
 
 
@@ -98,8 +100,8 @@ mkWSURL baseurl =
 
 -- | Actual worker implementation loading process.
 --   This loads shared object file and starts looping shared object update routine.
-loadWorkerSO :: CellConfig -> BaseUrl -> FilePath -> IO ()
-loadWorkerSO cellcfg baseurl so_path = do
+loadWorkerSO :: (WorkerRole,CellConfig) -> BaseUrl -> FilePath -> IO ()
+loadWorkerSO (role,cellcfg) baseurl so_path = do
   let wsurl = mkWSURL baseurl
   print wsurl
   print (cellcfg,so_path)
@@ -110,7 +112,7 @@ loadWorkerSO cellcfg baseurl so_path = do
       forever $ do
         soinfo :: SOInfo <- WS.receiveData conn
         atomically $ writeTVar ref soinfo
-  iterateM_ (looper ref so) Nothing
+  iterateM_ (looper (role,cellcfg) ref so) Nothing
 
 
 -- | `runWorker` is the main function for a worker executable.
@@ -130,4 +132,4 @@ runWorker (URL url) (NodeName name) = do
     fmap T.unpack $
       withExceptT show $ ExceptT $
         runClientM (getSO) env
-  liftIO $ loadWorkerSO cellcfg baseurl so_path
+  liftIO $ loadWorkerSO (role,cellcfg) baseurl so_path
