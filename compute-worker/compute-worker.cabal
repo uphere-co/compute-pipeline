@@ -139,10 +139,7 @@ executable compute
                      , distributed-process-lifted
                      , filepath
                      , errors
-                     , http-client
---                     , http-types
                      , optparse-applicative
-                     , servant-client
                      , stm
                      , text
                      , transformers
