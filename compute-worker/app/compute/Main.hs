@@ -17,7 +17,7 @@ import           Options.Applicative ( Parser
 ------
 import           CloudHaskell.Type   ( handleError )
 ------
-import           Compute.Worker      ( runWorker )
+import           Compute.Worker      ( URL(..), NodeName(..), runWorker )
 
 data WorkerConfig = WorkerConfig { workerConfigOrcURL :: Text
                                  , workerConfigName :: Text
@@ -40,4 +40,6 @@ main :: IO ()
 main = do
   handleError @String $ do
     cfg <- liftIO $ execParser (info (pOptions <**> helper) (progDesc "worker"))
-    runWorker (workerConfigOrcURL cfg) (workerConfigName cfg)
+    let url = URL (workerConfigOrcURL cfg)
+        name = NodeName (workerConfigName cfg)
+    runWorker url name

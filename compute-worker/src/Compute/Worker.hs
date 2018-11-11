@@ -46,6 +46,10 @@ import           Worker.Type         ( CellConfig
 import           Compute.Type        ( SOInfo(..), orcApiNoStream )
 
 
+newtype URL = URL { unURL :: Text }
+
+newtype NodeName = NodeName { unNodeName :: Text }
+
 
 app :: UpdatableSO SOHandle -> IO ()
 app sohandle =
@@ -111,8 +115,8 @@ loadWorkerSO cellcfg baseurl so_path = do
 -- | `runWorker` is the main function for a worker executable.
 --   With orchestrator URL and worker's name, it obtains the network information
 --   and its role from orchestrator and start actual worker routine.
-runWorker :: Text -> Text -> ExceptT String IO ()
-runWorker url name = do
+runWorker :: URL -> NodeName -> ExceptT String IO ()
+runWorker (URL url) (NodeName name) = do
   manager' <- liftIO $ newManager defaultManagerSettings
   baseurl <- liftIO $ parseBaseUrl (T.unpack url)
   let env = ClientEnv manager' baseurl Nothing
