@@ -60,20 +60,6 @@ myApp countRef _ respond = do
           msg
     pure (count',responseReceived)
 
-{-
-workerMain :: IO ()
-workerMain =
-  slaveMain (mConfig,sConfig)
-    -- TODO: this is not a correct implementation. we should change it. (Why?)
-    (\gw -> do
-       heartBeatHandshake (gatewayMaster gw) $
-         routerHandshake $ \router -> do
-           themaster <- lookupRouter "master" router
-           send themaster cname
-           () <- expect -- this is a kill signal.
-           pure ()
-    )
--}
 
 master :: TMVar ProcessId -> Pipeline ()
 master ref = do
@@ -83,12 +69,6 @@ master ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (\_ -> pure ()) $ \them_main -> do
-  {-    themaster <- getSelfPid
-    let router = Router $ HM.fromList [ ("master", themaster) ]
-    send them_main router
-    cname :: Text <- expectSafe
-    tellLog $ "taskManager: got " ++ show cname
-    launchCoreNLP ref cname them_main -}
     () <- expect  -- for idling
     pure ()
 
