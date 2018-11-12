@@ -87,13 +87,14 @@ withTransport dhpp action =
     closeTransport
     action
 
+mkDHPP :: NetworkConfig -> DualHostPortPair
+mkDHPP cfg = DHPP
+                  (T.unpack (hostg cfg), show (port cfg))
+                  (T.unpack (hostg cfg), show (port cfg))
 
 workerMain :: TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ()
-workerMain ref (Master name,cellcfg) = do
-  let netcfg = cellAddress cellcfg
-      dhpp = DHPP
-               (T.unpack (hostg netcfg), show (port netcfg))
-               (T.unpack (hostg netcfg), show (port netcfg))
+workerMain ref (Master name, mcellcfg) = do
+  let dhpp = mkDHPP (cellAddress mcellcfg)
   withTransport dhpp $ \transport -> do
      node <- newLocalNode transport rtable
      lock <- newLogLock 0
@@ -101,12 +102,8 @@ workerMain ref (Master name,cellcfg) = do
        flip runReaderT lock $
          handleErrorLog $
            master ref
-workerMain ref (Slave name mcellcfg mpid,scellcfg) = do
-  let snetcfg = cellAddress scellcfg
-      mnetcfg = cellAddress mcellcfg
-      dhpp = DHPP
-               (T.unpack (hostg snetcfg), show (port snetcfg))
-               (T.unpack (hostg snetcfg), show (port snetcfg))
+workerMain ref (Slave name mpid, scellcfg) = do
+  let dhpp = mkDHPP (cellAddress scellcfg)
   withTransport dhpp $ \transport -> do
     node <- newLocalNode transport rtable
     lock <- newLogLock 0

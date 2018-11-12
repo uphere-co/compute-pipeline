@@ -72,15 +72,9 @@ instance A.ToJSON   ProcessId
 data WorkerRole =
     Master
       Text       -- ^ name
-{-      ComputeWorkerOption -- ^ options
-      FilePath            -- ^ so file -}
   | Slave
       Text       -- ^ name
-      CellConfig -- ^ master config
       ProcessId  -- ^ master process id
-{-       Text                -- ^ name
-      ComputeWorkerOption -- ^ options
-      FilePath            -- ^ so file  -}
   deriving (Show,Eq,Ord,Generic,NFData,A.FromJSON,A.ToJSON)
 
 

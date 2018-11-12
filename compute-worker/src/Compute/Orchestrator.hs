@@ -37,7 +37,8 @@ import           Control.Distributed.Process ( ProcessId )
 import           Control.Error.Util       ( failWith )
 import           Control.Lens             ( (&), (^.), (.~), (%~)
                                           , makeLenses, view
-                                          , _3, _Just
+                                          , _2
+                                          , _Just
                                           )
 import           Control.Monad            ( forever, when )
 import           Control.Monad.IO.Class   ( liftIO )
@@ -71,7 +72,7 @@ data OrchestratorError = OENoSuchCell Text
 
 data OrcState = OrcState  {
     _orcStateComputeConfig :: ComputeConfig
-  , _orcStateMasterWorker :: Maybe (Text,CellConfig,Maybe ProcessId)
+  , _orcStateMasterWorker :: Maybe (Text, Maybe ProcessId)
   , _orcStateSlaveWorkers :: [Text]
   }
   deriving (Show)
@@ -130,16 +131,19 @@ getCell sref name = do
     -- TODO: check if it's already in SlaveWorkers as well.
     case state ^. orcStateMasterWorker of
       Nothing -> do
-        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just (name,c,Nothing))
+        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just (name,Nothing))
         pure (Master name,c)
-      Just (master,mcfg,mmpid) -> do
+      Just (master,mmpid) -> do
+
+
         when (name == master) $
           throwE (OERegisterCellTwice name)
+
         case mmpid of
           Nothing -> throwE OEMasterNotReady
           Just mpid -> do
             lift $ writeTVar sref (state & orcStateSlaveWorkers %~ (name :))
-            pure (Slave name mcfg mpid,c)
+            pure (Slave name mpid,c)
 
   case er of
     Left  e -> do
@@ -156,7 +160,7 @@ getCell sref name = do
 postProcess :: TVar OrcState -> Text -> ProcessId -> Handler ()
 postProcess sref name pid =
   liftIO $ atomically $
-    modifyTVar' sref $ (orcStateMasterWorker . _Just . _3) .~ Just pid
+    modifyTVar' sref $ (orcStateMasterWorker . _Just . _2) .~ Just pid
 
 
 getSO :: TVar SOInfo -> Handler Text
