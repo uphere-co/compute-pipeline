@@ -59,14 +59,13 @@ app env (role,cellcfg) sohandle =
   withSO sohandle $ \SOHandle{..} -> do
     ref <- newEmptyTMVarIO
     case role of
-      Master name    -> do
+      Master name -> do
         forkIO $ run 3994 $ soApplication
         void $ forkIO $ do
           pid <- atomically $ takeTMVar ref
           runClientM (postProcess name pid) env
           print pid
-      Slave  name mcfg mpid -> do
-        hPutStrLn stderr $ "master config info = " ++ show mcfg
+      Slave  name mpid ->
         hPutStrLn stderr $ "master pid = " ++ show mpid
     soProcess ref (role,cellcfg)
 
