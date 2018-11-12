@@ -2,8 +2,10 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
-module Compute.Type where
+module Compute.API where
 
+import           Control.Distributed.Process
+                                          ( ProcessId )
 import           Data.Binary              ( Binary, decode, encode )
 import           Data.Proxy               ( Proxy(Proxy) )
 import           Data.Text                ( Text )
@@ -25,6 +27,7 @@ import           Worker.Type              ( ComputeConfig(..)
 type OrcApiNoStream =
        "compute" :> Get '[JSON] ComputeConfig
   :<|> "cell"    :> Capture "nodeName" Text :> Get '[JSON] (WorkerRole,CellConfig)
+  :<|> "process" :> Capture "nodeName" Text :> ReqBody '[JSON] ProcessId :> Post '[JSON] ()
   :<|> "so"      :> Get '[JSON] Text
   :<|> "update"  :> ReqBody '[JSON] Text :> Post '[JSON] ()
 

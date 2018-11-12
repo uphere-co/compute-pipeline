@@ -78,13 +78,13 @@ library
 
   exposed-modules:
                     Compute
+                  , Compute.API
                   -- TODO: remove old
                   , ComputeOld
                   , Compute.Handler
                   , Compute.Network
                   , Compute.Orchestrator
                   , Compute.Task
-                  , Compute.Type
                   , Compute.Type.Status
                   , Compute.Worker
   ghc-prof-options: -fprof-auto

@@ -7,7 +7,9 @@ module SO.MyCode
 import           Blaze.ByteString.Builder ( fromByteString )
 import           Control.Concurrent       ( threadDelay )
 import           Control.Concurrent.MVar  ( MVar, modifyMVar )
-import           Control.Distributed.Process.Lifted ( Process, liftIO )
+import           Control.Concurrent.STM   ( TMVar, atomically, putTMVar )
+import           Control.Distributed.Process ( ProcessId )
+import           Control.Distributed.Process.Lifted ( Process, getSelfPid, liftIO, send )
 import           Control.Distributed.Process.Node ( newLocalNode,runProcess )
 import           Control.Exception        ( bracket )
 import           Control.Monad            ( void )
@@ -34,34 +36,6 @@ import           Worker.Type              ( WorkerRole(..)
                                           , NetworkConfig(..)
                                           )
 
-
-{-
-import           Control.Distributed.Process.Lifted
-                                     ( expect, send )
-import           Control.Error.Util  ( failWith )
-import           Control.Monad.IO.Class ( liftIO )
-import           Control.Monad.Trans.Except ( ExceptT(..) )
-import           Data.Aeson          ( eitherDecodeStrict )
-import qualified Data.ByteString.Char8 as B
-import qualified Data.HashMap.Strict   as HM
-import           Data.List           ( find )
-import           Data.Semigroup      ( (<>) )
-import           Data.Text           ( Text )
------------------
-import           CloudHaskell.Client ( heartBeatHandshake, routerHandshake )
-import           CloudHaskell.Type   ( TCPPort(..)
-                                     , Gateway(gatewayMaster)
-                                     , MasterConfig(..)
-                                     , SlaveConfig(..)
-                                     , handleError
-                                     )
-import           CloudHaskell.Util   ( lookupRouter )
------------------
-import           Compute             ( masterMain, slaveMain )
-import           Compute.Type.Status ( Status(..) )
-
-import Worker.Type
--}
 
 myApp :: MVar Int -> Application
 myApp countRef _ respond = do
@@ -92,15 +66,25 @@ workerMain =
     )
 -}
 
-testProcess :: Pipeline ()
-testProcess = do
-  liftIO $ hPutStrLn stderr "testProcess"
+master :: TMVar ProcessId -> Pipeline ()
+master ref = do
+  liftIO $ hPutStrLn stderr "master test"
+  self <- getSelfPid
+  liftIO $ atomically $ putTMVar ref self
   remotemsg <- expectSafe :: Pipeline Text
   liftIO $ hPutStrLn stderr (show remotemsg)
 
 
-workerMain :: (WorkerRole,CellConfig) -> IO ()
-workerMain (Master,cellcfg) = do
+
+slave :: TMVar ProcessId -> ProcessId -> Pipeline ()
+slave ref mpid = do
+  liftIO $ hPutStrLn stderr "slave test"
+  send mpid ("Test slave" :: Text)
+  pure ()
+
+
+workerMain :: TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ()
+workerMain ref (Master name,cellcfg) = do
   let netcfg = cellAddress cellcfg
       dhpp = DHPP
                (T.unpack (hostg netcfg), show (port netcfg))
@@ -112,9 +96,9 @@ workerMain (Master,cellcfg) = do
        hPutStrLn stderr "transport is created"
        node <- newLocalNode transport rtable
        lock <- newLogLock 0
-       runProcess node $ void $ flip runReaderT lock $ runExceptT $ testProcess
+       runProcess node $ void $ flip runReaderT lock $ runExceptT $ master ref
     )
-workerMain (Slave mcellcfg,scellcfg) = do
+workerMain ref (Slave name mcellcfg mpid,scellcfg) = do
   let snetcfg = cellAddress scellcfg
       mnetcfg = cellAddress mcellcfg
       dhpp = DHPP
@@ -127,8 +111,6 @@ workerMain (Slave mcellcfg,scellcfg) = do
        hPutStrLn stderr "transport is created"
        node <- newLocalNode transport rtable
        lock <- newLogLock 0
-       runProcess node $ void $ flip runReaderT lock $ runExceptT $ do
-         liftIO $ hPutStrLn stderr "in process"
+       runProcess node $ void $ flip runReaderT lock $ runExceptT $ slave ref mpid
 
     )
-  hPutStrLn stderr "nothing to do"
