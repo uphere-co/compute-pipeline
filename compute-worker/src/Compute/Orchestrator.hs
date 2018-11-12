@@ -158,8 +158,6 @@ postProcess sref name pid =
   liftIO $ atomically $
     modifyTVar' sref $ (orcStateMasterWorker . _Just . _3) .~ Just pid
 
-  -- liftIO $ print pid
-
 
 getSO :: TVar SOInfo -> Handler Text
 getSO ref = liftIO $ do

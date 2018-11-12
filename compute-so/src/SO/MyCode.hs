@@ -12,7 +12,7 @@ import           Control.Distributed.Process ( ProcessId )
 import           Control.Distributed.Process.Lifted ( Process, getSelfPid, liftIO, send )
 import           Control.Distributed.Process.Node ( newLocalNode,runProcess )
 import           Control.Exception        ( bracket )
-import           Control.Monad            ( void )
+import           Control.Monad            ( forever, void )
 import           Control.Monad.Trans.Except ( runExceptT )
 import           Control.Monad.Trans.Reader ( runReaderT )
 import qualified Data.ByteString.Char8 as B
@@ -24,7 +24,10 @@ import           Network.Transport        ( closeTransport )
 import           Network.Wai              ( Application, responseBuilder )
 import           System.IO                ( hPutStrLn, stderr )
 ------
-import           CloudHaskell.Util        ( expectSafe, newLogLock
+import           CloudHaskell.Util        ( expectSafe
+                                          , handleErrorLog
+                                          , newLogLock
+                                          , onesecond
                                           , tryCreateTransport
                                           )
 import           CloudHaskell.Type        ( Pipeline )
@@ -108,9 +111,13 @@ workerMain ref (Slave name mcellcfg mpid,scellcfg) = do
     (tryCreateTransport dhpp)
     closeTransport
     (\transport -> do
-       hPutStrLn stderr "transport is created"
        node <- newLocalNode transport rtable
        lock <- newLogLock 0
-       runProcess node $ void $ flip runReaderT lock $ runExceptT $ slave ref mpid
+       forever $ do
+         runProcess node $
+           flip runReaderT lock $
+             handleErrorLog $
+               slave ref mpid
 
+         threadDelay (5*onesecond)
     )
