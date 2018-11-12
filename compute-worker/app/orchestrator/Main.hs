@@ -11,7 +11,7 @@ import           Options.Applicative      ( Parser, (<**>)
                                           , strOption
                                           )
 ------
-import           CloudHaskell.Type        ( handleError )
+import           CloudHaskell.Util        ( handleError )
 import           Worker.Type              ( ComputeConfig(..) )
 ------
 import           Compute.Orchestrator     ( runApp )

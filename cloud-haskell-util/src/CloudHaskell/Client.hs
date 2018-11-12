@@ -155,7 +155,7 @@ heartBeatHandshake them_ping main = do
 
 slaveMain ::
      RemoteTable                  -- ^ remote table
-  -> (MasterConfig,SlaveConfig) -- (Int,Text,Text,Text,TCPPort) -- ^ network info
+  -> (MasterConfig,SlaveConfig)   -- ^ network info
   -> (Gateway -> Pipeline ())     -- ^ client process
   -> IO ()
 slaveMain rtable (mcfg,scfg) process = do

@@ -1,13 +1,14 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TypeSynonymInstances       #-}
 module CloudHaskell.Type where
 
 import           Control.Concurrent.STM.TMVar ( TMVar )
 import           Control.DeepSeq              ( NFData )
 import           Control.Distributed.Process  ( Process, ProcessId )
-import           Control.Monad.Trans.Except   ( ExceptT, runExceptT )
+import           Control.Monad.Trans.Except   ( ExceptT )
 import           Control.Monad.Trans.Reader   ( ReaderT )
 import           Data.Binary                  ( Binary(..) )
 import           Data.Hashable                ( Hashable )
@@ -15,14 +16,28 @@ import           Data.HashMap.Strict          ( HashMap )
 import qualified Data.HashMap.Strict as HM
 import           Data.Text                    ( Text )
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import           Data.Typeable                ( Typeable )
 import           GHC.Generics                 ( Generic )
-import           System.IO                    ( stderr )
+
+--------------------
+-- Error Handling --
+--------------------
+-- | For error handling
+class RenderError e where
+  renderError :: e -> Text
+
+-- TODO: We should refrain from using String error.
+instance RenderError String where
+  renderError = T.pack
+
 
 data PipelineError = PipelineError String
                    | RouteError String
                    deriving (Show)
+
+instance RenderError PipelineError where
+  renderError (PipelineError str) = "pipeline error: " <> T.pack str
+  renderError (RouteError str)    = "route error: "    <> T.pack str
 
 type LogLock = (TMVar (),Int)
 
@@ -84,21 +99,3 @@ data SlaveConfig =
   deriving (Generic,Show)
 
 
---------------------
--- Error Handling --
---------------------
--- | For error handling
-class RenderError e where
-  renderError :: e -> Text
-
--- TODO: We should refrain from using String error.
-instance RenderError String where
-  renderError = T.pack
-
--- | Simplest handling errors by just logging on stderr.
-handleError :: (RenderError e) => ExceptT e IO a -> IO ()
-handleError m = do
-  r <- runExceptT m
-  case r of
-    Left e -> TIO.hPutStrLn stderr (renderError e)
-    Right _ -> pure ()
