@@ -26,22 +26,24 @@
 module Compute.Orchestrator where
 
 import           Control.Concurrent.STM   ( TVar
+                                          , modifyTVar'
                                           , newTVarIO
                                           , readTVar, readTVarIO
                                           , writeTVar
                                           , atomically  )
 import           Control.Concurrent.STM.TChan ( TChan, newBroadcastTChanIO
                                               , dupTChan, readTChan, writeTChan )
+import           Control.Distributed.Process ( ProcessId )
 import           Control.Error.Util       ( failWith )
 import           Control.Lens             ( (&), (^.), (.~), (%~)
                                           , makeLenses, view
+                                          , _3, _Just
                                           )
 import           Control.Monad            ( forever, when )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Class ( lift )
 import           Control.Monad.Trans.Except ( runExceptT, throwE )
 import           Data.List                ( find )
-import           Data.Monoid              ( mempty )
 import           Data.Text                ( Text )
 import qualified Data.Text as T
 import           Data.Traversable         ( for )
@@ -58,17 +60,18 @@ import           Worker.Type              ( ComputeConfig(..)
                                           , WorkerRole(..)
                                           )
 ------
-import           Compute.Type             ( OrcApi, SOInfo(..), orcApi )
+import           Compute.API              ( OrcApi, SOInfo(..), orcApi )
 
 
 data OrchestratorError = OENoSuchCell Text
                        | OERegisterCellTwice Text
+                       | OEMasterNotReady
                        deriving Show
 
 
 data OrcState = OrcState  {
     _orcStateComputeConfig :: ComputeConfig
-  , _orcStateMasterWorker :: Maybe Text
+  , _orcStateMasterWorker :: Maybe (Text,CellConfig,Maybe ProcessId)
   , _orcStateSlaveWorkers :: [Text]
   }
   deriving (Show)
@@ -85,7 +88,7 @@ runApp (cfg,sofile) = do
         setBeforeMainLoop (hPutStrLn stderr ("listening on port " ++ show port)) $
         defaultSettings
       soinfo = SOInfo sofile
-  sref <- newTVarIO (OrcState cfg mempty mempty)
+  sref <- newTVarIO (OrcState cfg Nothing [])
   ref <- newTVarIO soinfo
   chan <- newBroadcastTChanIO
   runSettings settings $ serve orcApi (server sref ref chan)
@@ -99,6 +102,7 @@ server sref ref chan =
        wsStream chan
   :<|> getCompute sref
   :<|> getCell sref
+  :<|> postProcess sref
   :<|> getSO ref
   :<|> postUpdate ref chan
 
@@ -123,16 +127,20 @@ getCell sref name = do
     let cfg = state ^. orcStateComputeConfig
     c <- failWith (OENoSuchCell name) $
            find (\c -> cellName c == name) (computeCells cfg)
+    -- TODO: check if it's already in SlaveWorkers as well.
     case state ^. orcStateMasterWorker of
       Nothing -> do
-        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just name)
-        pure (Master,c)
-      Just master ->
-        if name == master
-          then throwE (OERegisterCellTwice name)
-          else do
+        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just (name,c,Nothing))
+        pure (Master name,c)
+      Just (master,mcfg,mmpid) -> do
+        when (name == master) $
+          throwE (OERegisterCellTwice name)
+        case mmpid of
+          Nothing -> throwE OEMasterNotReady
+          Just mpid -> do
             lift $ writeTVar sref (state & orcStateSlaveWorkers %~ (name :))
-            pure (Slave,c)
+            pure (Slave name mcfg mpid,c)
+
   case er of
     Left  e -> do
       -- for debug
@@ -143,6 +151,14 @@ getCell sref name = do
       s <- liftIO $ readTVarIO sref
       liftIO (hPutStrLn stderr (show s))
       pure r
+
+
+postProcess :: TVar OrcState -> Text -> ProcessId -> Handler ()
+postProcess sref name pid =
+  liftIO $ atomically $
+    modifyTVar' sref $ (orcStateMasterWorker . _Just . _3) .~ Just pid
+
+  -- liftIO $ print pid
 
 
 getSO :: TVar SOInfo -> Handler Text

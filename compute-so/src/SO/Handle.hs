@@ -7,7 +7,7 @@ import Control.Concurrent ( newMVar )
 import Foreign            ( StablePtr(..), newStablePtr )
 import Worker.Type        ( SOHandle(..) )
 ------
-import SO.MyCode ( myApp )
+import SO.MyCode ( myApp, workerMain )
 
 
 foreign export ccall "hs_soHandle"
@@ -18,4 +18,5 @@ hsNewSOHandle = do
   countRef <- newMVar (0 :: Int)
   newStablePtr SOHandle
                { soApplication = myApp countRef
+               , soProcess = workerMain
                }
