@@ -131,19 +131,22 @@ getCell sref name = do
     -- TODO: check if it's already in SlaveWorkers as well.
     case state ^. orcStateMasterWorker of
       Nothing -> do
-        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just (name,Nothing))
-        pure (Master name,c)
+        lift $ writeTVar sref (state & orcStateMasterWorker .~ Just (name, Nothing))
+        pure (Master name, c)
       Just (master,mmpid) -> do
-
-
-        when (name == master) $
-          throwE (OERegisterCellTwice name)
-
-        case mmpid of
-          Nothing -> throwE OEMasterNotReady
-          Just mpid -> do
-            lift $ writeTVar sref (state & orcStateSlaveWorkers %~ (name :))
-            pure (Slave name mpid,c)
+        if (name == master)
+          then do
+            -- throwE (OERegisterCellTwice name)
+            -- NOTE: allow double registration for now.
+            -- TODO: revert this when health check is on.
+            lift $ writeTVar sref (state & orcStateMasterWorker .~ Just (name, Nothing))
+            pure (Master name, c)
+          else
+            case mmpid of
+              Nothing -> throwE OEMasterNotReady
+              Just mpid -> do
+                lift $ writeTVar sref (state & orcStateSlaveWorkers %~ (name :))
+                pure (Slave name mpid,c)
 
   case er of
     Left  e -> do

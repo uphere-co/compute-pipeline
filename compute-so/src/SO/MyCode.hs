@@ -107,10 +107,7 @@ workerMain ref (Slave name mpid, scellcfg) = do
   withTransport dhpp $ \transport -> do
     node <- newLocalNode transport rtable
     lock <- newLogLock 0
-    forever $ do
-      runProcess node $
-        flip runReaderT lock $
-          handleErrorLog $
-            slave ref mpid
-
-      threadDelay (5*onesecond)
+    runProcess node $
+      flip runReaderT lock $
+        handleErrorLog $
+          slave ref mpid
