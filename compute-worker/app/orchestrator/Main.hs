@@ -32,7 +32,6 @@ pOptions = OrcOpt <$> strOption ( long "compute"
                                 )
 
 
-
 main :: IO ()
 main = do
   handleError $ do

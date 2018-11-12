@@ -120,10 +120,6 @@ serviceHandshake them process = do
   send them us
   tellLog "sent. now waiting for their SendPort"
   sq :: SendPort (query,SendPort result) <- expectSafe
-  {- tellLog "received SendPort"
-  (sr :: SendPort result, rr :: ReceivePort result) <- newChan
-  send them sr
-  tellLog "sent SendPort" -}
   process sq
 
 
