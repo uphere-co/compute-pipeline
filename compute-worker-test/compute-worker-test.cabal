@@ -1,0 +1,49 @@
+name:                compute-worker-test
+version:             0.1.0.0
+synopsis:            testing compute worker
+description:         testing compute worker
+license:             OtherLicense
+license-file:        LICENSE
+author:              UpHere, Inc.
+maintainer:          Ian-Woo Kim <ianwookim@gmail.com>
+copyright:           UpHere, Inc. 2018
+-- category:
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs: src
+  build-depends:  base
+                --
+                , cloud-haskell-util
+                , compute-so-types
+                , compute-so
+                , compute-worker
+
+  exposed-modules:  MyTest
+  ghc-prof-options: -fprof-auto
+  ghc-options:      -threaded
+                    -Wall
+                    -Werror
+                    -fno-warn-unused-do-bind
+                    -fwarn-tabs
+                    -funbox-strict-fields
+                    -fno-warn-orphans
+                    -O2
+                    -ddump-splices
+
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is:             Main.hs
+  build-depends:       base
+                     , hspec
+                     --
+                     , compute-worker
+                     --
+                     , compute-worker-test
+  hs-source-dirs:      test
+  default-language:    Haskell2010
+  ghc-options:      -threaded
+                    -O2
