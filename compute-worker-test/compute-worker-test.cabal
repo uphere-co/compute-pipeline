@@ -38,7 +38,10 @@ test-suite spec
   type: exitcode-stdio-1.0
   main-is:             Main.hs
   build-depends:       base
+                     , distributed-process
                      , hspec
+                     , network-transport
+                     , network-transport-tcp
                      --
                      , compute-worker
                      --
