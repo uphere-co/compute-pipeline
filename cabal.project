@@ -3,6 +3,7 @@ packages:
   compute-so/
   compute-so-types/
   compute-worker/
+  compute-worker-test/
   jobqueue-client/
   jobqueue-server/
   jobqueue-types/

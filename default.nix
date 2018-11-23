@@ -45,6 +45,7 @@ in
     compute-so           = ./compute-so;
     compute-so-types     = ./compute-so-types;
     compute-worker       = ./compute-worker;
+    compute-worker-test  = ./compute-worker-test;
     jobqueue-client      = ./jobqueue-client;
     jobqueue-server      = ./jobqueue-server;
     jobqueue-types       = ./jobqueue-types;
@@ -95,6 +96,7 @@ in
       "compute-so"
       "compute-so-types"
       "compute-worker"
+      "compute-worker-test"
       "jobqueue-client"
       "jobqueue-server"
       "jobqueue-types"
