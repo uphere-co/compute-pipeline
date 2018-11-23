@@ -1,4 +1,4 @@
-module Test.MyTestSpec where
+module Test.InitHandshakeSpec where
 
 import Control.Concurrent (threadDelay,newEmptyMVar,takeMVar,putMVar)
 import Control.Distributed.Process (spawnChannelLocal,sendChan,receiveChan)
@@ -9,8 +9,7 @@ import Network.Transport (closeTransport)
 import Network.Transport.TCP (createTransport,defaultTCPParameters)
 import qualified System.IO as IO
 import Test.Hspec
-------
-import MyTest
+
 
 
 withTransport action = do
