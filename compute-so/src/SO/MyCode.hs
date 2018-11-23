@@ -45,6 +45,8 @@ import           Worker.Type              ( WorkerRole(..)
                                           , NetworkConfig(..)
                                           )
 
+------
+import           SO.Process               ( mainProcess )
 
 myApp :: MVar Int -> Application
 myApp countRef _ respond = do
@@ -69,6 +71,7 @@ master ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (\_ -> pure ()) $ \them_main -> do
+    mainProcess
     () <- expect  -- for idling
     pure ()
 

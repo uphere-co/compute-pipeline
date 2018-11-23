@@ -13,7 +13,7 @@
 -- is supervising slaves for the task.
 module Compute.Worker where
 
-import           Control.Concurrent  ( ThreadId, forkIO, killThread )
+import           Control.Concurrent  ( ThreadId, forkIO, killThread, threadDelay )
 import           Control.Concurrent.STM
                                      ( TVar, atomically
                                      , newEmptyTMVarIO, takeTMVar
@@ -88,6 +88,7 @@ looper env (role,cellcfg) ref sohandle mcurr  = do
   for_ mcurr $ \(_,tid) -> do
     hPutStrLn stderr ("update to" ++ show newso)
     killThread tid
+    threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
   tid' <- forkIO $ app env (role,cellcfg) sohandle
   pure (Just (newso,tid'))
@@ -116,8 +117,8 @@ mkWSURL baseurl =
 loadWorkerSO :: ClientEnv -> (WorkerRole,CellConfig) -> BaseUrl -> FilePath -> IO ()
 loadWorkerSO env (role,cellcfg) baseurl so_path = do
   let wsurl = mkWSURL baseurl
-  print wsurl
-  print (cellcfg,so_path)
+  -- print wsurl
+  -- print (cellcfg,so_path)
   so <- registerHotswap "hs_soHandle" so_path
   ref <- newTVarIO (SOInfo so_path)
   forkIO $
