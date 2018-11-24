@@ -29,6 +29,7 @@ import           CloudHaskell.Util                 (expectSafe,spawnChannelLocal
                                                    ,newLogLock,atomicLog
                                                    ,tellLog,onesecond,incClientNum)
 
+
 -- | withHeartBeat makes heartbeating channel and spawn a specified process.
 withHeartBeat
   :: ProcessId                  -- ^ client heart beat process
