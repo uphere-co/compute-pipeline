@@ -3,8 +3,7 @@
 module CloudHaskell.Client where
 
 import           Control.Concurrent                (threadDelay)
-import           Control.Concurrent.STM            (atomically,retry
-                                                   ,readTVar,writeTVar,modifyTVar')
+import           Control.Concurrent.STM            ( atomically, readTVar, modifyTVar' )
 import           Control.Distributed.Process       ( ProcessId
                                                    , SendPort
                                                    , ReceivePort
@@ -32,7 +31,9 @@ import           Network.Transport                 (closeTransport)
 --
 import           Network.Transport.UpHere          (DualHostPortPair(..))
 --
-import           CloudHaskell.QueryQueue           (QQVar,QueryStatus(..),next)
+import           CloudHaskell.QueryQueue           ( QQVar, QueryStatus(..)
+                                                   , waitQuery
+                                                   )
 import           CloudHaskell.Socket               (recvAndUnpack)
 import           CloudHaskell.Type                 ( LogLock
                                                    , Pipeline
@@ -92,14 +93,14 @@ clientUnit :: (Serializable query, Serializable result,Show query, Show result) 
           -> Pipeline ()
 clientUnit qqvar sq = do
   forever $ do
-    (i,q) <- liftIO $ atomically $ do
-               qq <- readTVar qqvar
+    (i,q) <- liftIO $ atomically $ waitQuery qqvar
+{-               qq <- readTVar qqvar
                case next qq of
                  Nothing -> retry
                  Just (i,q) -> do
                    let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
                    writeTVar qqvar qq'
-                   return (i,q)
+                   return (i,q) -}
     tellLog ("query start: " ++ show (i,q))
     spawnLocal $ do
       r <- queryProcess sq q pure

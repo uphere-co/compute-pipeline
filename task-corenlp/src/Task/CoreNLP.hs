@@ -33,7 +33,7 @@ import           CoreNLP.Simple.Type  (PipelineConfig(..)
 import           SRL.Analyze.CoreNLP  (runParser)        -- TODO: this should be located outside SRL.
 import           SRL.Analyze.Type     (DocAnalysisInput)
 --
-import           CloudHaskell.QueryQueue (QQVar(..),QueryStatus(..),next)
+import           CloudHaskell.QueryQueue (QQVar(..),QueryStatus(..), waitQuery )
 
 
 data QCoreNLP = QCoreNLP Text
@@ -48,14 +48,14 @@ daemonCoreNLP :: QQVar QCoreNLP RCoreNLP -> IO ()
 daemonCoreNLP qqvar =
   withCoreNLP $ \pp ->
     forever $ do
-      (i,q) <- atomically $ do
-                 qq <- readTVar qqvar
+      (i,q) <- atomically $ waitQuery qqvar
+{-                 qq <- readTVar qqvar
                  case next qq of
                    Nothing -> retry
                    Just (i,q) -> do
                      let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
                      writeTVar qqvar qq'
-                     return (i,q)
+                     return (i,q) -}
       case q of
         QCoreNLP txt -> do
           dainput <- runParser pp txt

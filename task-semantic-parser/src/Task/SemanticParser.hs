@@ -59,7 +59,7 @@ import           SRL.Analyze.Type               ( AnalyzePredata
                                                 )
 import           WikiEL.Type                    ( EntityMention )
 --
-import           CloudHaskell.QueryQueue        ( QQVar, QueryStatus(..), next )
+import           CloudHaskell.QueryQueue        ( QQVar, QueryStatus(..), waitQuery )
 import           Task.Reuters                   ( loadExistingMG )
 
 
@@ -150,14 +150,14 @@ runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
                        , _companyMap = cmap
                        }
     forever $ do
-      (i,q) <- atomically $ do
-                 qq <- readTVar qqvar
+      (i,q) <- atomically $ waitQuery qqvar
+{-                 qq <- readTVar qqvar
                  case next qq of
                    Nothing -> retry
                    Just (i,q) -> do
                      let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
                      writeTVar qqvar qq'
-                     return (i,q)
+                     return (i,q) -}
       case q of
         CQ_Sentence txt -> do
           (tokenss,mgs,cout) <- runSRL sdat txt
