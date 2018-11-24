@@ -36,6 +36,7 @@ withHeartBeat
   -> (ProcessId -> Pipeline ()) -- ^ main process
   -> Pipeline ()
 withHeartBeat them_ping finalizer mainProcess = do
+  tellLog "withHeartBeat start"
   (sthem_main,us_main) <- spawnChannelLocalSend $ \rthem_main -> do
     them_main <- receiveChan rthem_main
     -- NOTE: main process launch

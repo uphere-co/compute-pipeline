@@ -99,13 +99,13 @@ server :: TVar OrcState  -- ^ state
        -> TVar SOInfo    -- ^ shared object
        -> TChan SOInfo   -- ^ write-only broadcast channel
        -> Server OrcApi
-server sref ref chan =
+server ref_state ref_so chan =
        wsStream chan
-  :<|> getCompute sref
-  :<|> getCell sref
-  :<|> postProcess sref
-  :<|> getSO ref
-  :<|> postUpdate ref chan
+  :<|> getCompute  ref_state
+  :<|> getCell     ref_state
+  :<|> postProcess ref_state
+  :<|> getSO       ref_so
+  :<|> postUpdate  ref_state ref_so chan
 
 
 getCompute :: TVar OrcState -> Handler ComputeConfig
@@ -172,14 +172,14 @@ getSO ref = liftIO $ do
   pure (T.pack fp)
 
 
-postUpdate :: TVar SOInfo -> TChan SOInfo -> Text -> Handler ()
-postUpdate ref chan txt = liftIO $ do
+postUpdate :: TVar OrcState -> TVar SOInfo -> TChan SOInfo -> Text -> Handler ()
+postUpdate ref_state ref_so chan txt = liftIO $ do
   let fp = T.unpack txt
-  SOInfo fp' <- readTVarIO ref
-  when (fp /= fp') $ do
-    print fp
-    atomically $ do
-      writeTVar ref (SOInfo fp)
+  atomically $ do
+    SOInfo fp' <- readTVar ref_so
+    when (fp /= fp') $ do
+      modifyTVar' ref_state $ (orcStateMasterWorker .~ Nothing) . (orcStateSlaveWorkers .~ [])
+      writeTVar ref_so (SOInfo fp)
       writeTChan chan (SOInfo fp)
 
 

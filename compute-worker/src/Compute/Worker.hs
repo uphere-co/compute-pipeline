@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -27,7 +26,6 @@ import           Control.Concurrent.STM
                                      )
 import           Control.Distributed.Process
                                      ( ProcessId )
-import           Control.Exception   ( AsyncException(..), SomeException, fromException )
 import           Control.Monad       ( forever, void )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
@@ -46,6 +44,7 @@ import           Servant.Client      ( BaseUrl(..), ClientM, ClientEnv(..)
 import           System.FilePath     ( (</>) )
 import           System.IO           ( hPutStrLn, stderr )
 ------
+import           CloudHaskell.Util   ( onKill, waitForever )
 import           Worker.Type         ( CellConfig
                                      , ComputeConfig(..)
                                      , SOHandle(..)
@@ -58,19 +57,6 @@ import           Compute.API         ( SOInfo(..), orcApiNoStream )
 newtype URL = URL { unURL :: Text }
 
 newtype NodeName = NodeName { unNodeName :: Text }
-
--- | wait indefinitely.
-waitForever :: IO ()
-waitForever = void (newEmptyMVar >>= readMVar)
-
-
--- | kill child threads.
-onKill :: IO () -> Either SomeException a -> IO ()
-onKill action (Left ex) = do
-  let masyncex = fromException @AsyncException ex
-  for_ masyncex $ \case ThreadKilled -> action
-                        _ -> pure ()
-onKill _   (Right _) = pure ()
 
 
 killSpawned :: TVar [ThreadId] -> IO ()
@@ -85,7 +71,6 @@ app :: ClientEnv -> (WorkerRole,CellConfig) ->  UpdatableSO SOHandle -> IO Threa
 app env (role,cellcfg) sohandle = do
   ref_tids <- newTVarIO []
   flip forkFinally (onKill (killSpawned ref_tids)) $
-
     withSO sohandle $ \SOHandle{..} -> do
       ref <- newEmptyTMVarIO
       tids <-
@@ -103,7 +88,7 @@ app env (role,cellcfg) sohandle = do
           Slave  name mpid -> do
             hPutStrLn stderr $ "master pid = " ++ show mpid
             pure []
-      tid3 <- forkIO $ soProcess ref (role,cellcfg)
+      tid3 <- soProcess ref (role,cellcfg)
       atomically $ writeTVar ref_tids (tid3 : tids)
       waitForever
 

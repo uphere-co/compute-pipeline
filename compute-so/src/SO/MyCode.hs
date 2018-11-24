@@ -6,19 +6,26 @@ module SO.MyCode
   ) where
 
 import           Blaze.ByteString.Builder ( fromByteString )
-import           Control.Concurrent       ( threadDelay )
+import           Control.Concurrent       ( ThreadId, forkFinally, threadDelay )
 import           Control.Concurrent.MVar  ( MVar, modifyMVar )
-import           Control.Concurrent.STM   ( TMVar, atomically, putTMVar )
+import           Control.Concurrent.STM   ( TMVar, TVar
+                                          , atomically, newTVarIO
+                                          , putTMVar
+                                          , readTVarIO, writeTVar
+                                          )
 import           Control.Distributed.Process ( ProcessId )
-import           Control.Distributed.Process.Lifted ( Process
-                                                    , expect, getSelfPid, liftIO, send
-                                                    )
-import           Control.Distributed.Process.Node ( newLocalNode,runProcess )
+import           Control.Distributed.Process.Lifted
+                                          ( Process, expect, getSelfPid, liftIO, send )
+import           Control.Distributed.Process.Node
+                                          ( LocalNode, closeLocalNode
+                                          , newLocalNode, runProcess
+                                          )
 import           Control.Exception        ( bracket )
 import           Control.Monad            ( forever, void )
 import           Control.Monad.Trans.Except ( runExceptT )
 import           Control.Monad.Trans.Reader ( runReaderT )
 import qualified Data.ByteString.Char8 as B
+import           Data.Foldable            ( traverse_ )
 import           Data.Semigroup           ( (<>) )
 import           Data.Text                ( Text )
 import qualified Data.Text             as T
@@ -33,6 +40,7 @@ import           CloudHaskell.Util        ( expectSafe
                                           , handleErrorLog
                                           , newLogLock
                                           , onesecond
+                                          , onKill
                                           , tellLog
                                           , tryCreateTransport
                                           )
@@ -53,7 +61,6 @@ myApp countRef _ respond = do
   modifyMVar countRef $ \count -> do
     let count' = count + 12345
         msg =    fromByteString (B.pack (show count'))
---              <> fromByteString (B.pack (show role))
     responseReceived <-
       respond $
         responseBuilder
@@ -66,6 +73,7 @@ myApp countRef _ respond = do
 master :: TMVar ProcessId -> Pipeline ()
 master ref = do
   self <- getSelfPid
+  tellLog ("master self pid = " ++ show self)
   liftIO $ atomically $ putTMVar ref self
 
   them_ping :: ProcessId <- expectSafe
@@ -95,22 +103,39 @@ mkDHPP cfg = DHPP
                   (T.unpack (hostg cfg), show (port cfg))
                   (T.unpack (hostg cfg), show (port cfg))
 
-workerMain :: TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ()
+
+
+killLocalNode :: TVar (Maybe LocalNode) -> IO ()
+killLocalNode ref_node = do
+  mnode <- readTVarIO ref_node
+  traverse_ closeLocalNode mnode
+
+-- NOTE: This should be asynchronous task, i.e. it forks a thread
+--       and return the id of the thread.
+workerMain :: TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ThreadId
 workerMain ref (Master name, mcellcfg) = do
   let dhpp = mkDHPP (cellAddress mcellcfg)
-  withTransport dhpp $ \transport -> do
-     node <- newLocalNode transport rtable
-     lock <- newLogLock 0
-     runProcess node $
-       flip runReaderT lock $
-         handleErrorLog $
-           master ref
+  ref_node <- newTVarIO Nothing
+  flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $
+    withTransport dhpp $ \transport -> do
+      putStrLn "transport started"
+      node <- newLocalNode transport rtable
+      atomically $ writeTVar ref_node (Just node)
+      lock <- newLogLock 0
+      runProcess node $
+        flip runReaderT lock $
+          handleErrorLog $
+            master ref
 workerMain ref (Slave name mpid, scellcfg) = do
   let dhpp = mkDHPP (cellAddress scellcfg)
-  withTransport dhpp $ \transport -> do
-    node <- newLocalNode transport rtable
-    lock <- newLogLock 0
-    runProcess node $
-      flip runReaderT lock $
-        handleErrorLog $
-          slave ref mpid
+  ref_node <- newTVarIO Nothing
+  flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $
+    withTransport dhpp $ \transport -> do
+      putStrLn "transport started"
+      node <- newLocalNode transport rtable
+      atomically $ writeTVar ref_node (Just node)
+      lock <- newLogLock 0
+      runProcess node $
+        flip runReaderT lock $
+          handleErrorLog $
+            slave ref mpid
