@@ -70,6 +70,16 @@ onKill action (Left ex) = do
                         _ -> pure ()
 onKill _   (Right _) = pure ()
 
+-- | do an action until it results in Just.
+--   When failed, do onFailure action before next.
+doUntilJust :: (Monad m) => m (Maybe a) -> m () -> m a
+doUntilJust check onFailure = do
+  m <- check
+  case m of
+    Nothing -> onFailure >> doUntilJust check onFailure
+    Just x -> pure x
+
+
 
 expectSafe :: forall a. (Binary a, Typeable a) => Pipeline a
 expectSafe = ExceptT $ lift $ receiveWait [matchAny f]

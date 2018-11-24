@@ -45,7 +45,7 @@ import           Servant.Client      ( BaseUrl(..), ClientM, ClientEnv(..)
 import           System.FilePath     ( (</>) )
 import           System.IO           ( hPutStrLn, stderr )
 ------
-import           CloudHaskell.Util   ( onKill, waitForever )
+import           CloudHaskell.Util   ( doUntilJust, onKill, waitForever )
 import           Worker.Type         ( CellConfig
                                      , ComputeConfig(..)
                                      , SOHandle(..)
@@ -68,14 +68,10 @@ killSpawned ref = do
 
 
 requestRole :: ClientEnv -> NodeName -> IO (WorkerRole, CellConfig)
-requestRole env name@(NodeName n) = do
-  m <- rightToMaybe <$> runClientM (getCell n) env
-  case m of
-    Nothing -> do
-      putStrLn "fail to obtain role"
-      threadDelay 1000000
-      requestRole env name
-    Just (role,cellcfg) -> pure (role,cellcfg)
+requestRole env name@(NodeName n) =
+  doUntilJust
+    (rightToMaybe <$> runClientM (getCell n) env)
+    (putStrLn "fail to obtain role" >> threadDelay 1000000)
 
 
 -- NOTE: We collect all of thread ids for child threads created from this root thread.
