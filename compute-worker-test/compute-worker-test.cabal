@@ -17,11 +17,14 @@ test-suite spec
   main-is:             Main.hs
   other-modules:       Test.InitHandshakeSpec
   build-depends:       base
-                     , distributed-process
+--                      , distributed-process
+                     , distributed-process-lifted
                      , hspec
                      , network-transport
                      , network-transport-tcp
+                     , transformers
                      --
+                     , cloud-haskell-util
                      , compute-worker
 
   hs-source-dirs:      test
