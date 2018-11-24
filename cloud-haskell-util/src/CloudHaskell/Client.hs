@@ -94,13 +94,6 @@ clientUnit :: (Serializable query, Serializable result,Show query, Show result) 
 clientUnit qqvar sq = do
   forever $ do
     (i,q) <- liftIO $ atomically $ waitQuery qqvar
-{-               qq <- readTVar qqvar
-               case next qq of
-                 Nothing -> retry
-                 Just (i,q) -> do
-                   let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
-                   writeTVar qqvar qq'
-                   return (i,q) -}
     tellLog ("query start: " ++ show (i,q))
     spawnLocal $ do
       r <- queryProcess sq q pure

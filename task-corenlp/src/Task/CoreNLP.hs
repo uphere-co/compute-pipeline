@@ -1,39 +1,37 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE OverloadedStrings  #-}
 module Task.CoreNLP where
 
-import           Control.Concurrent.STM (atomically,modifyTVar',readTVar,writeTVar,retry)
-import           Control.DeepSeq      (NFData)
-import           Control.Lens         ((&),(.~))
-import           Control.Monad        (forever)
-import           Data.Aeson           (FromJSON,ToJSON)
-import           Data.Binary          (Binary)
+import           Control.Concurrent.STM ( atomically, modifyTVar' )
+import           Control.DeepSeq        ( NFData )
+import           Control.Lens           ( (&), (.~) )
+import           Control.Monad          ( forever )
+import           Data.Aeson             ( FromJSON, ToJSON )
+import           Data.Binary            ( Binary )
 import qualified Data.ByteString.Char8 as B
-import           Data.Default         (def)
+import           Data.Default           ( def )
 import qualified Data.IntMap     as IM
-import           Data.Text            (Text)
-import           GHC.Generics         (Generic)
+import           Data.Text              ( Text )
+import           GHC.Generics           ( Generic )
 import           Language.Java   as J
-import           Language.Java.Inline
-import           System.Environment   (getEnv)
+import           System.Environment     ( getEnv)
 --
-import           CoreNLP.Simple       (prepare)
-import           CoreNLP.Simple.Type  (PipelineConfig(..)
-                                      ,tokenizer
-                                      ,words2sentences
-                                      ,postagger
-                                      ,lemma
-                                      ,sutime
-                                      ,depparse
-                                      ,constituency
-                                      ,ner
-                                      ,isShiftReduce)
-import           SRL.Analyze.CoreNLP  (runParser)        -- TODO: this should be located outside SRL.
-import           SRL.Analyze.Type     (DocAnalysisInput)
+import           CoreNLP.Simple         ( prepare)
+import           CoreNLP.Simple.Type    ( tokenizer
+                                        , words2sentences
+                                        , postagger
+                                        , lemma
+                                        , sutime
+                                        , constituency
+                                        , ner
+                                        )
+import           SRL.Analyze.CoreNLP    ( runParser )        -- TODO: this should be located outside SRL.
+import           SRL.Analyze.Type       ( DocAnalysisInput )
 --
-import           CloudHaskell.QueryQueue (QQVar(..),QueryStatus(..), waitQuery )
+import           CloudHaskell.QueryQueue (type QQVar,QueryStatus(..), waitQuery )
 
 
 data QCoreNLP = QCoreNLP Text
@@ -49,13 +47,6 @@ daemonCoreNLP qqvar =
   withCoreNLP $ \pp ->
     forever $ do
       (i,q) <- atomically $ waitQuery qqvar
-{-                 qq <- readTVar qqvar
-                 case next qq of
-                   Nothing -> retry
-                   Just (i,q) -> do
-                     let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
-                     writeTVar qqvar qq'
-                     return (i,q) -}
       case q of
         QCoreNLP txt -> do
           dainput <- runParser pp txt
