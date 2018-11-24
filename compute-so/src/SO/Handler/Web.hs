@@ -11,21 +11,21 @@ import           Data.Proxy               ( Proxy(..) )
 import           Data.Text                ( Text )
 import           Network.Wai              ( Application )
 import           Servant                  ( Handler, Server, serve )
-import           Servant.API              ( (:>), Get, JSON )
+import           Servant.API              ( (:>), JSON, Post, ReqBody )
 ------
 import           CloudHaskell.QueryQueue  ( type QQVar, singleQuery )
 
-type SOAPI = "test" :> Get '[JSON] Text
+type SOAPI = "test" :> ReqBody '[JSON] Text :> Post '[JSON] Text
 
 
 soAPI :: Proxy SOAPI
 soAPI = Proxy
 
 
-getTest :: QQVar Text Text -> Handler Text
-getTest qqvar = do
-  r <- liftIO $ singleQuery qqvar "my test"
-  pure r -- "Hello, there"
+getTest :: QQVar Text Text -> Text -> Handler Text
+getTest qqvar txt =
+  liftIO $ singleQuery qqvar txt
+
 
 
 server :: QQVar Text Text -> Server SOAPI
