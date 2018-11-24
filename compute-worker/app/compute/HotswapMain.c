@@ -1,6 +1,7 @@
 #include "HsFFI.h"
 #include "Rts.h"
 
+
 int main(int argc, char* argv []) {
     RtsConfig config = defaultRtsConfig;
     config.keep_cafs = 1;

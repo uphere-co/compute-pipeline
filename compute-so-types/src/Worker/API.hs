@@ -9,8 +9,10 @@ module Worker.API
 import           Data.Proxy               ( Proxy(..) )
 import           Data.Text                ( Text )
 import           Servant.API              ( (:>), JSON, Post, ReqBody )
+------
+import           Task.CoreNLP             ( RCoreNLP )
 
-type SOAPI = "test" :> ReqBody '[JSON] Text :> Post '[JSON] Text
+type SOAPI = "corenlp" :> ReqBody '[JSON] Text :> Post '[JSON] RCoreNLP
 
 soAPI :: Proxy SOAPI
 soAPI = Proxy

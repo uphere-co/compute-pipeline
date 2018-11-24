@@ -42,11 +42,13 @@ data RCoreNLP = RCoreNLP DocAnalysisInput
 
 type Pipeline = J ('Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
 
+
 daemonCoreNLP :: QQVar QCoreNLP RCoreNLP -> IO ()
 daemonCoreNLP qqvar =
   withCoreNLP $ \pp ->
     forever $ do
       (i,q) <- atomically $ waitQuery qqvar
+      -- TODO: need to refactor out this query processing (handleQuery).
       case q of
         QCoreNLP txt -> do
           dainput <- runParser pp txt

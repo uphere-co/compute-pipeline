@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -w #-}
 module SO.Handler.Process
   ( mainProcess
   ) where
 
+import Control.Concurrent (forkOS, threadDelay)
 import           Control.Concurrent.STM   ( atomically, modifyTVar' )
-import           Control.Monad            ( forever )
+import           Control.Monad            ( forever, void )
 import           Control.Monad.IO.Class   ( liftIO )
 import qualified Data.IntMap as IM
 import           Data.Semigroup           ( (<>) )
@@ -16,15 +18,10 @@ import           CloudHaskell.QueryQueue  ( QQVar
                                           )
 import           CloudHaskell.Util        ( tellLog )
 import           CloudHaskell.Type        ( Pipeline )
+import           Task.CoreNLP             ( QCoreNLP, RCoreNLP, daemonCoreNLP )
 
 
-
--- TODO: need to refactor out this query processing (handleQuery).
-mainProcess :: QQVar Text Text -> Pipeline ()
+mainProcess :: QQVar QCoreNLP RCoreNLP -> Pipeline ()
 mainProcess qqvar = do
-  tellLog "mainProcess2"
-  forever $ do
-    (i,q) <- liftIO $ atomically $ waitQuery qqvar
-    let r = q <> ":1234"
-    liftIO $ atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
-    tellLog $ "answered with " ++ show r
+  tellLog "mainProcess: deamonCoreNLP"
+  void $ liftIO $ forkOS $ daemonCoreNLP qqvar

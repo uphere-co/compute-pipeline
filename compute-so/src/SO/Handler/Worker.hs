@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -w #-}
 module SO.Handler.Worker
   ( workerMain
   ) where
@@ -33,9 +34,9 @@ import           CloudHaskell.Util        ( expectSafe
                                           , withTransport
                                           )
 import           CloudHaskell.Type        ( Pipeline )
-import           Network.Transport.UpHere ( DualHostPortPair(..) )
 import           Compute.Task             ( rtable )
-------
+import           Network.Transport.UpHere ( DualHostPortPair(..) )
+import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
 import           Worker.Type              ( WorkerRole(..)
                                           , CellConfig(..)
                                           , NetworkConfig(..)
@@ -45,7 +46,7 @@ import           Worker.Type              ( WorkerRole(..)
 import           SO.Handler.Process               ( mainProcess )
 
 
-master :: QQVar Text Text -> TMVar ProcessId -> Pipeline ()
+master :: QQVar QCoreNLP RCoreNLP -> TMVar ProcessId -> Pipeline ()
 master qqvar ref = do
   self <- getSelfPid
   tellLog ("master self pid = " ++ show self)
@@ -77,9 +78,10 @@ killLocalNode ref_node = do
   mnode <- readTVarIO ref_node
   traverse_ closeLocalNode mnode
 
+
 -- NOTE: This should be asynchronous task, i.e. it forks a thread
 --       and return the id of the thread.
-workerMain :: QQVar Text Text -> TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ThreadId
+workerMain :: QQVar QCoreNLP RCoreNLP -> TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ThreadId
 workerMain qqvar ref (Master _, mcellcfg) = do
   let dhpp = mkDHPP (cellAddress mcellcfg)
   ref_node <- newTVarIO Nothing
