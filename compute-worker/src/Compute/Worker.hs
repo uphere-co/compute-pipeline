@@ -1,7 +1,8 @@
-{-# LANGUAGE OverloadedStrings        #-}
-{-# LANGUAGE RecordWildCards          #-}
-{-# LANGUAGE ScopedTypeVariables      #-}
-{-# LANGUAGE TypeApplications         #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# OPTIONS_GHC -w #-}
 --
 -- `compute worker` is the main distributed computing process for a generic
@@ -13,15 +14,20 @@
 -- is supervising slaves for the task.
 module Compute.Worker where
 
-import           Control.Concurrent  ( ThreadId, forkIO, killThread, threadDelay )
+import           Control.Concurrent  ( ThreadId
+                                     , forkFinally, forkIO, killThread
+                                     , newEmptyMVar, readMVar
+                                     , threadDelay
+                                     )
 import           Control.Concurrent.STM
                                      ( TVar, atomically
                                      , newEmptyTMVarIO, takeTMVar
-                                     , newTVarIO, readTVar, writeTVar
+                                     , newTVarIO, readTVar, readTVarIO, writeTVar
                                      , retry
                                      )
 import           Control.Distributed.Process
                                      ( ProcessId )
+import           Control.Exception   ( AsyncException(..), SomeException, fromException )
 import           Control.Monad       ( forever, void )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
@@ -53,31 +59,50 @@ newtype URL = URL { unURL :: Text }
 
 newtype NodeName = NodeName { unNodeName :: Text }
 
+-- | wait indefinitely.
+waitForever :: IO ()
+waitForever = void (newEmptyMVar >>= readMVar)
+
+
+-- | kill child threads.
+onKill :: TVar [ThreadId] -> Either SomeException a -> IO ()
+onKill ref (Left ex) = do
+  let masyncex = fromException @AsyncException ex
+  for_ masyncex $ \case ThreadKilled -> do
+                          print "ThreadKilled!!!"
+                          tids <- readTVarIO ref
+                          traverse_ killThread tids
+                        _ -> pure ()
+onKill _   (Right _) = pure ()
+
 
 -- NOTE: We collect all of thread ids for child threads created from this root thread.
 -- TODO: Use more systematic management. Consider using thread-hierarchy or async-supervisor library.
-app :: ClientEnv -> (WorkerRole,CellConfig) ->  UpdatableSO SOHandle -> IO [ThreadId]
-app env (role,cellcfg) sohandle =
-  withSO sohandle $ \SOHandle{..} -> do
-    ref <- newEmptyTMVarIO
-    tids <-
-      case role of
-        Master name -> do
-          -- REST API
-          tid1 <- forkIO $ run 3994 $ soApplication
+app :: ClientEnv -> (WorkerRole,CellConfig) ->  UpdatableSO SOHandle -> IO ThreadId
+app env (role,cellcfg) sohandle = do
+  ref_tids <- newTVarIO []
+  flip forkFinally (onKill ref_tids) $
 
-          -- update orchestrator with new master process id
-          tid2 <- forkIO $ do
-            pid <- atomically $ takeTMVar ref
-            void $ runClientM (postProcess name pid) env
-            print pid
-          pure [tid1,tid2]
-        Slave  name mpid -> do
-          hPutStrLn stderr $ "master pid = " ++ show mpid
-          pure []
-    tid3 <- forkIO $ soProcess ref (role,cellcfg)
+    withSO sohandle $ \SOHandle{..} -> do
+      ref <- newEmptyTMVarIO
+      tids <-
+        case role of
+          Master name -> do
+            -- REST API
+            tid1 <- forkIO $ run 3994 $ soApplication
 
-    pure (tid3:tids)
+            -- update orchestrator with new master process id
+            tid2 <- forkIO $ do
+              pid <- atomically $ takeTMVar ref
+              void $ runClientM (postProcess name pid) env
+              print pid
+            pure [tid1,tid2]
+          Slave  name mpid -> do
+            hPutStrLn stderr $ "master pid = " ++ show mpid
+            pure []
+      tid3 <- forkIO $ soProcess ref (role,cellcfg)
+      atomically $ writeTVar ref_tids (tid3 : tids)
+      waitForever
 
 
 looper ::
@@ -85,8 +110,8 @@ looper ::
   -> (WorkerRole,CellConfig)
   -> TVar SOInfo
   -> UpdatableSO SOHandle
-  -> Maybe (SOInfo,[ThreadId])
-  -> IO (Maybe (SOInfo,[ThreadId]))
+  -> Maybe (SOInfo,ThreadId)
+  -> IO (Maybe (SOInfo,ThreadId))
 looper env (role,cellcfg) ref sohandle mcurr  = do
   newso <-
     atomically $ do
@@ -95,13 +120,13 @@ looper env (role,cellcfg) ref sohandle mcurr  = do
         Nothing -> pure newso
         Just (currso,_) ->
           if currso == newso then retry else pure newso
-  for_ mcurr $ \(_,tids) -> do
+  for_ mcurr $ \(_,tid) -> do
     hPutStrLn stderr ("update to " ++ show newso)
-    traverse_ killThread tids
+    killThread tid
     threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
-  tids' <- app env (role,cellcfg) sohandle
-  pure (Just (newso,tids'))
+  tid' <- app env (role,cellcfg) sohandle
+  pure (Just (newso,tid'))
 
 
 getCompute :: ClientM ComputeConfig
