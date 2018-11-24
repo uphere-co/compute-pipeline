@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 stability:           alpha
 
 library
-  exposed-modules:     Worker.Type
+  exposed-modules:     Worker.API
+                       Worker.Type
   hs-source-dirs:      src
   build-depends:       base
                      , aeson
@@ -23,6 +24,7 @@ library
                      , deepseq
                      , distributed-process
                      , network-transport
+                     , servant
                      , stm
                      , text
                      , wai
