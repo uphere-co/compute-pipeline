@@ -7,23 +7,40 @@ module SO.Handler.Web
   ) where
 
 import           Blaze.ByteString.Builder ( fromByteString )
-import           Control.Concurrent.MVar  ( MVar, modifyMVar )
+import           Control.Concurrent.STM   ( TVar, atomically, modifyTVar' )
+import           Control.Monad.IO.Class   ( liftIO )
 import qualified Data.ByteString.Char8 as B
 import           Data.Proxy               ( Proxy(..) )
-import           Data.Text
+import           Data.Text                ( Text )
 import qualified Data.Text as T
 import           Network.HTTP.Types       ( status200 )
 import           Network.Wai              ( Application, responseBuilder )
+import           Servant                  ( Handler, Server, serve )
 import           Servant.API              ( (:>), Get, JSON )
 
 
 type SOAPI = "test" :> Get '[JSON] Text
 
+
 soAPI :: Proxy SOAPI
 soAPI = Proxy
 
-webApp :: MVar Int -> Application
-webApp countRef _ respond = do
+
+getTest :: TVar Int -> Handler Text
+getTest ref_count = do
+  liftIO $ atomically $ modifyTVar' ref_count (+1)
+  pure "Hello, there"
+
+
+server :: TVar Int -> Server SOAPI
+server ref_count = getTest ref_count
+
+
+webApp :: TVar Int -> Application
+webApp ref_count = serve soAPI (server ref_count)
+
+{-
+_ respond = do
   modifyMVar countRef $ \count -> do
     let count' = count + 54321
         msg =    fromByteString (B.pack (show count'))
@@ -34,4 +51,4 @@ webApp countRef _ respond = do
           [("Content-Type", "text/plain")]
           msg
     pure (count',responseReceived)
-
+-}
