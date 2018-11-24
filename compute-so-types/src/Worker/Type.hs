@@ -4,6 +4,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Worker.Type where
 
+import           Control.Concurrent          ( ThreadId )
 import           Control.Concurrent.STM      ( TMVar )
 import           Control.DeepSeq             ( NFData )
 import           Control.Distributed.Process ( ProcessId )
@@ -81,6 +82,9 @@ data WorkerRole =
 -- | The set of functions that you want to expose from your shared object
 data SOHandle = SOHandle
                 { soApplication :: Application
-                , soProcess :: TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ()
+                , soProcess                            -- async process
+                            :: TMVar ProcessId         -- holder for CH process ID
+                            -> (WorkerRole,CellConfig) -- configuration
+                            -> IO ThreadId             -- worker thread spawned inside
                 }
               deriving (Generic, NFData)

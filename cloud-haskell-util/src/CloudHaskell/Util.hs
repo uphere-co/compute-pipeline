@@ -1,12 +1,14 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MonoLocalBinds             #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeApplications           #-}
 module CloudHaskell.Util where
 
-import           Control.Concurrent                ( forkOS, threadDelay )
+import           Control.Concurrent                ( forkOS, newEmptyMVar, readMVar, threadDelay )
 import           Control.Concurrent.STM            ( atomically, newTVarIO )
 import           Control.Concurrent.STM.TMVar      ( takeTMVar, newTMVarIO, putTMVar )
 import           Control.Error.Safe                ( justErr )
@@ -21,6 +23,10 @@ import           Control.Distributed.Process.Lifted( spawnLocal
                                                    )
 import           Control.Distributed.Process.Lifted.Class ( MonadProcessBase )
 import           Control.Distributed.Process.Serializable
+import           Control.Exception                 ( AsyncException(..)
+                                                   , SomeException
+                                                   , fromException
+                                                   )
 import           Control.Monad                     ( forever, void )
 import           Control.Monad.Loops               ( untilJust )
 import           Control.Monad.IO.Class            ( MonadIO(liftIO) )
@@ -30,6 +36,7 @@ import           Control.Monad.Trans.Except        ( ExceptT(..), runExceptT )
 import           Control.Monad.Trans.Reader        ( ReaderT )
 import           Data.Binary                       ( Binary, decode )
 import qualified Data.ByteString.Char8       as BC
+import           Data.Foldable                     ( for_ )
 import qualified Data.HashMap.Strict         as HM
 import           Data.Text                         ( Text )
 import qualified Data.Text                   as T
@@ -48,6 +55,30 @@ import           CloudHaskell.QueryQueue           ( QQVar, singleQuery, emptyQQ
 import           CloudHaskell.Type                 ( LogLock, Pipeline, PipelineError(..)
                                                    , RenderError(..), Router(..)
                                                    )
+
+
+-- | wait indefinitely.
+waitForever :: IO ()
+waitForever = void (newEmptyMVar >>= readMVar)
+
+
+-- | kill child threads.
+onKill :: IO () -> Either SomeException a -> IO ()
+onKill action (Left ex) = do
+  let masyncex = fromException @AsyncException ex
+  for_ masyncex $ \case ThreadKilled -> action
+                        _ -> pure ()
+onKill _   (Right _) = pure ()
+
+-- | do an action until it results in Just.
+--   When failed, do onFailure action before next.
+doUntilJust :: (Monad m) => m (Maybe a) -> m () -> m a
+doUntilJust check onFailure = do
+  m <- check
+  case m of
+    Nothing -> onFailure >> doUntilJust check onFailure
+    Just x -> pure x
+
 
 
 expectSafe :: forall a. (Binary a, Typeable a) => Pipeline a
