@@ -2,7 +2,6 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# OPTIONS_GHC -w #-}
 --
 -- `compute worker` is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
@@ -15,7 +14,6 @@ module Compute.Worker where
 
 import           Control.Concurrent  ( ThreadId
                                      , forkFinally, forkIO, killThread
-                                     , newEmptyMVar, readMVar
                                      , threadDelay
                                      )
 import           Control.Concurrent.STM
@@ -62,13 +60,13 @@ newtype NodeName = NodeName { unNodeName :: Text }
 
 killSpawned :: TVar [ThreadId] -> IO ()
 killSpawned ref = do
-  print "parent thread killed."
+  putStrLn "parent thread killed."
   tids <- readTVarIO ref
   traverse_ killThread tids
 
 
 requestRole :: ClientEnv -> NodeName -> IO (WorkerRole, CellConfig)
-requestRole env name@(NodeName n) =
+requestRole env (NodeName n) =
   doUntilJust
     (rightToMaybe <$> runClientM (getCell n) env)
     (putStrLn "fail to obtain role" >> threadDelay 1000000)
@@ -87,16 +85,16 @@ app env name sohandle = do
       ref <- newEmptyTMVarIO
       tids <-
         case role of
-          Master name -> do
+          Master n -> do
             -- REST API
             tid1 <- forkIO $ run 3994 $ soApplication
             -- update orchestrator with new master process id
             tid2 <- forkIO $ do
               pid <- atomically $ takeTMVar ref
-              void $ runClientM (postProcess name pid) env
+              void $ runClientM (postProcess n pid) env
               print pid
             pure [tid1,tid2]
-          Slave  name mpid -> do
+          Slave _ mpid -> do
             hPutStrLn stderr $ "master pid = " ++ show mpid
             pure []
       tid3 <- soProcess ref (role,cellcfg)
