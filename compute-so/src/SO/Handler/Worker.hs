@@ -16,12 +16,10 @@ import           Control.Distributed.Process.Node
                                           ( LocalNode, closeLocalNode
                                           , newLocalNode, runProcess
                                           )
-import           Control.Exception        ( bracket )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Reader ( runReaderT )
 import           Data.Foldable            ( traverse_ )
 import qualified Data.Text             as T
-import           Network.Transport        ( Transport, closeTransport )
 ------
 import           CloudHaskell.Client      ( heartBeatHandshake )
 import           CloudHaskell.Server      ( withHeartBeat )
@@ -30,7 +28,7 @@ import           CloudHaskell.Util        ( expectSafe
                                           , newLogLock
                                           , onKill
                                           , tellLog
-                                          , tryCreateTransport
+                                          , withTransport
                                           )
 import           CloudHaskell.Type        ( Pipeline )
 import           Network.Transport.UpHere ( DualHostPortPair(..) )
@@ -66,18 +64,10 @@ slave _ref mpid = do
     pure ()
 
 
-withTransport :: DualHostPortPair -> (Transport -> IO a) -> IO a
-withTransport dhpp action =
-  bracket
-    (tryCreateTransport dhpp)
-    closeTransport
-    action
-
 mkDHPP :: NetworkConfig -> DualHostPortPair
 mkDHPP cfg = DHPP
                   (T.unpack (hostg cfg), show (port cfg))
                   (T.unpack (hostg cfg), show (port cfg))
-
 
 
 killLocalNode :: TVar (Maybe LocalNode) -> IO ()

@@ -25,6 +25,7 @@ import           Control.Distributed.Process.Lifted.Class ( MonadProcessBase )
 import           Control.Distributed.Process.Serializable
 import           Control.Exception                 ( AsyncException(..)
                                                    , SomeException
+                                                   , bracket
                                                    , fromException
                                                    )
 import           Control.Monad                     ( forever, void )
@@ -42,7 +43,7 @@ import           Data.Text                         ( Text )
 import qualified Data.Text                   as T
 import qualified Data.Text.IO                as TIO
 import           Data.Typeable                     ( Typeable )
-import           Network.Transport                 ( Transport )
+import           Network.Transport                 ( Transport, closeTransport )
 import           System.IO                         ( hFlush, hPutStrLn, stderr )
 import           Unsafe.Coerce
 --
@@ -220,3 +221,11 @@ handleErrorLog m = do
   case r of
     Left e -> ask >>= \lock -> atomicLogText lock (renderError e)
     Right _ -> pure ()
+
+
+withTransport :: DualHostPortPair -> (Transport -> IO a) -> IO a
+withTransport dhpp action =
+  bracket
+    (tryCreateTransport dhpp)
+    closeTransport
+    action

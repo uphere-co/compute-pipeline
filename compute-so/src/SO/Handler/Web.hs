@@ -1,4 +1,7 @@
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
+{-# OPTIONS_GHC -w #-}
 module SO.Handler.Web
   ( webApp
   ) where
@@ -6,8 +9,18 @@ module SO.Handler.Web
 import           Blaze.ByteString.Builder ( fromByteString )
 import           Control.Concurrent.MVar  ( MVar, modifyMVar )
 import qualified Data.ByteString.Char8 as B
+import           Data.Proxy               ( Proxy(..) )
+import           Data.Text
+import qualified Data.Text as T
 import           Network.HTTP.Types       ( status200 )
 import           Network.Wai              ( Application, responseBuilder )
+import           Servant.API              ( (:>), Get, JSON )
+
+
+type SOAPI = "test" :> Get '[JSON] Text
+
+soAPI :: Proxy SOAPI
+soAPI = Proxy
 
 webApp :: MVar Int -> Application
 webApp countRef _ respond = do

@@ -36,6 +36,8 @@ import CloudHaskell.Type           ( Pipeline )
 import CloudHaskell.Util           ( expectSafe, newLogLock )
 
 
+-- NOTE: this is different from CloudHaskell.Util.withTransport. hard-coded address.
+-- TODO: unify this with that withTransport.
 withTransport :: (Transport -> IO a) -> IO a
 withTransport action = do
   let host = "127.0.0.1"
