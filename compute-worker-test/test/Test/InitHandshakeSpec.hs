@@ -3,7 +3,6 @@ module Test.InitHandshakeSpec where
 
 import Control.Concurrent          ( MVar
                                    , forkIO
-                                   , threadDelay
                                    , newEmptyMVar
                                    , takeMVar
                                    , putMVar
@@ -16,21 +15,25 @@ import Control.Distributed.Process.Lifted
                                    , sendChan
                                    , receiveChan
                                    )
-import Control.Distributed.Process.Node.Lifted (initRemoteTable,newLocalNode,runProcess)
-import Control.Exception (bracket,ArithException(..),throwIO)
-import Control.Monad (void)
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Except (runExceptT)
-import Control.Monad.Trans.Reader (runReaderT)
-import Network.Transport (Transport,closeTransport)
-import Network.Transport.TCP (createTransport,defaultTCPParameters)
-import qualified System.IO as IO
+import Control.Distributed.Process.Node.Lifted
+                                   ( initRemoteTable
+                                   , newLocalNode
+                                   , runProcess
+                                   )
+import Control.Monad               ( void )
+import Control.Monad.IO.Class      ( liftIO )
+import Control.Monad.Trans.Except  ( runExceptT )
+import Control.Monad.Trans.Reader  ( runReaderT )
+import Network.Transport           ( Transport, closeTransport )
+import Network.Transport.TCP       ( createTransport
+                                   , defaultTCPParameters
+                                   )
 import Test.Hspec
 ------
-import CloudHaskell.Client (heartBeatHandshake)
-import CloudHaskell.Server (withHeartBeat)
-import CloudHaskell.Type (Pipeline)
-import CloudHaskell.Util (expectSafe,newLogLock)
+import CloudHaskell.Client         ( heartBeatHandshake )
+import CloudHaskell.Server         ( withHeartBeat )
+import CloudHaskell.Type           ( Pipeline )
+import CloudHaskell.Util           ( expectSafe, newLogLock )
 
 
 withTransport :: (Transport -> IO a) -> IO a
@@ -52,7 +55,7 @@ testHandshake (lock_server,lock_client) = do
 server :: MVar () -> Pipeline ()
 server lock_server = do
   client_ping <- expectSafe @ProcessId
-  withHeartBeat client_ping (\_ -> pure ()) $ \client_main -> do
+  withHeartBeat client_ping (\_ -> pure ()) $ \_ ->
     liftIO $ putMVar lock_server ()
 
 
@@ -71,16 +74,14 @@ spec = do
         let x = 3 :: Int
 
         yref <- newEmptyMVar
-        y <-
-          runProcess node $ do
-            lock <- liftIO $ newEmptyMVar
-            sp <- spawnChannelLocal $ \rp -> do
-                    y <- receiveChan rp
-                    liftIO $ putMVar yref y
-                    liftIO $ putMVar lock ()
-            sendChan sp x
-            liftIO $ takeMVar lock
-
+        runProcess node $ do
+          lock <- liftIO $ newEmptyMVar
+          sp <- spawnChannelLocal $ \rp -> do
+                  y <- receiveChan rp
+                  liftIO $ putMVar yref y
+                  liftIO $ putMVar lock ()
+          sendChan sp x
+          liftIO $ takeMVar lock
         y <- takeMVar yref
         x `shouldBe` y
 
