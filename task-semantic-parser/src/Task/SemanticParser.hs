@@ -8,12 +8,7 @@
 
 module Task.SemanticParser where
 
-import           Control.Concurrent.STM         ( atomically
-                                                , retry
-                                                , modifyTVar'
-                                                , readTVar
-                                                , writeTVar
-                                                )
+import           Control.Concurrent.STM         ( atomically, modifyTVar' )
 import           Control.DeepSeq                ( NFData )
 import           Control.Lens                   ( (&), (^.), (^..), (.~)
                                                 , _Just, makeLenses
@@ -59,7 +54,7 @@ import           SRL.Analyze.Type               ( AnalyzePredata
                                                 )
 import           WikiEL.Type                    ( EntityMention )
 --
-import           CloudHaskell.QueryQueue        ( QQVar, QueryStatus(..), next )
+import           CloudHaskell.QueryQueue        ( QQVar, QueryStatus(..), waitQuery )
 import           Task.Reuters                   ( loadExistingMG )
 
 
@@ -150,27 +145,18 @@ runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
                        , _companyMap = cmap
                        }
     forever $ do
-      (i,q) <- atomically $ do
-                 qq <- readTVar qqvar
-                 case next qq of
-                   Nothing -> retry
-                   Just (i,q) -> do
-                     let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
-                     writeTVar qqvar qq'
-                     return (i,q)
-      case q of
-        CQ_Sentence txt -> do
-          (tokenss,mgs,cout) <- runSRL sdat txt
-          let r = CR_Sentence (ResultSentence txt tokenss mgs cout)
-          atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
-        CQ_Reuters n -> do
-          putStrLn ("CQ_Reuters " ++ show n)
-          -- TODO: no more testPathConfig
-          lst <- catMaybes <$> loadExistingMG testPathConfig n
-          print (length lst)
-          let r = CR_Reuters (ResultReuters n lst)
-          atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
-          return ()
+      (i,q) <- atomically $ waitQuery qqvar
+      r <- case q of
+             CQ_Sentence txt -> do
+               (tokenss,mgs,cout) <- runSRL sdat txt
+               pure $ CR_Sentence (ResultSentence txt tokenss mgs cout)
+             CQ_Reuters n -> do
+               putStrLn ("CQ_Reuters " ++ show n)
+               -- TODO: no more testPathConfig
+               lst <- catMaybes <$> loadExistingMG testPathConfig n
+               print (length lst)
+               pure $ CR_Reuters (ResultReuters n lst)
+      atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
 
 -- TODO: remove this.
 testPathConfig :: PathConfig

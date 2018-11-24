@@ -2,8 +2,13 @@
 
 module CloudHaskell.QueryQueue where
 
-import           Control.Concurrent.STM
-import           Data.IntMap                  (IntMap)
+import           Control.Concurrent.STM       ( STM, TVar
+                                              , atomically
+                                              , readTVar
+                                              , retry
+                                              , writeTVar
+                                              )
+import           Data.IntMap                  ( IntMap )
 import qualified Data.IntMap            as IM
 import           Data.Maybe
 --
@@ -65,3 +70,13 @@ singleQuery qqvar query  = do
       Just r -> let qq' = remove i qq
                 in writeTVar qqvar qq' >> pure r
   pure r
+
+waitQuery :: QQVar q r -> STM (Int,q)
+waitQuery qqvar = do
+  qq <- readTVar qqvar
+  case next qq of
+    Nothing -> retry -- wait until the next
+    Just (i,q) -> do
+      let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
+      writeTVar qqvar qq'
+      pure (i,q)

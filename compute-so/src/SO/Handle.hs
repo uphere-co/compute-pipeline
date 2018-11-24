@@ -3,11 +3,14 @@ module SO.Handle
   ( hsNewSOHandle
   ) where
 
-import Control.Concurrent ( newMVar )
-import Foreign            ( StablePtr(..), newStablePtr )
-import Worker.Type        ( SOHandle(..) )
+import           Control.Concurrent.STM  ( newTVarIO )
+import           Foreign                 ( StablePtr, newStablePtr )
+import           Worker.Type             ( SOHandle(..) )
 ------
-import SO.MyCode ( myApp, workerMain )
+import           CloudHaskell.QueryQueue ( emptyQQ )
+------
+import           SO.Handler.Web          ( webApp )
+import           SO.Handler.Worker       ( workerMain )
 
 
 foreign export ccall "hs_soHandle"
@@ -15,8 +18,8 @@ foreign export ccall "hs_soHandle"
 
 hsNewSOHandle :: IO (StablePtr SOHandle)
 hsNewSOHandle = do
-  countRef <- newMVar (0 :: Int)
+  qqvar <- newTVarIO emptyQQ
   newStablePtr SOHandle
-               { soApplication = myApp countRef
-               , soProcess = workerMain
+               { soApplication = webApp qqvar
+               , soProcess     = workerMain qqvar
                }
