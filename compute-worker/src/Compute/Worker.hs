@@ -26,7 +26,7 @@ import           Control.Monad       ( forever, void )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
 import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
-import           Data.Foldable       ( for_ )
+import           Data.Foldable       ( for_, traverse_ )
 import           Data.Text           ( Text )
 import qualified Data.Text as T
 import           GHC.Hotswap         ( UpdatableSO, registerHotswap, swapSO, withSO )
@@ -54,20 +54,30 @@ newtype URL = URL { unURL :: Text }
 newtype NodeName = NodeName { unNodeName :: Text }
 
 
-app :: ClientEnv -> (WorkerRole,CellConfig) ->  UpdatableSO SOHandle -> IO ()
+-- NOTE: We collect all of thread ids for child threads created from this root thread.
+-- TODO: Use more systematic management. Consider using thread-hierarchy or async-supervisor library.
+app :: ClientEnv -> (WorkerRole,CellConfig) ->  UpdatableSO SOHandle -> IO [ThreadId]
 app env (role,cellcfg) sohandle =
   withSO sohandle $ \SOHandle{..} -> do
     ref <- newEmptyTMVarIO
-    case role of
-      Master name -> do
-        forkIO $ run 3994 $ soApplication
-        void $ forkIO $ do
-          pid <- atomically $ takeTMVar ref
-          runClientM (postProcess name pid) env
-          print pid
-      Slave  name mpid ->
-        hPutStrLn stderr $ "master pid = " ++ show mpid
-    soProcess ref (role,cellcfg)
+    tids <-
+      case role of
+        Master name -> do
+          -- REST API
+          tid1 <- forkIO $ run 3994 $ soApplication
+
+          -- update orchestrator with new master process id
+          tid2 <- forkIO $ do
+            pid <- atomically $ takeTMVar ref
+            void $ runClientM (postProcess name pid) env
+            print pid
+          pure [tid1,tid2]
+        Slave  name mpid -> do
+          hPutStrLn stderr $ "master pid = " ++ show mpid
+          pure []
+    tid3 <- forkIO $ soProcess ref (role,cellcfg)
+
+    pure (tid3:tids)
 
 
 looper ::
@@ -75,8 +85,8 @@ looper ::
   -> (WorkerRole,CellConfig)
   -> TVar SOInfo
   -> UpdatableSO SOHandle
-  -> Maybe (SOInfo,ThreadId)
-  -> IO (Maybe (SOInfo,ThreadId))
+  -> Maybe (SOInfo,[ThreadId])
+  -> IO (Maybe (SOInfo,[ThreadId]))
 looper env (role,cellcfg) ref sohandle mcurr  = do
   newso <-
     atomically $ do
@@ -85,13 +95,13 @@ looper env (role,cellcfg) ref sohandle mcurr  = do
         Nothing -> pure newso
         Just (currso,_) ->
           if currso == newso then retry else pure newso
-  for_ mcurr $ \(_,tid) -> do
-    hPutStrLn stderr ("update to" ++ show newso)
-    killThread tid
+  for_ mcurr $ \(_,tids) -> do
+    hPutStrLn stderr ("update to " ++ show newso)
+    traverse_ killThread tids
     threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
-  tid' <- forkIO $ app env (role,cellcfg) sohandle
-  pure (Just (newso,tid'))
+  tids' <- app env (role,cellcfg) sohandle
+  pure (Just (newso,tids'))
 
 
 getCompute :: ClientM ComputeConfig
