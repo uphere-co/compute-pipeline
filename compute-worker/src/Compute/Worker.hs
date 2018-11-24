@@ -65,23 +65,26 @@ waitForever = void (newEmptyMVar >>= readMVar)
 
 
 -- | kill child threads.
-onKill :: TVar [ThreadId] -> Either SomeException a -> IO ()
-onKill ref (Left ex) = do
+onKill :: IO () -> Either SomeException a -> IO ()
+onKill action (Left ex) = do
   let masyncex = fromException @AsyncException ex
-  for_ masyncex $ \case ThreadKilled -> do
-                          print "ThreadKilled!!!"
-                          tids <- readTVarIO ref
-                          traverse_ killThread tids
+  for_ masyncex $ \case ThreadKilled -> action
                         _ -> pure ()
 onKill _   (Right _) = pure ()
 
+
+killSpawned :: TVar [ThreadId] -> IO ()
+killSpawned ref = do
+  print "parent thread killed."
+  tids <- readTVarIO ref
+  traverse_ killThread tids
 
 -- NOTE: We collect all of thread ids for child threads created from this root thread.
 -- TODO: Use more systematic management. Consider using thread-hierarchy or async-supervisor library.
 app :: ClientEnv -> (WorkerRole,CellConfig) ->  UpdatableSO SOHandle -> IO ThreadId
 app env (role,cellcfg) sohandle = do
   ref_tids <- newTVarIO []
-  flip forkFinally (onKill ref_tids) $
+  flip forkFinally (onKill (killSpawned ref_tids)) $
 
     withSO sohandle $ \SOHandle{..} -> do
       ref <- newEmptyTMVarIO
