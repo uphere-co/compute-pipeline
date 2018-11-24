@@ -2,6 +2,7 @@
 module Test.InitHandshakeSpec where
 
 import Control.Concurrent          ( MVar
+                                   , forkIO
                                    , threadDelay
                                    , newEmptyMVar
                                    , takeMVar
@@ -16,12 +17,12 @@ import Control.Distributed.Process.Lifted
                                    , receiveChan
                                    )
 import Control.Distributed.Process.Node.Lifted (initRemoteTable,newLocalNode,runProcess)
-import Control.Exception (bracket)
+import Control.Exception (bracket,ArithException(..),throwIO)
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (runExceptT)
 import Control.Monad.Trans.Reader (runReaderT)
-import Network.Transport (closeTransport)
+import Network.Transport (Transport,closeTransport)
 import Network.Transport.TCP (createTransport,defaultTCPParameters)
 import qualified System.IO as IO
 import Test.Hspec
@@ -32,7 +33,7 @@ import CloudHaskell.Type (Pipeline)
 import CloudHaskell.Util (expectSafe,newLogLock)
 
 
-
+withTransport :: (Transport -> IO a) -> IO a
 withTransport action = do
   let host = "127.0.0.1"
   etrnsprt <- createTransport host "12345" (\port' -> (host,port')) defaultTCPParameters
@@ -40,7 +41,7 @@ withTransport action = do
     Left e ->  fail (show e)
     Right transport -> action transport >>= \r -> closeTransport transport >> pure r
 
-
+testHandshake :: (MVar (),MVar ()) -> Pipeline ()
 testHandshake (lock_server,lock_client) = do
   server_ping <- getSelfPid
   spawnLocal (client lock_client server_ping)
@@ -49,13 +50,13 @@ testHandshake (lock_server,lock_client) = do
 server :: MVar () -> Pipeline ()
 server lock_server = do
   client_ping <- expectSafe @ProcessId
-  withHeartBeat client_ping (\_ -> pure ()) $ \client_main ->
+  withHeartBeat client_ping (\_ -> pure ()) $ \client_main -> do
     liftIO $ putMVar lock_server ()
 
+client :: MVar () -> ProcessId -> Pipeline ()
 client lock_client server_ping =
   heartBeatHandshake server_ping $
     liftIO $ putMVar lock_client ()
-
 
 
 spec :: Spec
@@ -85,12 +86,13 @@ spec = do
       withTransport $ \transport -> do
         node <- newLocalNode transport initRemoteTable
         lock <- newLogLock 0
-        lock_server <- newEmptyMVar
-        lock_client <- newEmptyMVar
-        runProcess node $
+        (lock_server,lock_client) <- (,) <$> newEmptyMVar <*> newEmptyMVar
+        forkIO $ runProcess node $
           void $
             flip runReaderT lock $
               runExceptT $
                 testHandshake (lock_server,lock_client)
+        -- wait until main processes have been completed.
+        (,) <$> takeMVar lock_server <*> takeMVar lock_client
         pure ()
       `shouldReturn` ()
