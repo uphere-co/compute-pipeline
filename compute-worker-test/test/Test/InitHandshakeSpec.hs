@@ -41,17 +41,20 @@ withTransport action = do
     Left e ->  fail (show e)
     Right transport -> action transport >>= \r -> closeTransport transport >> pure r
 
+
 testHandshake :: (MVar (),MVar ()) -> Pipeline ()
 testHandshake (lock_server,lock_client) = do
   server_ping <- getSelfPid
   spawnLocal (client lock_client server_ping)
   server lock_server
 
+
 server :: MVar () -> Pipeline ()
 server lock_server = do
   client_ping <- expectSafe @ProcessId
   withHeartBeat client_ping (\_ -> pure ()) $ \client_main -> do
     liftIO $ putMVar lock_server ()
+
 
 client :: MVar () -> ProcessId -> Pipeline ()
 client lock_client server_ping =
@@ -81,8 +84,8 @@ spec = do
         y <- takeMVar yref
         x `shouldBe` y
 
-  describe "Heartbeat test" $
-    it "should ping/pong heartbeat" $
+  describe "Server/Client communication initialization" $
+    it "should pass handshakeTest" $
       withTransport $ \transport -> do
         node <- newLocalNode transport initRemoteTable
         lock <- newLogLock 0
