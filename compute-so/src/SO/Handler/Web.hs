@@ -1,23 +1,19 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
-{-# OPTIONS_GHC -w #-}
+{-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE TypeOperators      #-}
 module SO.Handler.Web
   ( webApp
   ) where
 
-import           Blaze.ByteString.Builder ( fromByteString )
-import           Control.Concurrent.STM   ( TVar, atomically, modifyTVar' )
 import           Control.Monad.IO.Class   ( liftIO )
-import qualified Data.ByteString.Char8 as B
 import           Data.Proxy               ( Proxy(..) )
 import           Data.Text                ( Text )
-import qualified Data.Text as T
-import           Network.HTTP.Types       ( status200 )
-import           Network.Wai              ( Application, responseBuilder )
+import           Network.Wai              ( Application )
 import           Servant                  ( Handler, Server, serve )
 import           Servant.API              ( (:>), Get, JSON )
-
+------
+import           CloudHaskell.QueryQueue  ( type QQVar, singleQuery )
 
 type SOAPI = "test" :> Get '[JSON] Text
 
@@ -26,29 +22,15 @@ soAPI :: Proxy SOAPI
 soAPI = Proxy
 
 
-getTest :: TVar Int -> Handler Text
-getTest ref_count = do
-  liftIO $ atomically $ modifyTVar' ref_count (+1)
-  pure "Hello, there"
+getTest :: QQVar Text Text -> Handler Text
+getTest qqvar = do
+  r <- liftIO $ singleQuery qqvar "my test"
+  pure r -- "Hello, there"
 
 
-server :: TVar Int -> Server SOAPI
-server ref_count = getTest ref_count
+server :: QQVar Text Text -> Server SOAPI
+server qqvar = getTest qqvar
 
 
-webApp :: TVar Int -> Application
-webApp ref_count = serve soAPI (server ref_count)
-
-{-
-_ respond = do
-  modifyMVar countRef $ \count -> do
-    let count' = count + 54321
-        msg =    fromByteString (B.pack (show count'))
-    responseReceived <-
-      respond $
-        responseBuilder
-          status200
-          [("Content-Type", "text/plain")]
-          msg
-    pure (count',responseReceived)
--}
+webApp :: QQVar Text Text -> Application
+webApp qqvar = serve soAPI (server qqvar)

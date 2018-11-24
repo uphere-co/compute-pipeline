@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -w #-}
 module SO.Handler.Worker
   ( workerMain
   ) where
@@ -20,9 +19,11 @@ import           Control.Distributed.Process.Node
 import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Reader ( runReaderT )
 import           Data.Foldable            ( traverse_ )
+import           Data.Text                ( Text )
 import qualified Data.Text             as T
 ------
 import           CloudHaskell.Client      ( heartBeatHandshake )
+import           CloudHaskell.QueryQueue  ( QQVar )
 import           CloudHaskell.Server      ( withHeartBeat )
 import           CloudHaskell.Util        ( expectSafe
                                           , handleErrorLog
@@ -44,8 +45,8 @@ import           Worker.Type              ( WorkerRole(..)
 import           SO.Handler.Process               ( mainProcess )
 
 
-master :: TVar Int -> TMVar ProcessId -> Pipeline ()
-master ref_count ref = do
+master :: QQVar Text Text -> TMVar ProcessId -> Pipeline ()
+master qqvar ref = do
   self <- getSelfPid
   tellLog ("master self pid = " ++ show self)
   liftIO $ atomically $ putTMVar ref self
@@ -53,7 +54,7 @@ master ref_count ref = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (\_ -> pure ()) $ \_them_main -> do
-    mainProcess ref_count
+    mainProcess qqvar
     () <- expect  -- for idling
     pure ()
 
@@ -78,8 +79,8 @@ killLocalNode ref_node = do
 
 -- NOTE: This should be asynchronous task, i.e. it forks a thread
 --       and return the id of the thread.
-workerMain :: TVar Int -> TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ThreadId
-workerMain ref_count ref (Master _, mcellcfg) = do
+workerMain :: QQVar Text Text -> TMVar ProcessId -> (WorkerRole,CellConfig) -> IO ThreadId
+workerMain qqvar ref (Master _, mcellcfg) = do
   let dhpp = mkDHPP (cellAddress mcellcfg)
   ref_node <- newTVarIO Nothing
   flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $
@@ -91,8 +92,8 @@ workerMain ref_count ref (Master _, mcellcfg) = do
       runProcess node $
         flip runReaderT lock $
           handleErrorLog $
-            master ref_count ref
-workerMain ref_count ref (Slave _ mpid, scellcfg) = do
+            master qqvar ref
+workerMain _ ref (Slave _ mpid, scellcfg) = do
   let dhpp = mkDHPP (cellAddress scellcfg)
   ref_node <- newTVarIO Nothing
   flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $
