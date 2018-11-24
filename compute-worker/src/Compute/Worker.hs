@@ -30,6 +30,7 @@ import           Control.Monad       ( forever, void )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
 import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
+import           Data.Either.Combinators ( rightToMaybe )
 import           Data.Foldable       ( for_, traverse_ )
 import           Data.Text           ( Text )
 import qualified Data.Text as T
@@ -65,20 +66,34 @@ killSpawned ref = do
   tids <- readTVarIO ref
   traverse_ killThread tids
 
+
+requestRole :: ClientEnv -> NodeName -> IO (WorkerRole, CellConfig)
+requestRole env name@(NodeName n) = do
+  m <- rightToMaybe <$> runClientM (getCell n) env
+  case m of
+    Nothing -> do
+      putStrLn "fail to obtain role"
+      threadDelay 1000000
+      requestRole env name
+    Just (role,cellcfg) -> pure (role,cellcfg)
+
+
 -- NOTE: We collect all of thread ids for child threads created from this root thread.
 -- TODO: Use more systematic management. Consider using thread-hierarchy or async-supervisor library.
-app :: ClientEnv -> (WorkerRole,CellConfig) ->  UpdatableSO SOHandle -> IO ThreadId
-app env (role,cellcfg) sohandle = do
+app :: ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
+app env name sohandle = do
   ref_tids <- newTVarIO []
   flip forkFinally (onKill (killSpawned ref_tids)) $
     withSO sohandle $ \SOHandle{..} -> do
+      -- for now
+      (role,cellcfg) <- requestRole env name
+      hPutStrLn stderr (show role)
       ref <- newEmptyTMVarIO
       tids <-
         case role of
           Master name -> do
             -- REST API
             tid1 <- forkIO $ run 3994 $ soApplication
-
             -- update orchestrator with new master process id
             tid2 <- forkIO $ do
               pid <- atomically $ takeTMVar ref
@@ -95,12 +110,12 @@ app env (role,cellcfg) sohandle = do
 
 looper ::
      ClientEnv
-  -> (WorkerRole,CellConfig)
+  -> NodeName
   -> TVar SOInfo
   -> UpdatableSO SOHandle
   -> Maybe (SOInfo,ThreadId)
   -> IO (Maybe (SOInfo,ThreadId))
-looper env (role,cellcfg) ref sohandle mcurr  = do
+looper env name ref sohandle mcurr  = do
   newso <-
     atomically $ do
       newso <- readTVar ref
@@ -113,7 +128,7 @@ looper env (role,cellcfg) ref sohandle mcurr  = do
     killThread tid
     threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
-  tid' <- app env (role,cellcfg) sohandle
+  tid' <- app env name sohandle
   pure (Just (newso,tid'))
 
 
@@ -137,8 +152,8 @@ mkWSURL baseurl =
 
 -- | Actual worker implementation loading process.
 --   This loads shared object file and starts looping shared object update routine.
-loadWorkerSO :: ClientEnv -> (WorkerRole,CellConfig) -> BaseUrl -> FilePath -> IO ()
-loadWorkerSO env (role,cellcfg) baseurl so_path = do
+loadWorkerSO :: ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
+loadWorkerSO env name baseurl so_path = do
   let wsurl = mkWSURL baseurl
   -- print wsurl
   -- print (cellcfg,so_path)
@@ -149,24 +164,19 @@ loadWorkerSO env (role,cellcfg) baseurl so_path = do
       forever $ do
         soinfo :: SOInfo <- WS.receiveData conn
         atomically $ writeTVar ref soinfo
-  iterateM_ (looper env (role,cellcfg) ref so) Nothing
+  iterateM_ (looper env name ref so) Nothing
 
 
 -- | `runWorker` is the main function for a worker executable.
 --   With orchestrator URL and worker's name, it obtains the network information
 --   and its role from orchestrator and start actual worker routine.
 runWorker :: URL -> NodeName -> ExceptT String IO ()
-runWorker (URL url) (NodeName name) = do
+runWorker (URL url) name = do
   manager' <- liftIO $ newManager defaultManagerSettings
   baseurl <- liftIO $ parseBaseUrl (T.unpack url)
   let env = ClientEnv manager' baseurl Nothing
-  (role,cellcfg) <-
-    withExceptT show $ ExceptT $
-      runClientM (getCell name) env
-  -- for debug
-  liftIO $ hPutStrLn stderr (show role)
   so_path <-
     fmap T.unpack $
       withExceptT show $ ExceptT $
         runClientM (getSO) env
-  liftIO $ loadWorkerSO env (role,cellcfg) baseurl so_path
+  liftIO $ loadWorkerSO env name baseurl so_path

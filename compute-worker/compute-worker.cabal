@@ -27,6 +27,7 @@ library
                 , distributed-process
                 , distributed-process-lifted
                 , distributed-static
+                , either
                 , errors
                 , filepath
                 , ghc-hotswap
