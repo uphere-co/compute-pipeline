@@ -28,6 +28,7 @@ library
                      , deepseq
                      , distributed-process
                      , inline-java
+                     , jni
                      , jvm
                      , lens
                      , stm
