@@ -11,6 +11,7 @@ import           Control.Concurrent.STM ( STM
                                         , writeTVar
                                         )
 import           Control.Monad          ( forever )
+import           Control.Monad.IO.Class ( MonadIO(liftIO) )
 import           Data.IntMap            ( IntMap )
 import qualified Data.IntMap as IM
 import           Data.Maybe
@@ -101,12 +102,17 @@ untilKilled rProc action = do
 
 
 -- | simplest, unbounded handle query
-handleQuery :: QQVar q r -> (q -> IO r) -> IO ()
+handleQuery :: (MonadIO m) => QQVar q r -> (q -> m r) -> m ()
 handleQuery rQQ handler =
   forever $ do
-    (i,q) <- atomically $ waitQuery rQQ
+    -- wait for a new query
+    (i,q) <-
+      liftIO $ atomically $ waitQuery rQQ
+    -- main handler
     r <- handler q
-    atomically $ modifyTVar' rQQ (IM.update (\_ -> Just (Answered q r)) i)
+    -- reply
+    liftIO $ atomically $
+      modifyTVar' rQQ (IM.update (\_ -> Just (Answered q r)) i)
 
 
 handleQueryInterrupted ::
