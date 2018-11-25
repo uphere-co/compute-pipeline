@@ -1,14 +1,18 @@
 {-# LANGUAGE TupleSections #-}
 module CloudHaskell.QueryQueue where
 
-import           Control.Concurrent.STM ( STM, TVar
+import           Control.Concurrent.STM ( STM
+                                        , TMVar
+                                        , TVar
                                         , atomically
+                                        , isEmptyTMVar
                                         , modifyTVar'
                                         , readTVar
                                         , retry
                                         , writeTVar
                                         )
 import           Control.Monad          ( forever )
+import           Control.Monad.Loops    ( whileM_ )
 import           Data.IntMap            ( IntMap )
 import qualified Data.IntMap as IM
 import           Data.Maybe
@@ -82,10 +86,24 @@ waitQuery qqvar = do
       pure (i,q)
 
 
+
+untilDone :: TMVar () -> IO () -> IO ()
+untilDone isDone action =
+  whileM_ (atomically (isEmptyTMVar isDone)) action
+
+
+-- | simplest, unbounded handle query
 handleQuery :: QQVar q r -> (q -> IO r) -> IO ()
 handleQuery qqvar handler =
   forever $ do
     (i,q) <- atomically $ waitQuery qqvar
-    -- TODO: need to refactor out this query processing (handleQuery).
+    r <- handler q
+    atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+
+
+handleQueryInterrupted :: TMVar () -> QQVar q r -> (q -> IO r) -> IO ()
+handleQueryInterrupted isDone qqvar handler =
+  untilDone isDone $ do
+    (i,q) <- atomically $ waitQuery qqvar
     r <- handler q
     atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)

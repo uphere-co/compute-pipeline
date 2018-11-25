@@ -4,7 +4,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Worker.Type where
 
-import           Control.Concurrent          ( ThreadId )
+import           Control.Concurrent          ( MVar, ThreadId )
 import           Control.Concurrent.STM      ( TMVar )
 import           Control.DeepSeq             ( NFData )
 import           Control.Distributed.Process ( ProcessId )
@@ -80,11 +80,19 @@ data WorkerRole =
 
 
 -- | The set of functions that you want to expose from your shared object
+--   Currently, this handle provides three different replaceable applications.
+--
+--   * soApplication: REST API web application
+--   * soProcess    : Cloud Haskell application
+--   * soJVM        : JVM application
+--
 data SOHandle = SOHandle
                 { soApplication :: Application
                 , soProcess                            -- async process
-                            :: TMVar ProcessId         -- holder for CH process ID
+                            :: TMVar ()                -- is done?
+                            -> TMVar ProcessId         -- holder for CH process ID
                             -> (WorkerRole,CellConfig) -- configuration
+                            -> MVar (IO ())            -- for JVM task
                             -> IO ThreadId             -- worker thread spawned inside
                 }
               deriving (Generic, NFData)

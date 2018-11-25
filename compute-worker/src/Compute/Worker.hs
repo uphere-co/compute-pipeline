@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# OPTIONS_GHC -w #-}
 --
 -- `compute worker` is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
@@ -12,13 +13,20 @@
 -- is supervising slaves for the task.
 module Compute.Worker where
 
-import           Control.Concurrent  ( ThreadId
-                                     , forkFinally, forkIO, killThread
+import           Control.Concurrent  ( MVar, ThreadId
+                                     , forkFinally, forkIO, forkOS
+                                     , killThread
                                      , threadDelay
+                                     , newEmptyMVar
+                                     , takeMVar
+                                     , putMVar
                                      )
 import           Control.Concurrent.STM
-                                     ( TVar, atomically
-                                     , newEmptyTMVarIO, takeTMVar
+                                     ( TMVar, TVar
+                                     , atomically
+                                     , newEmptyTMVarIO
+                                     , putTMVar
+                                     , takeTMVar
                                      , newTVarIO, readTVar, readTVarIO, writeTVar
                                      , retry
                                      )
@@ -28,10 +36,13 @@ import           Control.Monad       ( forever, void )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
 import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
+import qualified Data.ByteString.Char8 as B
 import           Data.Either.Combinators ( rightToMaybe )
 import           Data.Foldable       ( for_, traverse_ )
 import           Data.Text           ( Text )
 import qualified Data.Text as T
+-- import qualified Foreign.JNI.Types as JNI ( JVM )
+import qualified Foreign.JNI as JNI  ( withJVM )
 import           GHC.Hotswap         ( UpdatableSO, registerHotswap, swapSO, withSO )
 import           Network.HTTP.Client ( defaultManagerSettings, newManager )
 import           Network.Wai.Handler.Warp ( run )
@@ -40,10 +51,13 @@ import           Servant.API         ((:<|>)((:<|>)))
 import           Servant.Client      ( BaseUrl(..), ClientM, ClientEnv(..)
                                      , client, parseBaseUrl, runClientM
                                      )
+import           System.Environment  ( getEnv )
 import           System.FilePath     ( (</>) )
 import           System.IO           ( hPutStrLn, stderr )
 ------
+import CloudHaskell.QueryQueue (emptyQQ)
 import           CloudHaskell.Util   ( doUntilJust, onKill, waitForever )
+import Task.CoreNLP (queryCoreNLP)
 import           Worker.Type         ( CellConfig
                                      , ComputeConfig(..)
                                      , SOHandle(..)
@@ -74,8 +88,8 @@ requestRole env (NodeName n) =
 
 -- NOTE: We collect all of thread ids for child threads created from this root thread.
 -- TODO: Use more systematic management. Consider using thread-hierarchy or async-supervisor library.
-app :: ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
-app env name sohandle = do
+app :: TMVar () -> MVar (IO ()) -> ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
+app isDone ref_action env name sohandle = do
   ref_tids <- newTVarIO []
   flip forkFinally (onKill (killSpawned ref_tids)) $
     withSO sohandle $ \SOHandle{..} -> do
@@ -97,19 +111,22 @@ app env name sohandle = do
           Slave _ mpid -> do
             hPutStrLn stderr $ "master pid = " ++ show mpid
             pure []
-      tid3 <- soProcess ref (role,cellcfg)
+      tid3 <- soProcess isDone ref (role,cellcfg) ref_action
+      -- putMVar ref_action (soJVM ())
       atomically $ writeTVar ref_tids (tid3 : tids)
       waitForever
 
 
 looper ::
-     ClientEnv
+     TMVar ()
+  -> MVar (IO ())
+  -> ClientEnv
   -> NodeName
   -> TVar SOInfo
   -> UpdatableSO SOHandle
   -> Maybe (SOInfo,ThreadId)
   -> IO (Maybe (SOInfo,ThreadId))
-looper env name ref sohandle mcurr  = do
+looper isDone ref_action env name ref sohandle mcurr  = do
   newso <-
     atomically $ do
       newso <- readTVar ref
@@ -120,9 +137,10 @@ looper env name ref sohandle mcurr  = do
   for_ mcurr $ \(_,tid) -> do
     hPutStrLn stderr ("update to " ++ show newso)
     killThread tid
+    atomically $ putTMVar isDone ()
     threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
-  tid' <- app env name sohandle
+  tid' <- app isDone ref_action env name sohandle
   pure (Just (newso,tid'))
 
 
@@ -146,8 +164,8 @@ mkWSURL baseurl =
 
 -- | Actual worker implementation loading process.
 --   This loads shared object file and starts looping shared object update routine.
-loadWorkerSO :: ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
-loadWorkerSO env name baseurl so_path = do
+loadWorkerSO :: TMVar () -> MVar (IO ()) -> ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
+loadWorkerSO isDone ref_action env name baseurl so_path = do
   let wsurl = mkWSURL baseurl
   -- print wsurl
   -- print (cellcfg,so_path)
@@ -158,7 +176,7 @@ loadWorkerSO env name baseurl so_path = do
       forever $ do
         soinfo :: SOInfo <- WS.receiveData conn
         atomically $ writeTVar ref soinfo
-  iterateM_ (looper env name ref so) Nothing
+  iterateM_ (looper isDone ref_action env name ref so) Nothing
 
 
 -- | `runWorker` is the main function for a worker executable.
@@ -173,4 +191,20 @@ runWorker (URL url) name = do
     fmap T.unpack $
       withExceptT show $ ExceptT $
         runClientM (getSO) env
-  liftIO $ loadWorkerSO env name baseurl so_path
+  clspath <- liftIO $ getEnv "CLASSPATH"
+  liftIO$ print clspath
+  ref_jvm <- liftIO $ newEmptyMVar
+  isDone <- liftIO $ newEmptyTMVarIO
+  liftIO $ forkOS $
+    JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $
+      forever $ do
+        action <- takeMVar ref_jvm
+        action
+  liftIO $ loadWorkerSO isDone ref_jvm env name baseurl so_path
+
+{-
+    JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+      qqvar <- newTVarIO (emptyQQ)
+      -- soJVM ()
+      queryCoreNLP qqvar
+-}

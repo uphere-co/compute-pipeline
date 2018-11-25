@@ -12,7 +12,6 @@ import           CloudHaskell.QueryQueue ( emptyQQ )
 import           SO.Handler.Web          ( webApp )
 import           SO.Handler.Worker       ( workerMain )
 
-
 foreign export ccall "hs_soHandle"
   hsNewSOHandle :: IO (StablePtr SOHandle)
 
