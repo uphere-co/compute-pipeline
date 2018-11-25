@@ -11,17 +11,18 @@ import           Network.Wai              ( Application )
 import           Servant                  ( Handler, Server, serve )
 ------
 import           CloudHaskell.QueryQueue  ( type QQVar, singleQuery )
+import           Task.CoreNLP             ( QCoreNLP(..), RCoreNLP )
 import           Worker.API               ( type SOAPI, soAPI )
 
-getTest :: QQVar Text Text -> Text -> Handler Text
-getTest qqvar txt =
-  liftIO $ singleQuery qqvar txt
+getCoreNLP :: QQVar QCoreNLP RCoreNLP -> Text -> Handler RCoreNLP
+getCoreNLP qqvar txt = do
+  liftIO $ singleQuery qqvar (QCoreNLP txt)
+  -- pure (T.pack (show r))
 
 
+server :: QQVar QCoreNLP RCoreNLP -> Server SOAPI
+server qqvar = getCoreNLP qqvar
 
-server :: QQVar Text Text -> Server SOAPI
-server qqvar = getTest qqvar
 
-
-webApp :: QQVar Text Text -> Application
+webApp :: QQVar QCoreNLP RCoreNLP -> Application
 webApp qqvar = serve soAPI (server qqvar)

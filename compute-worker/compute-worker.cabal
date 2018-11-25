@@ -152,11 +152,14 @@ executable compute
   default-language:    Haskell2010
   extra-libraries:     pthread
   c-sources:           app/compute/HotswapMain.c
+  -- NOTE: -threaded option is necessary to use +RTS -N runtime option,
+  --       but cabal incorrectly warns it does not have any effects.
   ghc-options:         -rdynamic
                        -fwhole-archive-hs-libs
                        -no-hs-main
                        -Wall
                        -Werror
+                       -threaded
                        -fno-warn-unused-do-bind
 
 executable orchestrator

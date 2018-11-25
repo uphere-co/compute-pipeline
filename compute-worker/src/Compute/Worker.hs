@@ -12,26 +12,35 @@
 -- is supervising slaves for the task.
 module Compute.Worker where
 
-import           Control.Concurrent  ( ThreadId
-                                     , forkFinally, forkIO, killThread
+import           Control.Concurrent  ( MVar, ThreadId
+                                     , forkFinally, forkIO, forkOS
+                                     , killThread
                                      , threadDelay
+                                     , newEmptyMVar
+                                     , takeMVar
                                      )
 import           Control.Concurrent.STM
-                                     ( TVar, atomically
-                                     , newEmptyTMVarIO, takeTMVar
+                                     ( TMVar, TVar
+                                     , atomically
+                                     , newEmptyTMVarIO
+                                     , putTMVar
+                                     , takeTMVar
+                                     , tryTakeTMVar
                                      , newTVarIO, readTVar, readTVarIO, writeTVar
                                      , retry
                                      )
-import           Control.Distributed.Process
-                                     ( ProcessId )
+import           Control.Distributed.Process ( ProcessId )
+import           Control.Exception   ( SomeException, catch, displayException )
 import           Control.Monad       ( forever, void )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
 import           Control.Monad.Trans.Except ( ExceptT(..), withExceptT )
+import qualified Data.ByteString.Char8 as B
 import           Data.Either.Combinators ( rightToMaybe )
 import           Data.Foldable       ( for_, traverse_ )
 import           Data.Text           ( Text )
 import qualified Data.Text as T
+import qualified Foreign.JNI as JNI  ( withJVM )
 import           GHC.Hotswap         ( UpdatableSO, registerHotswap, swapSO, withSO )
 import           Network.HTTP.Client ( defaultManagerSettings, newManager )
 import           Network.Wai.Handler.Warp ( run )
@@ -40,6 +49,7 @@ import           Servant.API         ((:<|>)((:<|>)))
 import           Servant.Client      ( BaseUrl(..), ClientM, ClientEnv(..)
                                      , client, parseBaseUrl, runClientM
                                      )
+import           System.Environment  ( getEnv )
 import           System.FilePath     ( (</>) )
 import           System.IO           ( hPutStrLn, stderr )
 ------
@@ -74,8 +84,8 @@ requestRole env (NodeName n) =
 
 -- NOTE: We collect all of thread ids for child threads created from this root thread.
 -- TODO: Use more systematic management. Consider using thread-hierarchy or async-supervisor library.
-app :: ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
-app env name sohandle = do
+app :: TMVar () -> MVar (IO ()) -> ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
+app isDone ref_action env name sohandle = do
   ref_tids <- newTVarIO []
   flip forkFinally (onKill (killSpawned ref_tids)) $
     withSO sohandle $ \SOHandle{..} -> do
@@ -97,19 +107,21 @@ app env name sohandle = do
           Slave _ mpid -> do
             hPutStrLn stderr $ "master pid = " ++ show mpid
             pure []
-      tid3 <- soProcess ref (role,cellcfg)
+      tid3 <- soProcess isDone ref (role,cellcfg) ref_action
       atomically $ writeTVar ref_tids (tid3 : tids)
       waitForever
 
 
 looper ::
-     ClientEnv
+     TMVar ()
+  -> MVar (IO ())
+  -> ClientEnv
   -> NodeName
   -> TVar SOInfo
   -> UpdatableSO SOHandle
   -> Maybe (SOInfo,ThreadId)
   -> IO (Maybe (SOInfo,ThreadId))
-looper env name ref sohandle mcurr  = do
+looper isDone ref_action env name ref sohandle mcurr  = do
   newso <-
     atomically $ do
       newso <- readTVar ref
@@ -120,9 +132,11 @@ looper env name ref sohandle mcurr  = do
   for_ mcurr $ \(_,tid) -> do
     hPutStrLn stderr ("update to " ++ show newso)
     killThread tid
+    hPutStrLn stderr ("putTMVar")
+    atomically $ tryTakeTMVar isDone -- turn off if on
     threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
-  tid' <- app env name sohandle
+  tid' <- app isDone ref_action env name sohandle
   pure (Just (newso,tid'))
 
 
@@ -146,11 +160,9 @@ mkWSURL baseurl =
 
 -- | Actual worker implementation loading process.
 --   This loads shared object file and starts looping shared object update routine.
-loadWorkerSO :: ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
-loadWorkerSO env name baseurl so_path = do
+loadWorkerSO :: TMVar () -> MVar (IO ()) -> ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
+loadWorkerSO isDone ref_action env name baseurl so_path = do
   let wsurl = mkWSURL baseurl
-  -- print wsurl
-  -- print (cellcfg,so_path)
   so <- registerHotswap "hs_soHandle" so_path
   ref <- newTVarIO (SOInfo so_path)
   forkIO $
@@ -158,7 +170,7 @@ loadWorkerSO env name baseurl so_path = do
       forever $ do
         soinfo :: SOInfo <- WS.receiveData conn
         atomically $ writeTVar ref soinfo
-  iterateM_ (looper env name ref so) Nothing
+  iterateM_ (looper isDone ref_action env name ref so) Nothing
 
 
 -- | `runWorker` is the main function for a worker executable.
@@ -173,4 +185,20 @@ runWorker (URL url) name = do
     fmap T.unpack $
       withExceptT show $ ExceptT $
         runClientM (getSO) env
-  liftIO $ loadWorkerSO env name baseurl so_path
+  clspath <- liftIO $ getEnv "CLASSPATH"
+  liftIO$ print clspath
+  ref_jvm <- liftIO $ newEmptyMVar
+  isDone <- liftIO $ newEmptyTMVarIO
+
+  -- In a subprocess in JVM, we attach a "kill switch" (as `TMVar ()`) to the action.
+  -- When the kill switch is triggered, an asynchronous exception is raised. The catch procedure
+  -- in the below captures the exception and terminate the action and reinitialize JVM process
+  -- (waiting new action in `ref_jvm :: MVar (IO ())`).
+  liftIO $ forkOS $
+    JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $
+      forever $ do
+        action <- takeMVar ref_jvm
+        atomically $ putTMVar isDone ()  -- turn on
+        catch action $ \(e :: SomeException) ->
+          putStrLn $ "exception catched in action: exception = " ++ displayException e
+  liftIO $ loadWorkerSO isDone ref_jvm env name baseurl so_path

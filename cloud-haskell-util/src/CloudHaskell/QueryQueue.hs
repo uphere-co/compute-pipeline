@@ -1,18 +1,22 @@
 {-# LANGUAGE TupleSections #-}
-
 module CloudHaskell.QueryQueue where
 
-import           Control.Concurrent.STM       ( STM, TVar
-                                              , atomically
-                                              , readTVar
-                                              , retry
-                                              , writeTVar
-                                              )
-import           Data.IntMap                  ( IntMap )
-import qualified Data.IntMap            as IM
+import           Control.Concurrent     ( forkIO, killThread, myThreadId )
+import           Control.Concurrent.STM ( STM
+                                        , TMVar
+                                        , TVar
+                                        , atomically
+                                        , modifyTVar'
+                                        , putTMVar
+                                        , readTVar
+                                        , retry
+                                        , takeTMVar
+                                        , writeTVar
+                                        )
+import           Control.Monad          ( forever )
+import           Data.IntMap            ( IntMap )
+import qualified Data.IntMap as IM
 import           Data.Maybe
---
-import           Prelude
 
 
 data QueryStatus q r = NewQuery q
@@ -71,6 +75,7 @@ singleQuery qqvar query  = do
                 in writeTVar qqvar qq' >> pure r
   pure r
 
+
 waitQuery :: QQVar q r -> STM (Int,q)
 waitQuery qqvar = do
   qq <- readTVar qqvar
@@ -80,3 +85,29 @@ waitQuery qqvar = do
       let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
       writeTVar qqvar qq'
       pure (i,q)
+
+
+untilDone :: TMVar () -> IO () -> IO ()
+untilDone isDone action = do
+  tid <- myThreadId
+  forkIO $ do
+    atomically $ putTMVar isDone () >> takeTMVar isDone
+    killThread tid
+  forever action
+
+
+-- | simplest, unbounded handle query
+handleQuery :: QQVar q r -> (q -> IO r) -> IO ()
+handleQuery qqvar handler =
+  forever $ do
+    (i,q) <- atomically $ waitQuery qqvar
+    r <- handler q
+    atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+
+
+handleQueryInterrupted :: TMVar () -> QQVar q r -> (q -> IO r) -> IO ()
+handleQueryInterrupted isDone qqvar handler =
+  untilDone isDone $ do
+    (i,q) <- atomically $ waitQuery qqvar
+    r <- handler q
+    atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
