@@ -194,6 +194,11 @@ runWorker (URL url) name = do
   liftIO$ print clspath
   ref_jvm <- liftIO $ newEmptyMVar
   isDone <- liftIO $ newEmptyTMVarIO
+
+  -- In a subprocess in JVM, we attach a "kill switch" (as `TMVar ()`) to the action.
+  -- When the kill switch is triggered, an asynchronous exception is raised. The catch procedure
+  -- in the below captures the exception and terminate the action and reinitialize JVM process
+  -- (waiting new action in `ref_jvm :: MVar (IO ())`).
   liftIO $ forkOS $
     JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $
       forever $ do
@@ -202,10 +207,3 @@ runWorker (URL url) name = do
         catch action $ \(e :: SomeException) ->
           putStrLn $ "exception catched in action: exception = " ++ displayException e
   liftIO $ loadWorkerSO isDone ref_jvm env name baseurl so_path
-
-{-
-    JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-      qqvar <- newTVarIO (emptyQQ)
-      -- soJVM ()
-      queryCoreNLP qqvar
--}
