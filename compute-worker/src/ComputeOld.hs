@@ -28,9 +28,9 @@ import           Data.Foldable                             (find)
 import           Data.Text                                 (Text)
 import qualified Data.Text                           as T  (unpack)
 import           Network.Transport                         (closeTransport)
----------------- language-engine
+------ language-engine
 import           SRL.Analyze.Type                          ( DocAnalysisInput(..) )
----------------- compute-pipeline
+------ compute-pipeline
 import           CloudHaskell.Closure                      ( capply' )
 import           CloudHaskell.Server                       (server,withHeartBeat)
 import           CloudHaskell.Type                         ( Pipeline
@@ -46,7 +46,7 @@ import           CloudHaskell.Util                         (RequestDuplex
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           Task.CoreNLP                              (QCoreNLP(..),RCoreNLP(..))
 import           Task.SemanticParser                       ( runSRLQueryDaemon )
---this package
+----- this package
 import           Compute.Handler                           ( requestHandler )
 import           Compute.Task                              ( remoteDaemonCoreNLP
                                                            , rtable
