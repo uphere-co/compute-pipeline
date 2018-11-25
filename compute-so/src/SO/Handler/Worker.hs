@@ -42,7 +42,7 @@ import           Worker.Type              ( CellConfig(..)
                                           )
 
 ------
-import           SO.Handler.Process               ( mainProcess )
+import           SO.Handler.Process               ( main )
 
 
 master ::
@@ -59,13 +59,18 @@ master rJava qqvar ref ref_jvm = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (\_ -> pure ()) $ \_them_main -> do
-    mainProcess rJava qqvar ref_jvm
+    main rJava qqvar ref_jvm
     () <- expect  -- for idling
     pure ()
 
 
-slave :: TMVar ProcessId -> ProcessId -> Pipeline ()
-slave _ref mpid = do
+slave ::
+     TVar StatusProc
+  -> TMVar ProcessId
+  -> ProcessId
+  -> MVar (IO ())
+  -> Pipeline ()
+slave _rJava _ref mpid _ref_jvm = do
   heartBeatHandshake mpid $ do
     () <- expect
     pure ()
@@ -92,8 +97,8 @@ workerMain ::
   -> (WorkerRole,CellConfig)
   -> MVar (IO ())
   -> IO ThreadId
-workerMain qqvar rJava ref (Master _, mcellcfg) ref_jvm = do
-  let dhpp = mkDHPP (cellAddress mcellcfg)
+workerMain rQQ rJava ref (role,cellcfg) ref_jvm = do
+  let dhpp = mkDHPP (cellAddress cellcfg)
   ref_node <- newTVarIO Nothing
   flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $
     withTransport dhpp $ \transport -> do
@@ -104,17 +109,6 @@ workerMain qqvar rJava ref (Master _, mcellcfg) ref_jvm = do
       runProcess node $
         flip runReaderT lock $
           handleErrorLog $
-            master rJava qqvar ref ref_jvm
-workerMain _ _ ref (Slave _ mpid, scellcfg) _ = do
-  let dhpp = mkDHPP (cellAddress scellcfg)
-  ref_node <- newTVarIO Nothing
-  flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $
-    withTransport dhpp $ \transport -> do
-      putStrLn "transport started"
-      node <- newLocalNode transport rtable
-      atomically $ writeTVar ref_node (Just node)
-      lock <- newLogLock 0
-      runProcess node $
-        flip runReaderT lock $
-          handleErrorLog $
-            slave ref mpid
+            case role of
+              Master _     -> master rJava rQQ ref ref_jvm
+              Slave _ mpid -> slave rJava ref mpid ref_jvm

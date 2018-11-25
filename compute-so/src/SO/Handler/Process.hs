@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module SO.Handler.Process
-  ( mainProcess
+  ( main
   ) where
 
 import           Control.Concurrent (MVar, putMVar )
@@ -17,7 +17,7 @@ import           Task.CoreNLP             ( QCoreNLP(..)
                                           )
 import           Worker.Type              ( StatusProc )
 
-mainProcess :: TVar StatusProc -> QQVar QCoreNLP RCoreNLP -> MVar (IO ()) -> Pipeline ()
-mainProcess rJava rQQ ref_jvm = do
+main :: TVar StatusProc -> QQVar QCoreNLP RCoreNLP -> MVar (IO ()) -> Pipeline ()
+main rJava rQQ ref_jvm = do
   tellLog "start mainProcess"
   liftIO $ putMVar ref_jvm (queryCoreNLP rJava rQQ)
