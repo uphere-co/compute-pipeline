@@ -101,5 +101,6 @@ withCoreNLP' action = do
 
 queryCoreNLP :: TMVar () -> QQVar QCoreNLP RCoreNLP -> IO ()
 queryCoreNLP isDone qqvar =
-  prepareAndProcess $ \pp -> do
-    handleQueryInterrupted isDone qqvar (\case QCoreNLP txt -> RCoreNLP <$> runParser pp txt)
+  prepareAndProcess $ \pp ->
+    handleQueryInterrupted isDone qqvar
+      (\case QCoreNLP txt -> RCoreNLP <$> runParser pp txt)

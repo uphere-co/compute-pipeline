@@ -1,14 +1,18 @@
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -w #-}
 module CloudHaskell.QueryQueue where
 
+import           Control.Concurrent     ( forkIO, killThread, myThreadId )
 import           Control.Concurrent.STM ( STM
                                         , TMVar
                                         , TVar
                                         , atomically
                                         , isEmptyTMVar
                                         , modifyTVar'
+                                        , putTMVar
                                         , readTVar
                                         , retry
+                                        , takeTMVar
                                         , writeTVar
                                         )
 import           Control.Monad          ( forever )
@@ -86,10 +90,13 @@ waitQuery qqvar = do
       pure (i,q)
 
 
-
 untilDone :: TMVar () -> IO () -> IO ()
-untilDone isDone action =
-  whileM_ (atomically (isEmptyTMVar isDone)) action
+untilDone isDone action = do
+  tid <- myThreadId
+  forkIO $ do
+    atomically $ putTMVar isDone () >> takeTMVar isDone
+    killThread tid
+  forever action
 
 
 -- | simplest, unbounded handle query

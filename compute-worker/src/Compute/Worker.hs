@@ -27,11 +27,12 @@ import           Control.Concurrent.STM
                                      , newEmptyTMVarIO
                                      , putTMVar
                                      , takeTMVar
+                                     , tryTakeTMVar
                                      , newTVarIO, readTVar, readTVarIO, writeTVar
                                      , retry
                                      )
-import           Control.Distributed.Process
-                                     ( ProcessId )
+import           Control.Distributed.Process ( ProcessId )
+import           Control.Exception   ( SomeException, catch, displayException )
 import           Control.Monad       ( forever, void )
 import           Control.Monad.IO.Class ( liftIO )
 import           Control.Monad.Loops ( iterateM_ )
@@ -112,7 +113,6 @@ app isDone ref_action env name sohandle = do
             hPutStrLn stderr $ "master pid = " ++ show mpid
             pure []
       tid3 <- soProcess isDone ref (role,cellcfg) ref_action
-      -- putMVar ref_action (soJVM ())
       atomically $ writeTVar ref_tids (tid3 : tids)
       waitForever
 
@@ -137,7 +137,8 @@ looper isDone ref_action env name ref sohandle mcurr  = do
   for_ mcurr $ \(_,tid) -> do
     hPutStrLn stderr ("update to " ++ show newso)
     killThread tid
-    atomically $ putTMVar isDone ()
+    hPutStrLn stderr ("putTMVar")
+    atomically $ tryTakeTMVar isDone -- turn off if on
     threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
   tid' <- app isDone ref_action env name sohandle
@@ -167,8 +168,6 @@ mkWSURL baseurl =
 loadWorkerSO :: TMVar () -> MVar (IO ()) -> ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
 loadWorkerSO isDone ref_action env name baseurl so_path = do
   let wsurl = mkWSURL baseurl
-  -- print wsurl
-  -- print (cellcfg,so_path)
   so <- registerHotswap "hs_soHandle" so_path
   ref <- newTVarIO (SOInfo so_path)
   forkIO $
@@ -199,7 +198,9 @@ runWorker (URL url) name = do
     JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $
       forever $ do
         action <- takeMVar ref_jvm
-        action
+        atomically $ putTMVar isDone ()  -- turn on
+        catch action $ \(e :: SomeException) ->
+          putStrLn $ "exception catched in action: exception = " ++ displayException e
   liftIO $ loadWorkerSO isDone ref_jvm env name baseurl so_path
 
 {-
