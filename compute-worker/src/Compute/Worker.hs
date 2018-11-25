@@ -20,12 +20,10 @@ import           Control.Concurrent  ( MVar, ThreadId
                                      , takeMVar
                                      )
 import           Control.Concurrent.STM
-                                     ( TMVar, TVar
+                                     ( TVar
                                      , atomically
                                      , newEmptyTMVarIO
-                                     , putTMVar
                                      , takeTMVar
-                                     , tryTakeTMVar
                                      , newTVarIO, readTVar, readTVarIO, writeTVar
                                      , retry
                                      )
@@ -57,6 +55,7 @@ import           CloudHaskell.Util   ( doUntilJust, onKill, waitForever )
 import           Worker.Type         ( CellConfig
                                      , ComputeConfig(..)
                                      , SOHandle(..)
+                                     , StatusJavaProcess(..)
                                      , WorkerRole(..)
                                      )
 ------
@@ -84,8 +83,8 @@ requestRole env (NodeName n) =
 
 -- NOTE: We collect all of thread ids for child threads created from this root thread.
 -- TODO: Use more systematic management. Consider using thread-hierarchy or async-supervisor library.
-app :: TMVar () -> MVar (IO ()) -> ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
-app isDone ref_action env name sohandle = do
+app :: TVar StatusJavaProcess -> MVar (IO ()) -> ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
+app rJava ref_action env name sohandle = do
   ref_tids <- newTVarIO []
   flip forkFinally (onKill (killSpawned ref_tids)) $
     withSO sohandle $ \SOHandle{..} -> do
@@ -107,13 +106,13 @@ app isDone ref_action env name sohandle = do
           Slave _ mpid -> do
             hPutStrLn stderr $ "master pid = " ++ show mpid
             pure []
-      tid3 <- soProcess isDone ref (role,cellcfg) ref_action
+      tid3 <- soProcess rJava ref (role,cellcfg) ref_action
       atomically $ writeTVar ref_tids (tid3 : tids)
       waitForever
 
 
 looper ::
-     TMVar ()
+     TVar StatusJavaProcess
   -> MVar (IO ())
   -> ClientEnv
   -> NodeName
@@ -121,7 +120,7 @@ looper ::
   -> UpdatableSO SOHandle
   -> Maybe (SOInfo,ThreadId)
   -> IO (Maybe (SOInfo,ThreadId))
-looper isDone ref_action env name ref sohandle mcurr  = do
+looper rJava ref_action env name ref sohandle mcurr  = do
   newso <-
     atomically $ do
       newso <- readTVar ref
@@ -132,11 +131,14 @@ looper isDone ref_action env name ref sohandle mcurr  = do
   for_ mcurr $ \(_,tid) -> do
     hPutStrLn stderr ("update to " ++ show newso)
     killThread tid
-    hPutStrLn stderr ("putTMVar")
-    atomically $ tryTakeTMVar isDone -- turn off if on
+    atomically $ do
+      s <- readTVar rJava
+      case s of
+        JavaProcessLaunched -> writeTVar rJava JavaProcessKillSignaled
+        _ -> writeTVar rJava NoJavaProcess
     threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
-  tid' <- app isDone ref_action env name sohandle
+  tid' <- app rJava ref_action env name sohandle
   pure (Just (newso,tid'))
 
 
@@ -160,8 +162,8 @@ mkWSURL baseurl =
 
 -- | Actual worker implementation loading process.
 --   This loads shared object file and starts looping shared object update routine.
-loadWorkerSO :: TMVar () -> MVar (IO ()) -> ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
-loadWorkerSO isDone ref_action env name baseurl so_path = do
+loadWorkerSO :: TVar StatusJavaProcess -> MVar (IO ()) -> ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
+loadWorkerSO rJava ref_action env name baseurl so_path = do
   let wsurl = mkWSURL baseurl
   so <- registerHotswap "hs_soHandle" so_path
   ref <- newTVarIO (SOInfo so_path)
@@ -170,7 +172,7 @@ loadWorkerSO isDone ref_action env name baseurl so_path = do
       forever $ do
         soinfo :: SOInfo <- WS.receiveData conn
         atomically $ writeTVar ref soinfo
-  iterateM_ (looper isDone ref_action env name ref so) Nothing
+  iterateM_ (looper rJava ref_action env name ref so) Nothing
 
 
 -- | `runWorker` is the main function for a worker executable.
@@ -188,17 +190,17 @@ runWorker (URL url) name = do
   clspath <- liftIO $ getEnv "CLASSPATH"
   liftIO$ print clspath
   ref_jvm <- liftIO $ newEmptyMVar
-  isDone <- liftIO $ newEmptyTMVarIO
 
-  -- In a subprocess in JVM, we attach a "kill switch" (as `TMVar ()`) to the action.
+  -- In a subprocess in JVM, we attach a "kill switch" (as `TMVar StatusJavaProcess`) to the action.
   -- When the kill switch is triggered, an asynchronous exception is raised. The catch procedure
   -- in the below captures the exception and terminate the action and reinitialize JVM process
   -- (waiting new action in `ref_jvm :: MVar (IO ())`).
+  rJava <- liftIO $ newTVarIO NoJavaProcess
   liftIO $ forkOS $
     JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $
       forever $ do
         action <- takeMVar ref_jvm
-        atomically $ putTMVar isDone ()  -- turn on
+        atomically $ writeTVar rJava JavaProcessLaunched  -- turn on
         catch action $ \(e :: SomeException) ->
           putStrLn $ "exception catched in action: exception = " ++ displayException e
-  liftIO $ loadWorkerSO isDone ref_jvm env name baseurl so_path
+  liftIO $ loadWorkerSO rJava ref_jvm env name baseurl so_path

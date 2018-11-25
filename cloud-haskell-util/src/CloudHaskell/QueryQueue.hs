@@ -3,20 +3,19 @@ module CloudHaskell.QueryQueue where
 
 import           Control.Concurrent     ( forkIO, killThread, myThreadId )
 import           Control.Concurrent.STM ( STM
-                                        , TMVar
                                         , TVar
                                         , atomically
                                         , modifyTVar'
-                                        , putTMVar
                                         , readTVar
                                         , retry
-                                        , takeTMVar
                                         , writeTVar
                                         )
 import           Control.Monad          ( forever )
 import           Data.IntMap            ( IntMap )
 import qualified Data.IntMap as IM
 import           Data.Maybe
+------
+import           Worker.Type            ( StatusJavaProcess(..) )
 
 
 data QueryStatus q r = NewQuery q
@@ -87,11 +86,16 @@ waitQuery qqvar = do
       pure (i,q)
 
 
-untilDone :: TMVar () -> IO () -> IO ()
-untilDone isDone action = do
+untilKilled :: TVar StatusJavaProcess -> IO () -> IO ()
+untilKilled rJava action = do
   tid <- myThreadId
   forkIO $ do
-    atomically $ putTMVar isDone () >> takeTMVar isDone
+    -- wait until kill signal
+    atomically $ do
+      s <- readTVar rJava
+      case s of
+        JavaProcessKillSignaled -> pure ()
+        _ -> retry
     killThread tid
   forever action
 
@@ -105,9 +109,13 @@ handleQuery qqvar handler =
     atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
 
 
-handleQueryInterrupted :: TMVar () -> QQVar q r -> (q -> IO r) -> IO ()
-handleQueryInterrupted isDone qqvar handler =
-  untilDone isDone $ do
+handleQueryInterrupted ::
+     TVar StatusJavaProcess
+  -> QQVar q r
+  -> (q -> IO r)
+  -> IO ()
+handleQueryInterrupted rJava qqvar handler =
+  untilKilled rJava $ do
     (i,q) <- atomically $ waitQuery qqvar
     r <- handler q
     atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)

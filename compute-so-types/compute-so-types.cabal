@@ -15,8 +15,7 @@ cabal-version:       >=1.10
 stability:           alpha
 
 library
-  exposed-modules:     Worker.API
-                       Worker.Type
+  exposed-modules:     Worker.Type
   hs-source-dirs:      src
   build-depends:       base
                      , aeson
@@ -28,8 +27,6 @@ library
                      , stm
                      , text
                      , wai
-                     --
-                     , task-corenlp
   default-language:    Haskell2010
   ghc-options:         -Wall
                        -Werror

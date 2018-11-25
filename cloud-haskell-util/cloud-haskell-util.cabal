@@ -38,6 +38,7 @@ library
                    , unordered-containers
                    --
                    , network-transport-uphere
+                   , compute-so-types
 
   exposed-modules:
                      CloudHaskell.Client
