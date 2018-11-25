@@ -2,7 +2,6 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# OPTIONS_GHC -w #-}
 --
 -- `compute worker` is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
@@ -19,7 +18,6 @@ import           Control.Concurrent  ( MVar, ThreadId
                                      , threadDelay
                                      , newEmptyMVar
                                      , takeMVar
-                                     , putMVar
                                      )
 import           Control.Concurrent.STM
                                      ( TMVar, TVar
@@ -42,7 +40,6 @@ import           Data.Either.Combinators ( rightToMaybe )
 import           Data.Foldable       ( for_, traverse_ )
 import           Data.Text           ( Text )
 import qualified Data.Text as T
--- import qualified Foreign.JNI.Types as JNI ( JVM )
 import qualified Foreign.JNI as JNI  ( withJVM )
 import           GHC.Hotswap         ( UpdatableSO, registerHotswap, swapSO, withSO )
 import           Network.HTTP.Client ( defaultManagerSettings, newManager )
@@ -56,9 +53,7 @@ import           System.Environment  ( getEnv )
 import           System.FilePath     ( (</>) )
 import           System.IO           ( hPutStrLn, stderr )
 ------
-import CloudHaskell.QueryQueue (emptyQQ)
 import           CloudHaskell.Util   ( doUntilJust, onKill, waitForever )
-import Task.CoreNLP (queryCoreNLP)
 import           Worker.Type         ( CellConfig
                                      , ComputeConfig(..)
                                      , SOHandle(..)

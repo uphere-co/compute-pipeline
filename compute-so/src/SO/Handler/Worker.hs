@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -w #-}
 module SO.Handler.Worker
   ( workerMain
   ) where
@@ -20,8 +19,7 @@ import           Control.Distributed.Process.Node
 import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Reader ( runReaderT )
 import           Data.Foldable            ( traverse_ )
-import           Data.Text                ( Text )
-import qualified Data.Text             as T
+import qualified Data.Text as T
 ------
 import           CloudHaskell.Client      ( heartBeatHandshake )
 import           CloudHaskell.QueryQueue  ( QQVar )

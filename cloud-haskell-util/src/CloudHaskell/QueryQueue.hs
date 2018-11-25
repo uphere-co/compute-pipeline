@@ -1,5 +1,4 @@
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -w #-}
 module CloudHaskell.QueryQueue where
 
 import           Control.Concurrent     ( forkIO, killThread, myThreadId )
@@ -7,7 +6,6 @@ import           Control.Concurrent.STM ( STM
                                         , TMVar
                                         , TVar
                                         , atomically
-                                        , isEmptyTMVar
                                         , modifyTVar'
                                         , putTMVar
                                         , readTVar
@@ -16,7 +14,6 @@ import           Control.Concurrent.STM ( STM
                                         , writeTVar
                                         )
 import           Control.Monad          ( forever )
-import           Control.Monad.Loops    ( whileM_ )
 import           Data.IntMap            ( IntMap )
 import qualified Data.IntMap as IM
 import           Data.Maybe

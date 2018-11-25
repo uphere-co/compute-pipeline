@@ -145,7 +145,6 @@ runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
         (tokenss,mgs,cout) <- runSRL sdat txt
         pure $ CR_Sentence (ResultSentence txt tokenss mgs cout)
       CQ_Reuters n -> do
-        putStrLn ("CQ_Reuters " ++ show n)
         -- TODO: no more testPathConfig
         lst <- catMaybes <$> loadExistingMG testPathConfig n
         print (length lst)
