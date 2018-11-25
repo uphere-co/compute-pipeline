@@ -5,7 +5,7 @@ module SO.Handler.Process
   ) where
 
 import           Control.Concurrent (MVar, putMVar )
-import           Control.Concurrent.STM   ( TMVar )
+import           Control.Concurrent.STM   ( TVar )
 import           Control.Monad.IO.Class   ( liftIO )
 ------
 import           CloudHaskell.QueryQueue  ( QQVar )
@@ -15,9 +15,9 @@ import           Task.CoreNLP             ( QCoreNLP(..)
                                           , RCoreNLP
                                           , queryCoreNLP
                                           )
+import           Worker.Type              ( StatusProc )
 
-
-mainProcess :: TMVar () -> QQVar QCoreNLP RCoreNLP -> MVar (IO ()) -> Pipeline ()
-mainProcess isDone qqvar ref_jvm = do
+mainProcess :: TVar StatusProc -> QQVar QCoreNLP RCoreNLP -> MVar (IO ()) -> Pipeline ()
+mainProcess rJava rQQ ref_jvm = do
   tellLog "start mainProcess"
-  liftIO $ putMVar ref_jvm (queryCoreNLP isDone qqvar)
+  liftIO $ putMVar ref_jvm (queryCoreNLP rJava rQQ)

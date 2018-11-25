@@ -35,9 +35,10 @@ import           CloudHaskell.Type        ( Pipeline )
 import           Compute.Task             ( rtable )
 import           Network.Transport.UpHere ( DualHostPortPair(..) )
 import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
-import           Worker.Type              ( WorkerRole(..)
-                                          , CellConfig(..)
+import           Worker.Type              ( CellConfig(..)
                                           , NetworkConfig(..)
+                                          , StatusProc(..)
+                                          , WorkerRole(..)
                                           )
 
 ------
@@ -45,12 +46,12 @@ import           SO.Handler.Process               ( mainProcess )
 
 
 master ::
-     TMVar ()
+     TVar StatusProc
   -> QQVar QCoreNLP RCoreNLP
   -> TMVar ProcessId
   -> MVar (IO ())
   -> Pipeline ()
-master isDone qqvar ref ref_jvm = do
+master rJava qqvar ref ref_jvm = do
   self <- getSelfPid
   tellLog ("master self pid = " ++ show self)
   liftIO $ atomically $ putTMVar ref self
@@ -58,7 +59,7 @@ master isDone qqvar ref ref_jvm = do
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
   withHeartBeat them_ping (\_ -> pure ()) $ \_them_main -> do
-    mainProcess isDone qqvar ref_jvm
+    mainProcess rJava qqvar ref_jvm
     () <- expect  -- for idling
     pure ()
 
@@ -86,12 +87,12 @@ killLocalNode ref_node = do
 --       and return the id of the thread.
 workerMain ::
      QQVar QCoreNLP RCoreNLP
-  -> TMVar ()
+  -> TVar StatusProc
   -> TMVar ProcessId
   -> (WorkerRole,CellConfig)
   -> MVar (IO ())
   -> IO ThreadId
-workerMain qqvar isDone ref (Master _, mcellcfg) ref_jvm = do
+workerMain qqvar rJava ref (Master _, mcellcfg) ref_jvm = do
   let dhpp = mkDHPP (cellAddress mcellcfg)
   ref_node <- newTVarIO Nothing
   flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $
@@ -103,7 +104,7 @@ workerMain qqvar isDone ref (Master _, mcellcfg) ref_jvm = do
       runProcess node $
         flip runReaderT lock $
           handleErrorLog $
-            master isDone qqvar ref ref_jvm
+            master rJava qqvar ref ref_jvm
 workerMain _ _ ref (Slave _ mpid, scellcfg) _ = do
   let dhpp = mkDHPP (cellAddress scellcfg)
   ref_node <- newTVarIO Nothing

@@ -12,7 +12,7 @@
 --
 module Task.CoreNLP where
 
-import           Control.Concurrent.STM ( TMVar )
+import           Control.Concurrent.STM ( TVar )
 import           Control.DeepSeq        ( NFData )
 import           Control.Lens           ( (&), (.~) )
 import           Data.Aeson             ( FromJSON, ToJSON )
@@ -40,6 +40,7 @@ import           CloudHaskell.QueryQueue( type QQVar
                                         , handleQuery
                                         , handleQueryInterrupted
                                         )
+import            Worker.Type           ( StatusProc(..) )
 
 
 data QCoreNLP = QCoreNLP Text
@@ -78,8 +79,8 @@ prepareAndProcess action = do
   action pp
 
 
-queryCoreNLP :: TMVar () -> QQVar QCoreNLP RCoreNLP -> IO ()
-queryCoreNLP isDone qqvar =
+queryCoreNLP :: TVar StatusProc -> QQVar QCoreNLP RCoreNLP -> IO ()
+queryCoreNLP rProc rQQ =
   prepareAndProcess $ \pp ->
-    handleQueryInterrupted isDone qqvar
+    handleQueryInterrupted rProc rQQ
       (\case QCoreNLP txt -> RCoreNLP <$> runParser pp txt)

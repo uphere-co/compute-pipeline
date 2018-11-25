@@ -36,6 +36,7 @@ library
                      --
                      , HCoreNLP
                      , cloud-haskell-util
+                     , compute-so-types
                      -- TODO: we need to clean dep.
                      , semantic-role-labeler
   hs-source-dirs:      src

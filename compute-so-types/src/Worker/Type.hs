@@ -5,7 +5,7 @@
 module Worker.Type where
 
 import           Control.Concurrent          ( MVar, ThreadId )
-import           Control.Concurrent.STM      ( TMVar )
+import           Control.Concurrent.STM      ( TMVar, TVar )
 import           Control.DeepSeq             ( NFData )
 import           Control.Distributed.Process ( ProcessId )
 import           Control.Distributed.Process.Internal.Types ( LocalProcessId, NodeId )
@@ -78,6 +78,12 @@ data WorkerRole =
       ProcessId  -- ^ master process id
   deriving (Show,Eq,Ord,Generic,NFData,A.FromJSON,A.ToJSON)
 
+-- | Status of process. ProcKilled status works as
+--   a kill switch.
+data StatusProc = ProcNone
+                | ProcLaunched
+                | ProcKilled
+  deriving (Show,Eq,Ord,Generic,NFData)
 
 -- | The set of functions that you want to expose from your shared object
 --   Currently, this handle provides three different replaceable applications.
@@ -89,7 +95,7 @@ data WorkerRole =
 data SOHandle = SOHandle
                 { soApplication :: Application
                 , soProcess                            -- async process
-                            :: TMVar ()                -- is done?
+                            :: TVar StatusProc         -- kill switch
                             -> TMVar ProcessId         -- holder for CH process ID
                             -> (WorkerRole,CellConfig) -- configuration
                             -> MVar (IO ())            -- for JVM task

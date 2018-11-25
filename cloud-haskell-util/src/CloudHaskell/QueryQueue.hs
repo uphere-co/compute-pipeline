@@ -3,20 +3,19 @@ module CloudHaskell.QueryQueue where
 
 import           Control.Concurrent     ( forkIO, killThread, myThreadId )
 import           Control.Concurrent.STM ( STM
-                                        , TMVar
                                         , TVar
                                         , atomically
                                         , modifyTVar'
-                                        , putTMVar
                                         , readTVar
                                         , retry
-                                        , takeTMVar
                                         , writeTVar
                                         )
 import           Control.Monad          ( forever )
 import           Data.IntMap            ( IntMap )
 import qualified Data.IntMap as IM
 import           Data.Maybe
+------
+import           Worker.Type            ( StatusProc(..) )
 
 
 data QueryStatus q r = NewQuery q
@@ -87,27 +86,36 @@ waitQuery qqvar = do
       pure (i,q)
 
 
-untilDone :: TMVar () -> IO () -> IO ()
-untilDone isDone action = do
+untilKilled :: TVar StatusProc -> IO () -> IO ()
+untilKilled rProc action = do
   tid <- myThreadId
   forkIO $ do
-    atomically $ putTMVar isDone () >> takeTMVar isDone
+    -- wait until kill signal
+    atomically $ do
+      s <- readTVar rProc
+      case s of
+        ProcKilled -> pure ()
+        _ -> retry
     killThread tid
   forever action
 
 
 -- | simplest, unbounded handle query
 handleQuery :: QQVar q r -> (q -> IO r) -> IO ()
-handleQuery qqvar handler =
+handleQuery rQQ handler =
   forever $ do
-    (i,q) <- atomically $ waitQuery qqvar
+    (i,q) <- atomically $ waitQuery rQQ
     r <- handler q
-    atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+    atomically $ modifyTVar' rQQ (IM.update (\_ -> Just (Answered q r)) i)
 
 
-handleQueryInterrupted :: TMVar () -> QQVar q r -> (q -> IO r) -> IO ()
-handleQueryInterrupted isDone qqvar handler =
-  untilDone isDone $ do
-    (i,q) <- atomically $ waitQuery qqvar
+handleQueryInterrupted ::
+     TVar StatusProc
+  -> QQVar q r
+  -> (q -> IO r)
+  -> IO ()
+handleQueryInterrupted rProc rQQ handler =
+  untilKilled rProc $ do
+    (i,q) <- atomically $ waitQuery rQQ
     r <- handler q
-    atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+    atomically $ modifyTVar' rQQ (IM.update (\_ -> Just (Answered q r)) i)
