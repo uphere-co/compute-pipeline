@@ -37,7 +37,7 @@ import           CloudHaskell.Util        ( expectSafe
                                           , withTransport
                                           )
 import           CloudHaskell.Type        ( Pipeline )
-import           Compute.Task             ( rtable )
+-- import           Compute.Task             ( rtable )
 import           Network.Transport.UpHere ( DualHostPortPair(..) )
 import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
 import           Worker.Type              ( CellConfig(..)
@@ -47,7 +47,11 @@ import           Worker.Type              ( CellConfig(..)
                                           )
 
 ------
-import           SO.Handler.Process       ( StateCloud, main, cloudSlaves )
+import           SO.Handler.Process       ( StateCloud
+                                          , cloudSlaves
+                                          , main
+                                          , rtable
+                                          )
 
 
 
