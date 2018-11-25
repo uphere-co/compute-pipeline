@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
+{-# OPTIONS_GHC -w #-}
 module SO.Handler.Worker
   ( workerMain
   ) where
@@ -7,6 +9,7 @@ module SO.Handler.Worker
 import           Control.Concurrent       ( MVar, ThreadId, forkFinally )
 import           Control.Concurrent.STM   ( TMVar, TVar
                                           , atomically, newTVarIO
+                                          , modifyTVar'
                                           , putTMVar
                                           , readTVarIO, writeTVar
                                           )
@@ -16,8 +19,10 @@ import           Control.Distributed.Process.Node
                                           ( LocalNode, closeLocalNode
                                           , newLocalNode, runProcess
                                           )
+import           Control.Lens             ( (%~) )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Control.Monad.Trans.Reader ( runReaderT )
+import           Data.Default             ( def )
 import           Data.Foldable            ( traverse_ )
 import qualified Data.Text as T
 ------
@@ -42,24 +47,29 @@ import           Worker.Type              ( CellConfig(..)
                                           )
 
 ------
-import           SO.Handler.Process               ( main )
+import           SO.Handler.Process       ( StateCloud, main, cloudSlaves )
+
+
 
 
 master ::
      TVar StatusProc
+  -> TVar StateCloud
   -> QQVar QCoreNLP RCoreNLP
   -> TMVar ProcessId
   -> MVar (IO ())
   -> Pipeline ()
-master rJava qqvar ref ref_jvm = do
+master rJava rCloud qqvar ref ref_jvm = do
   self <- getSelfPid
   tellLog ("master self pid = " ++ show self)
   liftIO $ atomically $ putTMVar ref self
 
   them_ping :: ProcessId <- expectSafe
   tellLog ("got slave ping pid: " ++ show them_ping)
-  withHeartBeat them_ping (\_ -> pure ()) $ \_them_main -> do
-    main rJava qqvar ref_jvm
+  withHeartBeat them_ping (\_ -> pure ()) $ \slaveId -> do
+    liftIO $ atomically $
+      modifyTVar' rCloud (cloudSlaves %~ (++ [slaveId]))
+    main rCloud -- rJava qqvar ref_jvm
     () <- expect  -- for idling
     pure ()
 
@@ -110,5 +120,7 @@ workerMain rQQ rJava ref (role,cellcfg) ref_jvm = do
         flip runReaderT lock $
           handleErrorLog $
             case role of
-              Master _     -> master rJava rQQ ref ref_jvm
+              Master _     -> do
+                rCloud <- liftIO $ newTVarIO def
+                master rJava rCloud rQQ ref ref_jvm
               Slave _ mpid -> slave rJava ref mpid ref_jvm
