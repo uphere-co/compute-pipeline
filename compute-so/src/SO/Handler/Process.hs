@@ -30,6 +30,7 @@ import           Control.Distributed.Process.Lifted
                                           , ReceivePort
                                           , RemoteTable
                                           , SendPort
+                                          , newChan
                                           , sendChan
                                           , receiveChan
                                           , spawnChannel
@@ -91,15 +92,17 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
   tellLog ("got a slave: " ++ show slave)
   let slaveNode = processNodeId slave
 
-  sCNLP <-
+  sQ <-
     spawnChannel
-      (staticPtr (static (SerializableDict @QCoreNLP)))
+      (staticPtr (static (SerializableDict @(QCoreNLP,SendPort RCoreNLP))))
       slaveNode
       (staticClosure (staticPtr (static echo)))
 
   handleQuery rQQ $ \q -> do
-    sendChan sCNLP q
-    pure dummyOutput
+    (sR,rR) <- newChan
+    sendChan sQ (q,sR)
+    r <- receiveChan rR
+    pure r
 
   -- liftIO $ putMVar ref_jvm (queryCoreNLP rJava rQQ)
 
@@ -115,9 +118,12 @@ rtable =
     (toDynamic (staticPtr (static echo)))
     initRemoteTable
 
-echo :: ReceivePort QCoreNLP -> Process ()
-echo rCNLP = do
+echo :: ReceivePort (QCoreNLP, SendPort RCoreNLP) -> Process ()
+echo rQ = do
   liftIO $ putStrLn "echo program is launched."
   forever $ do
-    QCoreNLP msg <- receiveChan rCNLP
+    -- receive query
+    (QCoreNLP msg,sR) <- receiveChan rQ
     liftIO $ putStrLn $ "msg echoed: " ++ show msg
+    -- send answer
+    sendChan sR dummyOutput
