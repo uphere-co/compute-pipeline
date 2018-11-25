@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds                #-}
 {-# LANGUAGE DeriveAnyClass           #-}
 {-# LANGUAGE DeriveGeneric            #-}
+{-# LANGUAGE LambdaCase               #-}
 {-# LANGUAGE OverloadedStrings        #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TemplateHaskell          #-}
@@ -8,12 +9,10 @@
 
 module Task.SemanticParser where
 
-import           Control.Concurrent.STM         ( atomically, modifyTVar' )
 import           Control.DeepSeq                ( NFData )
 import           Control.Lens                   ( (&), (^.), (^..), (.~)
                                                 , _Just, makeLenses
                                                 )
-import           Control.Monad                  ( forever )
 import           Data.Aeson                     ( FromJSON, ToJSON
                                                 , eitherDecode'
                                                 )
@@ -22,7 +21,6 @@ import qualified Data.ByteString.Char8  as B
 import qualified Data.ByteString.Lazy   as BL
 import           Data.Default                   ( def )
 import           Data.IntMap                    ( IntMap )
-import qualified Data.IntMap            as IM
 import           Data.Maybe                     ( catMaybes )
 import           Data.Text                      ( Text )
 import           Data.Tree                      ( Forest )
@@ -54,7 +52,7 @@ import           SRL.Analyze.Type               ( AnalyzePredata
                                                 )
 import           WikiEL.Type                    ( EntityMention )
 --
-import           CloudHaskell.QueryQueue        ( QQVar, QueryStatus(..), waitQuery )
+import           CloudHaskell.QueryQueue        ( QQVar, handleQuery )
 import           Task.Reuters                   ( loadExistingMG )
 
 
@@ -109,9 +107,7 @@ runSRL sdat sent = do
       mgs = allMeaningGraphs (sdat^.apredata) (sdat^.companyMap) dstr
       cout = consoleOutput (sdat^.apredata.analyze_framedb) dstr
 
-  return (tokenss,mgs,cout)
-
-
+  pure (tokenss,mgs,cout)
 
 -- TODO: use ExceptT
 runSRLQueryDaemon ::
@@ -144,19 +140,17 @@ runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
                        , _forest = frst
                        , _companyMap = cmap
                        }
-    forever $ do
-      (i,q) <- atomically $ waitQuery qqvar
-      r <- case q of
-             CQ_Sentence txt -> do
-               (tokenss,mgs,cout) <- runSRL sdat txt
-               pure $ CR_Sentence (ResultSentence txt tokenss mgs cout)
-             CQ_Reuters n -> do
-               putStrLn ("CQ_Reuters " ++ show n)
-               -- TODO: no more testPathConfig
-               lst <- catMaybes <$> loadExistingMG testPathConfig n
-               print (length lst)
-               pure $ CR_Reuters (ResultReuters n lst)
-      atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+    handleQuery qqvar $ \case
+      CQ_Sentence txt -> do
+        (tokenss,mgs,cout) <- runSRL sdat txt
+        pure $ CR_Sentence (ResultSentence txt tokenss mgs cout)
+      CQ_Reuters n -> do
+        putStrLn ("CQ_Reuters " ++ show n)
+        -- TODO: no more testPathConfig
+        lst <- catMaybes <$> loadExistingMG testPathConfig n
+        print (length lst)
+        pure $ CR_Reuters (ResultReuters n lst)
+
 
 -- TODO: remove this.
 testPathConfig :: PathConfig

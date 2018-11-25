@@ -1,18 +1,17 @@
 {-# LANGUAGE TupleSections #-}
-
 module CloudHaskell.QueryQueue where
 
-import           Control.Concurrent.STM       ( STM, TVar
-                                              , atomically
-                                              , readTVar
-                                              , retry
-                                              , writeTVar
-                                              )
-import           Data.IntMap                  ( IntMap )
-import qualified Data.IntMap            as IM
+import           Control.Concurrent.STM ( STM, TVar
+                                        , atomically
+                                        , modifyTVar'
+                                        , readTVar
+                                        , retry
+                                        , writeTVar
+                                        )
+import           Control.Monad          ( forever )
+import           Data.IntMap            ( IntMap )
+import qualified Data.IntMap as IM
 import           Data.Maybe
---
-import           Prelude
 
 
 data QueryStatus q r = NewQuery q
@@ -71,6 +70,7 @@ singleQuery qqvar query  = do
                 in writeTVar qqvar qq' >> pure r
   pure r
 
+
 waitQuery :: QQVar q r -> STM (Int,q)
 waitQuery qqvar = do
   qq <- readTVar qqvar
@@ -80,3 +80,12 @@ waitQuery qqvar = do
       let qq' = IM.update (\_ -> Just (BeingProcessed q)) i qq
       writeTVar qqvar qq'
       pure (i,q)
+
+
+handleQuery :: QQVar q r -> (q -> IO r) -> IO ()
+handleQuery qqvar handler =
+  forever $ do
+    (i,q) <- atomically $ waitQuery qqvar
+    -- TODO: need to refactor out this query processing (handleQuery).
+    r <- handler q
+    atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
