@@ -63,7 +63,7 @@ master ::
   -> TMVar ProcessId
   -> MVar (IO ())
   -> Pipeline ()
-master rJava rCloud qqvar ref ref_jvm = do
+master rJava rCloud rQQ ref ref_jvm = do
   self <- getSelfPid
   tellLog ("master self pid = " ++ show self)
   liftIO $ atomically $ putTMVar ref self
@@ -73,7 +73,7 @@ master rJava rCloud qqvar ref ref_jvm = do
   withHeartBeat them_ping (\_ -> pure ()) $ \slaveId -> do
     liftIO $ atomically $
       modifyTVar' rCloud (cloudSlaves %~ (++ [slaveId]))
-    main rCloud -- rJava qqvar ref_jvm
+    main rCloud rQQ -- rJava qqvar ref_jvm
     () <- expect  -- for idling
     pure ()
 
