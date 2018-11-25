@@ -15,9 +15,9 @@ import           Task.CoreNLP             ( QCoreNLP(..)
                                           , RCoreNLP
                                           , queryCoreNLP
                                           )
-import           Worker.Type              ( StatusJavaProcess )
+import           Worker.Type              ( StatusProc )
 
-mainProcess :: TVar StatusJavaProcess -> QQVar QCoreNLP RCoreNLP -> MVar (IO ()) -> Pipeline ()
-mainProcess rJava qqvar ref_jvm = do
+mainProcess :: TVar StatusProc -> QQVar QCoreNLP RCoreNLP -> MVar (IO ()) -> Pipeline ()
+mainProcess rJava rQQ ref_jvm = do
   tellLog "start mainProcess"
-  liftIO $ putMVar ref_jvm (queryCoreNLP rJava qqvar)
+  liftIO $ putMVar ref_jvm (queryCoreNLP rJava rQQ)

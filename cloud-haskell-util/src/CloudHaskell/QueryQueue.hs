@@ -15,7 +15,7 @@ import           Data.IntMap            ( IntMap )
 import qualified Data.IntMap as IM
 import           Data.Maybe
 ------
-import           Worker.Type            ( StatusJavaProcess(..) )
+import           Worker.Type            ( StatusProc(..) )
 
 
 data QueryStatus q r = NewQuery q
@@ -86,15 +86,15 @@ waitQuery qqvar = do
       pure (i,q)
 
 
-untilKilled :: TVar StatusJavaProcess -> IO () -> IO ()
-untilKilled rJava action = do
+untilKilled :: TVar StatusProc -> IO () -> IO ()
+untilKilled rProc action = do
   tid <- myThreadId
   forkIO $ do
     -- wait until kill signal
     atomically $ do
-      s <- readTVar rJava
+      s <- readTVar rProc
       case s of
-        JavaProcessKillSignaled -> pure ()
+        ProcKilled -> pure ()
         _ -> retry
     killThread tid
   forever action
@@ -102,20 +102,20 @@ untilKilled rJava action = do
 
 -- | simplest, unbounded handle query
 handleQuery :: QQVar q r -> (q -> IO r) -> IO ()
-handleQuery qqvar handler =
+handleQuery rQQ handler =
   forever $ do
-    (i,q) <- atomically $ waitQuery qqvar
+    (i,q) <- atomically $ waitQuery rQQ
     r <- handler q
-    atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+    atomically $ modifyTVar' rQQ (IM.update (\_ -> Just (Answered q r)) i)
 
 
 handleQueryInterrupted ::
-     TVar StatusJavaProcess
+     TVar StatusProc
   -> QQVar q r
   -> (q -> IO r)
   -> IO ()
-handleQueryInterrupted rJava qqvar handler =
-  untilKilled rJava $ do
-    (i,q) <- atomically $ waitQuery qqvar
+handleQueryInterrupted rProc rQQ handler =
+  untilKilled rProc $ do
+    (i,q) <- atomically $ waitQuery rQQ
     r <- handler q
-    atomically $ modifyTVar' qqvar (IM.update (\_ -> Just (Answered q r)) i)
+    atomically $ modifyTVar' rQQ (IM.update (\_ -> Just (Answered q r)) i)

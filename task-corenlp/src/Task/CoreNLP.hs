@@ -40,7 +40,7 @@ import           CloudHaskell.QueryQueue( type QQVar
                                         , handleQuery
                                         , handleQueryInterrupted
                                         )
-import            Worker.Type           ( StatusJavaProcess(..) )
+import            Worker.Type           ( StatusProc(..) )
 
 
 data QCoreNLP = QCoreNLP Text
@@ -79,8 +79,8 @@ prepareAndProcess action = do
   action pp
 
 
-queryCoreNLP :: TVar StatusJavaProcess -> QQVar QCoreNLP RCoreNLP -> IO ()
-queryCoreNLP rJava qqvar =
+queryCoreNLP :: TVar StatusProc -> QQVar QCoreNLP RCoreNLP -> IO ()
+queryCoreNLP rProc rQQ =
   prepareAndProcess $ \pp ->
-    handleQueryInterrupted rJava qqvar
+    handleQueryInterrupted rProc rQQ
       (\case QCoreNLP txt -> RCoreNLP <$> runParser pp txt)

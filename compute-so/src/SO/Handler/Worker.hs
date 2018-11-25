@@ -37,7 +37,7 @@ import           Network.Transport.UpHere ( DualHostPortPair(..) )
 import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
 import           Worker.Type              ( CellConfig(..)
                                           , NetworkConfig(..)
-                                          , StatusJavaProcess(..)
+                                          , StatusProc(..)
                                           , WorkerRole(..)
                                           )
 
@@ -46,7 +46,7 @@ import           SO.Handler.Process               ( mainProcess )
 
 
 master ::
-     TVar StatusJavaProcess
+     TVar StatusProc
   -> QQVar QCoreNLP RCoreNLP
   -> TMVar ProcessId
   -> MVar (IO ())
@@ -87,7 +87,7 @@ killLocalNode ref_node = do
 --       and return the id of the thread.
 workerMain ::
      QQVar QCoreNLP RCoreNLP
-  -> TVar StatusJavaProcess
+  -> TVar StatusProc
   -> TMVar ProcessId
   -> (WorkerRole,CellConfig)
   -> MVar (IO ())

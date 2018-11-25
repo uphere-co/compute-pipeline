@@ -78,11 +78,11 @@ data WorkerRole =
       ProcessId  -- ^ master process id
   deriving (Show,Eq,Ord,Generic,NFData,A.FromJSON,A.ToJSON)
 
--- | Status of Java process. JavaProcessKillSignaled status works as
+-- | Status of process. ProcKilled status works as
 --   a kill switch.
-data StatusJavaProcess = NoJavaProcess
-                       | JavaProcessLaunched
-                       | JavaProcessKillSignaled
+data StatusProc = ProcNone
+                | ProcLaunched
+                | ProcKilled
   deriving (Show,Eq,Ord,Generic,NFData)
 
 -- | The set of functions that you want to expose from your shared object
@@ -95,7 +95,7 @@ data StatusJavaProcess = NoJavaProcess
 data SOHandle = SOHandle
                 { soApplication :: Application
                 , soProcess                            -- async process
-                            :: TVar StatusJavaProcess  -- kill switch
+                            :: TVar StatusProc         -- kill switch
                             -> TMVar ProcessId         -- holder for CH process ID
                             -> (WorkerRole,CellConfig) -- configuration
                             -> MVar (IO ())            -- for JVM task
