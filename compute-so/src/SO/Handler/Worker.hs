@@ -37,7 +37,6 @@ import           CloudHaskell.Util        ( expectSafe
                                           , withTransport
                                           )
 import           CloudHaskell.Type        ( Pipeline )
--- import           Compute.Task             ( rtable )
 import           Network.Transport.UpHere ( DualHostPortPair(..) )
 import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
 import           Worker.Type              ( CellConfig(..)
@@ -50,6 +49,7 @@ import           Worker.Type              ( CellConfig(..)
 import           SO.Handler.Process       ( StateCloud
                                           , cloudSlaves
                                           , main
+                                          , mainSlave
                                           , rtable
                                           )
 
@@ -78,14 +78,17 @@ master rJava rCloud rQQ ref ref_jvm = do
     pure ()
 
 
+
+
 slave ::
      TVar StatusProc
   -> TMVar ProcessId
   -> ProcessId
   -> MVar (IO ())
   -> Pipeline ()
-slave _rJava _ref mpid _ref_jvm = do
-  heartBeatHandshake mpid $ do
+slave rJava _ref masterPing _ref_jvm = do
+  heartBeatHandshake masterPing $ do
+    mainSlave rJava
     () <- expect
     pure ()
 
