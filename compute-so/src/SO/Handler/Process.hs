@@ -38,11 +38,17 @@ import           Control.Distributed.Process.Lifted
                                           , receiveChan
                                           , spawnChannel
                                           , spawnLocal
+                                          , unStatic
                                           )
 import           Control.Distributed.Process.Node.Lifted
                                           ( initRemoteTable )
 import           Control.Distributed.Process.Serializable ( SerializableDict(..) )
-import           Control.Distributed.Static ( registerStatic, staticClosure, staticPtr )
+import           Control.Distributed.Static
+                                          ( Static
+                                          , registerStatic
+                                          , staticClosure
+                                          , staticPtr
+                                          )
 import           Control.Error.Safe       ( headZ )
 import           Control.Lens             ( (^.), at, makeLenses, to )
 import           Control.Monad            ( forever, void )
@@ -106,9 +112,13 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
 
   let process =
         capply'
-          (staticPtr (static (SerializableDict @ProcessId)))
-          (staticClosure (staticPtr (static echo)))
-          slave
+          (staticPtr (static (SerializableDict @(Static (IORef Int)))))
+          (capply'
+            (staticPtr (static (SerializableDict @ProcessId)))
+            (staticClosure (staticPtr (static echo)))
+            slave
+          )
+          (staticPtr (static ref_test))
 
   sQ <-
     spawnChannel
@@ -134,16 +144,20 @@ rtable =
   registerStatic
     "$echo"
     (toDynamic (staticPtr (static echo)))
-    initRemoteTable
+  $ registerStatic
+    "$ref_test"
+    (toDynamic (staticPtr (static ref_test)))
+  $ initRemoteTable
 
-echo :: ProcessId -> ReceivePort (QCoreNLP, SendPort RCoreNLP) -> Process ()
-echo nodeManager rQ = do
+echo :: ProcessId -> Static (IORef Int) -> ReceivePort (QCoreNLP, SendPort RCoreNLP) -> Process ()
+echo nodeManager shared rQ = do
   liftIO $ putStrLn "echo program is launched."
 
-  spawnLocal $
+  spawnLocal $ do
+    ref <- unStatic shared
     forever $ liftIO $ do
       threadDelay 500000
-      modifyIORef' ref_test (+1)
+      modifyIORef' ref (+1)
   {-
   (sStat,rStat) <- newChan
   send nodeManager sStat
