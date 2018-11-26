@@ -101,8 +101,11 @@ data SOHandle = SOHandle
                 }
               deriving (Generic, NFData)
 
--- global variables: needed to ensure a unique instance of JVM
 
+-- Global variables: needed to ensure a unique instance of JVM
+-- This is necessary since CH semantics disallows share-anything
+-- (i.e. share-nothing semantics), which is too restrictive for
+-- hotswapping Java process with application-life-long singleton JVM.
 {-# NOINLINE javaProc #-}
 -- | insertible process into Java thread
 javaProc :: MVar (IO ())
