@@ -94,7 +94,7 @@ data StatusProc = ProcNone
 --
 data SOHandle = SOHandle
                 { soApplication :: Application
-                , soProcess                            -- async process
+                , soProcess ::                         -- async process
                                TMVar ProcessId         -- holder for CH process ID
                             -> (WorkerRole,CellConfig) -- configuration
                             -> IO ThreadId             -- worker thread spawned inside

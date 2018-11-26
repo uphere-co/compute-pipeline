@@ -5,7 +5,6 @@
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# OPTIONS_GHC -w #-}
 --
 -- Module for cloud haskell process entry points.
 -- This module provides main and remote table.
@@ -22,7 +21,7 @@ module SO.Handler.Process
   , rtable
   ) where
 
-import           Control.Concurrent (MVar, newEmptyMVar, putMVar, threadDelay )
+import           Control.Concurrent       ( MVar, putMVar )
 import           Control.Concurrent.STM   ( TVar
                                           , atomically
                                           , newTVarIO
@@ -37,7 +36,6 @@ import           Control.Distributed.Process.Lifted
                                           , SendPort
                                           , expect
                                           , newChan
-                                          , send
                                           , sendChan
                                           , receiveChan
                                           , spawnChannel
@@ -54,21 +52,13 @@ import           Control.Distributed.Static
                                           , staticPtr
                                           )
 import           Control.Error.Safe       ( headZ )
-import           Control.Lens             ( (^.), at, makeLenses, to )
-import           Control.Monad            ( forever, void )
+import           Control.Lens             ( (^.), makeLenses, to )
+import           Control.Monad            ( forever )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Data.Default             ( Default(..) )
-import           Data.IntMap              ( IntMap )
-import qualified Data.IntMap as IM
-import Data.IORef (IORef,newIORef,readIORef,modifyIORef')
 import           Data.Maybe               ( maybe )
 import           Data.Rank1Dynamic        ( toDynamic )
-import           Data.Text                ( Text )
 import           GHC.Generics             ( Generic )
-import System.IO.Unsafe (unsafePerformIO)
-------
--- temp
-import           SRL.Analyze.Type         ( DocAnalysisInput(..) )
 ------
 import           CloudHaskell.Closure     ( capply' )
 import           CloudHaskell.QueryQueue  ( QQVar
@@ -76,7 +66,7 @@ import           CloudHaskell.QueryQueue  ( QQVar
                                           , handleQuery
                                           , singleQuery
                                           )
-import           CloudHaskell.Util        ( expectSafe, tellLog )
+import           CloudHaskell.Util        ( tellLog )
 import           CloudHaskell.Type        ( Pipeline )
 import           Task.CoreNLP             ( QCoreNLP(..)
                                           , RCoreNLP(..)
@@ -95,8 +85,6 @@ makeLenses ''StateCloud
 instance Default StateCloud where
   def = StateCloud []
 
-
-dummyOutput = RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing)
 
 -- | Entry point of main CH process.
 --   All the tasks are done inside main by sending process to remote workers.

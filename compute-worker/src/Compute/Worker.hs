@@ -2,7 +2,6 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# OPTIONS_GHC -w #-}
 --
 -- `compute worker` is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
@@ -13,11 +12,10 @@
 -- is supervising slaves for the task.
 module Compute.Worker where
 
-import           Control.Concurrent  ( MVar, ThreadId
+import           Control.Concurrent  ( ThreadId
                                      , forkFinally, forkIO, forkOS
                                      , killThread
                                      , threadDelay
-                                     , newEmptyMVar
                                      , takeMVar
                                      )
 import           Control.Concurrent.STM
@@ -188,16 +186,15 @@ runWorker (URL url) name = do
     fmap T.unpack $
       withExceptT show $ ExceptT $
         runClientM (getSO) env
-  clspath <- liftIO $ getEnv "CLASSPATH"
-  liftIO$ print clspath
-  ref_jvm <- liftIO $ newEmptyMVar
 
   -- In a subprocess in JVM, we attach a "kill switch" (as `TMVar StatusProc`) to the action.
   -- When the kill switch is triggered, an asynchronous exception is raised. The catch procedure
   -- in the below captures the exception and terminate the action and reinitialize JVM process
   -- (waiting new action in `ref_jvm :: MVar (IO ())`).
-  rJava <- liftIO $ newTVarIO ProcNone
-  liftIO $ forkOS $
+
+  liftIO $ forkOS $ do
+    clspath <- liftIO $ getEnv "CLASSPATH"
+    liftIO$ print clspath
     JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $
       forever $ do
         action <- takeMVar javaProc

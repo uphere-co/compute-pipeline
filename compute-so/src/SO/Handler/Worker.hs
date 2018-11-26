@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
-{-# OPTIONS_GHC -w #-}
 module SO.Handler.Worker
   ( workerMain
   ) where
 
-import           Control.Concurrent       ( MVar, ThreadId, forkFinally )
+import           Control.Concurrent       ( ThreadId, forkFinally )
 import           Control.Concurrent.STM   ( TMVar, TVar
                                           , atomically, newTVarIO
                                           , modifyTVar'
@@ -41,7 +40,6 @@ import           Network.Transport.UpHere ( DualHostPortPair(..) )
 import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
 import           Worker.Type              ( CellConfig(..)
                                           , NetworkConfig(..)
-                                          , StatusProc(..)
                                           , WorkerRole(..)
                                           )
 
