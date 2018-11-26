@@ -17,8 +17,8 @@ foreign export ccall "hs_soHandle"
 
 hsNewSOHandle :: IO (StablePtr SOHandle)
 hsNewSOHandle = do
-  qqvar <- newTVarIO emptyQQ
+  rQQ <- newTVarIO emptyQQ
   newStablePtr SOHandle
-               { soApplication = webApp qqvar
-               , soProcess     = workerMain qqvar
+               { soApplication = webApp rQQ
+               , soProcess     = workerMain rQQ
                }

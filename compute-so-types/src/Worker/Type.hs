@@ -4,8 +4,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Worker.Type where
 
-import           Control.Concurrent          ( MVar, ThreadId )
-import           Control.Concurrent.STM      ( TMVar, TVar )
+import           Control.Concurrent          ( MVar, ThreadId, newEmptyMVar )
+import           Control.Concurrent.STM      ( TMVar, TVar, newTVarIO )
 import           Control.DeepSeq             ( NFData )
 import           Control.Distributed.Process ( ProcessId )
 import           Control.Distributed.Process.Internal.Types ( LocalProcessId, NodeId )
@@ -17,6 +17,7 @@ import           Data.Text.Encoding          ( decodeUtf8, encodeUtf8 )
 import           GHC.Generics                ( Generic )
 import           Network.Transport           ( EndPointAddress(..) )
 import           Network.Wai                 ( Application )
+import           System.IO.Unsafe            ( unsafePerformIO )
 ------
 
 
@@ -51,7 +52,6 @@ data ComputeWorkerOption =
 
 
 -- orphan instance
-
 instance A.FromJSON EndPointAddress where
   parseJSON (A.String txt) = case B64.decode (encodeUtf8 txt) of
                                Left e   -> fail (show e)
@@ -94,11 +94,24 @@ data StatusProc = ProcNone
 --
 data SOHandle = SOHandle
                 { soApplication :: Application
-                , soProcess                            -- async process
-                            :: TVar StatusProc         -- kill switch
-                            -> TMVar ProcessId         -- holder for CH process ID
+                , soProcess ::                         -- async process
+                               TMVar ProcessId         -- holder for CH process ID
                             -> (WorkerRole,CellConfig) -- configuration
-                            -> MVar (IO ())            -- for JVM task
                             -> IO ThreadId             -- worker thread spawned inside
                 }
               deriving (Generic, NFData)
+
+
+-- Global variables: needed to ensure a unique instance of JVM
+-- This is necessary since CH semantics disallows share-anything
+-- (i.e. share-nothing semantics), which is too restrictive for
+-- hotswapping Java process with application-life-long singleton JVM.
+{-# NOINLINE javaProc #-}
+-- | insertible process into Java thread
+javaProc :: MVar (IO ())
+javaProc = unsafePerformIO newEmptyMVar
+
+{-# NOINLINE javaProcStatus #-}
+-- | kill switch
+javaProcStatus :: TVar StatusProc
+javaProcStatus = unsafePerformIO (newTVarIO ProcNone)

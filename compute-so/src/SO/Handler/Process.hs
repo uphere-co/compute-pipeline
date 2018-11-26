@@ -1,10 +1,10 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StaticPointers    #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeApplications  #-}
-{-# OPTIONS_GHC -w #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StaticPointers      #-}
+{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
 --
 -- Module for cloud haskell process entry points.
 -- This module provides main and remote table.
@@ -15,14 +15,18 @@ module SO.Handler.Process
     StateCloud(..)
   , cloudSlaves
     -- * Main process
-  , main
+  , main      -- master
+  , mainSlave -- slave
     -- * Remote table
   , rtable
   ) where
 
-import           Control.Concurrent (MVar, putMVar )
+import           Control.Concurrent       ( MVar, putMVar )
 import           Control.Concurrent.STM   ( TVar
-                                          , atomically, readTVar, retry
+                                          , atomically
+                                          , newTVarIO
+                                          , readTVar
+                                          , retry
                                           )
 import           Control.Distributed.Process.Lifted
                                           ( Process
@@ -30,38 +34,46 @@ import           Control.Distributed.Process.Lifted
                                           , ReceivePort
                                           , RemoteTable
                                           , SendPort
+                                          , expect
                                           , newChan
                                           , sendChan
                                           , receiveChan
                                           , spawnChannel
+                                          , spawnLocal
+                                          , unStatic
                                           )
 import           Control.Distributed.Process.Node.Lifted
                                           ( initRemoteTable )
 import           Control.Distributed.Process.Serializable ( SerializableDict(..) )
-import           Control.Distributed.Static ( registerStatic, staticClosure, staticPtr )
+import           Control.Distributed.Static
+                                          ( Static
+                                          , registerStatic
+                                          , staticClosure
+                                          , staticPtr
+                                          )
 import           Control.Error.Safe       ( headZ )
-import           Control.Lens             ( (^.), at, makeLenses, to )
-import           Control.Monad            ( forever, void )
+import           Control.Lens             ( (^.), makeLenses, to )
+import           Control.Monad            ( forever )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Data.Default             ( Default(..) )
-import           Data.IntMap              ( IntMap )
-import qualified Data.IntMap as IM
 import           Data.Maybe               ( maybe )
 import           Data.Rank1Dynamic        ( toDynamic )
-import           Data.Text                ( Text )
 import           GHC.Generics             ( Generic )
 ------
--- temp
-import           SRL.Analyze.Type         ( DocAnalysisInput(..) )
-------
-import           CloudHaskell.QueryQueue  ( QQVar, handleQuery )
+import           CloudHaskell.Closure     ( capply' )
+import           CloudHaskell.QueryQueue  ( QQVar
+                                          , emptyQQ
+                                          , handleQuery
+                                          , singleQuery
+                                          )
 import           CloudHaskell.Util        ( tellLog )
 import           CloudHaskell.Type        ( Pipeline )
 import           Task.CoreNLP             ( QCoreNLP(..)
                                           , RCoreNLP(..)
                                           , queryCoreNLP
                                           )
-import           Worker.Type              ( StatusProc )
+import           Worker.Type              ( StatusProc, javaProc, javaProcStatus )
+
 
 
 -- | State that keeps the current available slaves.
@@ -74,16 +86,14 @@ instance Default StateCloud where
   def = StateCloud []
 
 
-dummyOutput = RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing)
-
 -- | Entry point of main CH process.
 --   All the tasks are done inside main by sending process to remote workers.
 --
-main :: -- TVar StatusProc  -> MVar (IO ()) -> Pipeline ()
+main ::
      TVar StateCloud
   -> QQVar QCoreNLP RCoreNLP
   -> Pipeline ()
-main rCloud rQQ = do -- rJava rQQ ref_jvm = do
+main rCloud rQQ = do
   tellLog "start mainProcess"
   slave <-
     liftIO $ atomically $ do
@@ -91,20 +101,27 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
       maybe retry pure (cloud ^. cloudSlaves . to headZ)
   tellLog ("got a slave: " ++ show slave)
   let slaveNode = processNodeId slave
-
+  let process =
+        capply'
+          (staticPtr (static (SerializableDict @(Static (TVar StatusProc)))))
+          (capply'
+            (staticPtr (static (SerializableDict @(Static (MVar (IO ()))))))
+            (staticClosure (staticPtr (static daemonCoreNLP)))
+            (staticPtr (static javaProc))
+          )
+          (staticPtr (static javaProcStatus))
   sQ <-
     spawnChannel
       (staticPtr (static (SerializableDict @(QCoreNLP,SendPort RCoreNLP))))
       slaveNode
-      (staticClosure (staticPtr (static echo)))
+      process
 
   handleQuery rQQ $ \q -> do
     (sR,rR) <- newChan
+    tellLog $ show q
     sendChan sQ (q,sR)
     r <- receiveChan rR
     pure r
-
-  -- liftIO $ putMVar ref_jvm (queryCoreNLP rJava rQQ)
 
 
 -- | Global remote table.
@@ -114,16 +131,43 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
 rtable :: RemoteTable
 rtable =
   registerStatic
-    "$echo"
-    (toDynamic (staticPtr (static echo)))
-    initRemoteTable
+    "$daemonCoreNLP"
+    (toDynamic (staticPtr (static daemonCoreNLP)))
+  $ registerStatic
+    "$javaProc"
+    (toDynamic (staticPtr (static javaProc)))
+  $ registerStatic
+    "$javaProcStatus"
+    (toDynamic (staticPtr (static javaProcStatus)))
+  $ initRemoteTable
 
-echo :: ReceivePort (QCoreNLP, SendPort RCoreNLP) -> Process ()
-echo rQ = do
+daemonCoreNLP ::
+     Static (MVar (IO ()))
+  -> Static (TVar StatusProc)
+  -> ReceivePort (QCoreNLP, SendPort RCoreNLP)
+  -> Process ()
+daemonCoreNLP pJProc pJProcStatus rQ = do
   liftIO $ putStrLn "echo program is launched."
-  forever $ do
-    -- receive query
-    (QCoreNLP msg,sR) <- receiveChan rQ
-    liftIO $ putStrLn $ "msg echoed: " ++ show msg
-    -- send answer
-    sendChan sR dummyOutput
+
+  rQQ <- liftIO $ newTVarIO emptyQQ
+  -- query request handler thread, this signals query to worker thread.
+  spawnLocal $ do
+    forever $ do
+      -- receive query
+      (q,sR) <- receiveChan rQ
+      -- process query
+      r <- liftIO $ singleQuery rQQ q
+      -- send answer
+      sendChan sR r
+  -- insert process into main worker thread
+  jproc <- unStatic pJProc
+  jprocStatus <- unStatic pJProcStatus
+  liftIO $ putMVar jproc (queryCoreNLP jprocStatus rQQ)
+  -- idling.
+  () <- expect
+  pure ()
+
+
+mainSlave :: Pipeline ()
+mainSlave = do
+  tellLog "mainSlave"

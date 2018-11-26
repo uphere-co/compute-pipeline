@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
-{-# OPTIONS_GHC -w #-}
 module SO.Handler.Worker
   ( workerMain
   ) where
 
-import           Control.Concurrent       ( MVar, ThreadId, forkFinally )
+import           Control.Concurrent       ( ThreadId, forkFinally )
 import           Control.Concurrent.STM   ( TMVar, TVar
                                           , atomically, newTVarIO
                                           , modifyTVar'
@@ -37,12 +36,10 @@ import           CloudHaskell.Util        ( expectSafe
                                           , withTransport
                                           )
 import           CloudHaskell.Type        ( Pipeline )
--- import           Compute.Task             ( rtable )
 import           Network.Transport.UpHere ( DualHostPortPair(..) )
 import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
 import           Worker.Type              ( CellConfig(..)
                                           , NetworkConfig(..)
-                                          , StatusProc(..)
                                           , WorkerRole(..)
                                           )
 
@@ -50,6 +47,7 @@ import           Worker.Type              ( CellConfig(..)
 import           SO.Handler.Process       ( StateCloud
                                           , cloudSlaves
                                           , main
+                                          , mainSlave
                                           , rtable
                                           )
 
@@ -57,13 +55,11 @@ import           SO.Handler.Process       ( StateCloud
 
 
 master ::
-     TVar StatusProc
-  -> TVar StateCloud
+     TVar StateCloud
   -> QQVar QCoreNLP RCoreNLP
   -> TMVar ProcessId
-  -> MVar (IO ())
   -> Pipeline ()
-master rJava rCloud rQQ ref ref_jvm = do
+master rCloud rQQ ref = do
   self <- getSelfPid
   tellLog ("master self pid = " ++ show self)
   liftIO $ atomically $ putTMVar ref self
@@ -73,26 +69,24 @@ master rJava rCloud rQQ ref ref_jvm = do
   withHeartBeat them_ping (\_ -> pure ()) $ \slaveId -> do
     liftIO $ atomically $
       modifyTVar' rCloud (cloudSlaves %~ (++ [slaveId]))
-    main rCloud rQQ -- rJava qqvar ref_jvm
+    main rCloud rQQ
     () <- expect  -- for idling
     pure ()
 
 
 slave ::
-     TVar StatusProc
-  -> TMVar ProcessId
+     TMVar ProcessId
   -> ProcessId
-  -> MVar (IO ())
   -> Pipeline ()
-slave _rJava _ref mpid _ref_jvm = do
-  heartBeatHandshake mpid $ do
+slave  _ref masterPing = do
+  heartBeatHandshake masterPing $ do
+    mainSlave
     () <- expect
     pure ()
 
 
 mkDHPP :: NetworkConfig -> DualHostPortPair
-mkDHPP cfg = DHPP
-                  (T.unpack (hostg cfg), show (port cfg))
+mkDHPP cfg = DHPP (T.unpack (hostg cfg), show (port cfg))
                   (T.unpack (hostg cfg), show (port cfg))
 
 
@@ -106,12 +100,10 @@ killLocalNode ref_node = do
 --       and return the id of the thread.
 workerMain ::
      QQVar QCoreNLP RCoreNLP
-  -> TVar StatusProc
   -> TMVar ProcessId
   -> (WorkerRole,CellConfig)
-  -> MVar (IO ())
   -> IO ThreadId
-workerMain rQQ rJava ref (role,cellcfg) ref_jvm = do
+workerMain rQQ ref (role,cellcfg) = do
   let dhpp = mkDHPP (cellAddress cellcfg)
   ref_node <- newTVarIO Nothing
   flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $
@@ -126,5 +118,5 @@ workerMain rQQ rJava ref (role,cellcfg) ref_jvm = do
             case role of
               Master _     -> do
                 rCloud <- liftIO $ newTVarIO def
-                master rJava rCloud rQQ ref ref_jvm
-              Slave _ mpid -> slave rJava ref mpid ref_jvm
+                master rCloud rQQ ref
+              Slave _ mpid -> slave ref mpid
