@@ -24,7 +24,10 @@ module SO.Handler.Process
 
 import           Control.Concurrent (MVar, newEmptyMVar, putMVar, threadDelay )
 import           Control.Concurrent.STM   ( TVar
-                                          , atomically, readTVar, retry
+                                          , atomically
+                                          , newTVarIO
+                                          , readTVar
+                                          , retry
                                           )
 import           Control.Distributed.Process.Lifted
                                           ( Process
@@ -32,6 +35,7 @@ import           Control.Distributed.Process.Lifted
                                           , ReceivePort
                                           , RemoteTable
                                           , SendPort
+                                          , expect
                                           , newChan
                                           , send
                                           , sendChan
@@ -67,18 +71,19 @@ import System.IO.Unsafe (unsafePerformIO)
 import           SRL.Analyze.Type         ( DocAnalysisInput(..) )
 ------
 import           CloudHaskell.Closure     ( capply' )
-import           CloudHaskell.QueryQueue  ( QQVar, handleQuery )
+import           CloudHaskell.QueryQueue  ( QQVar
+                                          , emptyQQ
+                                          , handleQuery
+                                          , singleQuery
+                                          )
 import           CloudHaskell.Util        ( expectSafe, tellLog )
 import           CloudHaskell.Type        ( Pipeline )
 import           Task.CoreNLP             ( QCoreNLP(..)
                                           , RCoreNLP(..)
                                           , queryCoreNLP
                                           )
-import           Worker.Type              ( StatusProc )
+import           Worker.Type              ( StatusProc, javaProc, javaProcStatus )
 
-{-# NOINLINE ref_test #-}
-ref_test :: IORef Int
-ref_test = unsafePerformIO (newIORef (0 :: Int))
 
 
 -- | State that keeps the current available slaves.
@@ -112,13 +117,13 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
 
   let process =
         capply'
-          (staticPtr (static (SerializableDict @(Static (IORef Int)))))
+          (staticPtr (static (SerializableDict @(Static (TVar StatusProc)))))
           (capply'
-            (staticPtr (static (SerializableDict @ProcessId)))
-            (staticClosure (staticPtr (static echo)))
-            slave
+            (staticPtr (static (SerializableDict @(Static (MVar (IO ()))))))
+            (staticClosure (staticPtr (static daemonCoreNLP)))
+            (staticPtr (static javaProc))
           )
-          (staticPtr (static ref_test))
+          (staticPtr (static javaProcStatus))
 
   sQ <-
     spawnChannel
@@ -128,11 +133,11 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
 
   handleQuery rQQ $ \q -> do
     (sR,rR) <- newChan
+    tellLog $ show q
     sendChan sQ (q,sR)
     r <- receiveChan rR
     pure r
 
-  -- liftIO $ putMVar ref_jvm (queryCoreNLP rJava rQQ)
 
 
 -- | Global remote table.
@@ -142,22 +147,48 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
 rtable :: RemoteTable
 rtable =
   registerStatic
-    "$echo"
-    (toDynamic (staticPtr (static echo)))
+    "$daemonCoreNLP"
+    (toDynamic (staticPtr (static daemonCoreNLP)))
   $ registerStatic
-    "$ref_test"
-    (toDynamic (staticPtr (static ref_test)))
+    "$javaProc"
+    (toDynamic (staticPtr (static javaProc)))
+  $ registerStatic
+    "$javaProcStatus"
+    (toDynamic (staticPtr (static javaProcStatus)))
   $ initRemoteTable
 
-echo :: ProcessId -> Static (IORef Int) -> ReceivePort (QCoreNLP, SendPort RCoreNLP) -> Process ()
-echo nodeManager shared rQ = do
+daemonCoreNLP ::
+     Static (MVar (IO ()))
+  -> Static (TVar StatusProc)
+  -> ReceivePort (QCoreNLP, SendPort RCoreNLP)
+  -> Process ()
+daemonCoreNLP pJProc pJProcStatus rQ = do
   liftIO $ putStrLn "echo program is launched."
 
+  rQQ <- liftIO $ newTVarIO emptyQQ
   spawnLocal $ do
-    ref <- unStatic shared
-    forever $ liftIO $ do
+    forever $ do
+      -- receive query
+      (q,sR) <- receiveChan rQ
+      -- liftIO $ putStrLn $ "msg echoed: " ++ show msg
+      r <- liftIO $ singleQuery rQQ q
+      -- send answer
+      sendChan sR r
+
+  jproc <- unStatic pJProc
+  jprocStatus <- unStatic pJProcStatus
+  liftIO $ putMVar jproc (queryCoreNLP jprocStatus rQQ)
+
+  -- wait indefinitely
+  () <- expect
+  pure ()
+{-
+  spawnLocal $ do
+    liftIO $ putMVar jproc (putStrLn "java process is init") -}
+    {- forever $ liftIO $ do
       threadDelay 500000
       modifyIORef' ref (+1)
+    -}
   {-
   (sStat,rStat) <- newChan
   send nodeManager sStat
@@ -170,23 +201,17 @@ echo nodeManager shared rQ = do
   -- sStat' <- receiveChan rStat
   -- sendChan sStat' ("abcdef" :: Text)
 
-  forever $ do
-    -- receive query
-    (QCoreNLP msg,sR) <- receiveChan rQ
-    liftIO $ putStrLn $ "msg echoed: " ++ show msg
-    -- send answer
-    sendChan sR dummyOutput
 
-
-mainSlave :: TVar StatusProc -> Pipeline ()
-mainSlave rJava = do
+mainSlave :: Pipeline ()
+mainSlave = do
   tellLog "mainSlave"
 
+{-
   liftIO $ forever $ do
     threadDelay 1000000
     r <- readIORef ref_test
     print r
-
+-}
 
   {-
   rTest <- liftIO $ newEmptyMVar

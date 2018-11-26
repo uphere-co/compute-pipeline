@@ -4,8 +4,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Worker.Type where
 
-import           Control.Concurrent          ( MVar, ThreadId )
-import           Control.Concurrent.STM      ( TMVar, TVar )
+import           Control.Concurrent          ( MVar, ThreadId, newEmptyMVar )
+import           Control.Concurrent.STM      ( TMVar, TVar, newTVarIO )
 import           Control.DeepSeq             ( NFData )
 import           Control.Distributed.Process ( ProcessId )
 import           Control.Distributed.Process.Internal.Types ( LocalProcessId, NodeId )
@@ -17,6 +17,7 @@ import           Data.Text.Encoding          ( decodeUtf8, encodeUtf8 )
 import           GHC.Generics                ( Generic )
 import           Network.Transport           ( EndPointAddress(..) )
 import           Network.Wai                 ( Application )
+import           System.IO.Unsafe            ( unsafePerformIO )
 ------
 
 
@@ -95,10 +96,20 @@ data StatusProc = ProcNone
 data SOHandle = SOHandle
                 { soApplication :: Application
                 , soProcess                            -- async process
-                            :: TVar StatusProc         -- kill switch
-                            -> TMVar ProcessId         -- holder for CH process ID
+                            :: -- TVar StatusProc         -- kill switch
+                               TMVar ProcessId         -- holder for CH process ID
                             -> (WorkerRole,CellConfig) -- configuration
-                            -> MVar (IO ())            -- for JVM task
+                            -- -> MVar (IO ())            -- for JVM task
                             -> IO ThreadId             -- worker thread spawned inside
                 }
               deriving (Generic, NFData)
+
+-- global variables: needed to ensure a unique instance of JVM
+
+{-# NOINLINE javaProc #-}
+javaProc :: MVar (IO ())
+javaProc = unsafePerformIO newEmptyMVar
+
+{-# NOINLINE javaProcStatus #-}
+javaProcStatus :: TVar StatusProc
+javaProcStatus = unsafePerformIO (newTVarIO ProcNone)

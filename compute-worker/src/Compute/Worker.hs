@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# OPTIONS_GHC -w #-}
 --
 -- `compute worker` is the main distributed computing process for a generic
 -- task. It has two mode: master and slave.
@@ -57,6 +58,8 @@ import           Worker.Type         ( CellConfig
                                      , SOHandle(..)
                                      , StatusProc(..)
                                      , WorkerRole(..)
+                                     , javaProc
+                                     , javaProcStatus
                                      )
 ------
 import           Compute.API         ( SOInfo(..), orcApiNoStream )
@@ -83,8 +86,8 @@ requestRole env (NodeName n) =
 
 -- NOTE: We collect all of thread ids for child threads created from this root thread.
 -- TODO: Use more systematic management. Consider using thread-hierarchy or async-supervisor library.
-app :: TVar StatusProc -> MVar (IO ()) -> ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
-app rJava ref_action env name sohandle = do
+app :: {- TVar StatusProc -> MVar (IO ())  ->  -} ClientEnv -> NodeName -> UpdatableSO SOHandle -> IO ThreadId
+app {- rJava  ref_action -} env name sohandle = do
   ref_tids <- newTVarIO []
   flip forkFinally (onKill (killSpawned ref_tids)) $
     withSO sohandle $ \SOHandle{..} -> do
@@ -106,21 +109,21 @@ app rJava ref_action env name sohandle = do
           Slave _ mpid -> do
             hPutStrLn stderr $ "master pid = " ++ show mpid
             pure []
-      tid3 <- soProcess rJava ref (role,cellcfg) ref_action
+      tid3 <- soProcess {- rJava -} ref (role,cellcfg) --  ref_action
       atomically $ writeTVar ref_tids (tid3 : tids)
       waitForever
 
 
 looper ::
-     TVar StatusProc
-  -> MVar (IO ())
-  -> ClientEnv
+  --   TVar StatusProc
+  -- -> MVar (IO ())
+     ClientEnv
   -> NodeName
   -> TVar SOInfo
   -> UpdatableSO SOHandle
   -> Maybe (SOInfo,ThreadId)
   -> IO (Maybe (SOInfo,ThreadId))
-looper rJava ref_action env name ref sohandle mcurr  = do
+looper {- rJava ref_action -} env name ref sohandle mcurr  = do
   newso <-
     atomically $ do
       newso <- readTVar ref
@@ -132,13 +135,13 @@ looper rJava ref_action env name ref sohandle mcurr  = do
     hPutStrLn stderr ("update to " ++ show newso)
     killThread tid
     atomically $ do
-      s <- readTVar rJava
+      s <- readTVar javaProcStatus -- rJava
       case s of
-        ProcLaunched -> writeTVar rJava ProcKilled
-        _ -> writeTVar rJava ProcNone
+        ProcLaunched -> writeTVar javaProcStatus {- rJava -} ProcKilled
+        _ -> writeTVar javaProcStatus {- rJava -} ProcNone
     threadDelay 1000000
     swapSO sohandle (soinfoFilePath newso)
-  tid' <- app rJava ref_action env name sohandle
+  tid' <- app {- rJava  ref_action -} env name sohandle
   pure (Just (newso,tid'))
 
 
@@ -162,8 +165,8 @@ mkWSURL baseurl =
 
 -- | Actual worker implementation loading process.
 --   This loads shared object file and starts looping shared object update routine.
-loadWorkerSO :: TVar StatusProc -> MVar (IO ()) -> ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
-loadWorkerSO rJava ref_action env name baseurl so_path = do
+loadWorkerSO :: {- TVar StatusProc  -> MVar (IO ()) -> -} ClientEnv -> NodeName -> BaseUrl -> FilePath -> IO ()
+loadWorkerSO {- rJava ref_action -} env name baseurl so_path = do
   let wsurl = mkWSURL baseurl
   so <- registerHotswap "hs_soHandle" so_path
   ref <- newTVarIO (SOInfo so_path)
@@ -172,7 +175,7 @@ loadWorkerSO rJava ref_action env name baseurl so_path = do
       forever $ do
         soinfo :: SOInfo <- WS.receiveData conn
         atomically $ writeTVar ref soinfo
-  iterateM_ (looper rJava ref_action env name ref so) Nothing
+  iterateM_ (looper {- rJava ref_action -} env name ref so) Nothing
 
 
 -- | `runWorker` is the main function for a worker executable.
@@ -199,8 +202,8 @@ runWorker (URL url) name = do
   liftIO $ forkOS $
     JNI.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $
       forever $ do
-        action <- takeMVar ref_jvm
-        atomically $ writeTVar rJava ProcLaunched
+        action <- takeMVar javaProc
+        atomically $ writeTVar javaProcStatus ProcLaunched
         catch action $ \(e :: SomeException) ->
           putStrLn $ "exception catched in action: exception = " ++ displayException e
-  liftIO $ loadWorkerSO rJava ref_jvm env name baseurl so_path
+  liftIO $ loadWorkerSO {- rJava -} env name baseurl so_path
