@@ -57,13 +57,11 @@ import           SO.Handler.Process       ( StateCloud
 
 
 master ::
-  --    TVar StatusProc
      TVar StateCloud
   -> QQVar QCoreNLP RCoreNLP
   -> TMVar ProcessId
-  -- -> MVar (IO ())
   -> Pipeline ()
-master {- rJava -} rCloud rQQ ref {- ref_jvm -} = do
+master rCloud rQQ ref = do
   self <- getSelfPid
   tellLog ("master self pid = " ++ show self)
   liftIO $ atomically $ putTMVar ref self
@@ -73,20 +71,16 @@ master {- rJava -} rCloud rQQ ref {- ref_jvm -} = do
   withHeartBeat them_ping (\_ -> pure ()) $ \slaveId -> do
     liftIO $ atomically $
       modifyTVar' rCloud (cloudSlaves %~ (++ [slaveId]))
-    main rCloud rQQ -- rJava qqvar ref_jvm
+    main rCloud rQQ
     () <- expect  -- for idling
     pure ()
 
 
-
-
 slave ::
-   --   TVar StatusProc
      TMVar ProcessId
   -> ProcessId
-  --- > MVar (IO ())
   -> Pipeline ()
-slave  _ref masterPing {- _ref_jvm -} = do
+slave  _ref masterPing = do
   heartBeatHandshake masterPing $ do
     mainSlave
     () <- expect
@@ -94,8 +88,7 @@ slave  _ref masterPing {- _ref_jvm -} = do
 
 
 mkDHPP :: NetworkConfig -> DualHostPortPair
-mkDHPP cfg = DHPP
-                  (T.unpack (hostg cfg), show (port cfg))
+mkDHPP cfg = DHPP (T.unpack (hostg cfg), show (port cfg))
                   (T.unpack (hostg cfg), show (port cfg))
 
 
@@ -109,12 +102,10 @@ killLocalNode ref_node = do
 --       and return the id of the thread.
 workerMain ::
      QQVar QCoreNLP RCoreNLP
-  -- -> TVar StatusProc
   -> TMVar ProcessId
   -> (WorkerRole,CellConfig)
-  -- -> MVar (IO ())
   -> IO ThreadId
-workerMain rQQ {- rJava -} ref (role,cellcfg) = do
+workerMain rQQ ref (role,cellcfg) = do
   let dhpp = mkDHPP (cellAddress cellcfg)
   ref_node <- newTVarIO Nothing
   flip forkFinally (onKill (putStrLn "killed" >> killLocalNode ref_node)) $

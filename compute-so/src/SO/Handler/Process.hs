@@ -101,20 +101,18 @@ dummyOutput = RCoreNLP (DocAnalysisInput [] [] [] [] [] [] Nothing)
 -- | Entry point of main CH process.
 --   All the tasks are done inside main by sending process to remote workers.
 --
-main :: -- TVar StatusProc  -> MVar (IO ()) -> Pipeline ()
+main ::
      TVar StateCloud
   -> QQVar QCoreNLP RCoreNLP
   -> Pipeline ()
-main rCloud rQQ = do -- rJava rQQ ref_jvm = do
+main rCloud rQQ = do
   tellLog "start mainProcess"
   slave <-
     liftIO $ atomically $ do
       cloud <- readTVar rCloud
       maybe retry pure (cloud ^. cloudSlaves . to headZ)
   tellLog ("got a slave: " ++ show slave)
-
   let slaveNode = processNodeId slave
-
   let process =
         capply'
           (staticPtr (static (SerializableDict @(Static (TVar StatusProc)))))
@@ -124,7 +122,6 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
             (staticPtr (static javaProc))
           )
           (staticPtr (static javaProcStatus))
-
   sQ <-
     spawnChannel
       (staticPtr (static (SerializableDict @(QCoreNLP,SendPort RCoreNLP))))
@@ -137,7 +134,6 @@ main rCloud rQQ = do -- rJava rQQ ref_jvm = do
     sendChan sQ (q,sR)
     r <- receiveChan rR
     pure r
-
 
 
 -- | Global remote table.
@@ -166,60 +162,24 @@ daemonCoreNLP pJProc pJProcStatus rQ = do
   liftIO $ putStrLn "echo program is launched."
 
   rQQ <- liftIO $ newTVarIO emptyQQ
+  -- query request handler thread, this signals query to worker thread.
   spawnLocal $ do
     forever $ do
       -- receive query
       (q,sR) <- receiveChan rQ
-      -- liftIO $ putStrLn $ "msg echoed: " ++ show msg
+      -- process query
       r <- liftIO $ singleQuery rQQ q
       -- send answer
       sendChan sR r
-
+  -- insert process into main worker thread
   jproc <- unStatic pJProc
   jprocStatus <- unStatic pJProcStatus
   liftIO $ putMVar jproc (queryCoreNLP jprocStatus rQQ)
-
-  -- wait indefinitely
+  -- idling.
   () <- expect
   pure ()
-{-
-  spawnLocal $ do
-    liftIO $ putMVar jproc (putStrLn "java process is init") -}
-    {- forever $ liftIO $ do
-      threadDelay 500000
-      modifyIORef' ref (+1)
-    -}
-  {-
-  (sStat,rStat) <- newChan
-  send nodeManager sStat
-
-  rTest <- receiveChan rStat
-  liftIO $ putMVar rTest ("abc" :: Text)
-  -}
-  -- e  :: StatusProc <- liftIO $ atomically $ readTVar rJava
-  -- liftIO $ print e
-  -- sStat' <- receiveChan rStat
-  -- sendChan sStat' ("abcdef" :: Text)
 
 
 mainSlave :: Pipeline ()
 mainSlave = do
   tellLog "mainSlave"
-
-{-
-  liftIO $ forever $ do
-    threadDelay 1000000
-    r <- readIORef ref_test
-    print r
--}
-
-  {-
-  rTest <- liftIO $ newEmptyMVar
-  let p = staticPtr (static rTest)
-  sStat <- expectSafe
-
-  -- (sStat',rStat') <- newChan
-  sendChan sStat p -- rJava -- sStat'
-  -}
-  -- r :: Text <- receiveChan rStat'
-  -- tellLog $ "test: " ++ show r

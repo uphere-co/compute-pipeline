@@ -52,7 +52,6 @@ data ComputeWorkerOption =
 
 
 -- orphan instance
-
 instance A.FromJSON EndPointAddress where
   parseJSON (A.String txt) = case B64.decode (encodeUtf8 txt) of
                                Left e   -> fail (show e)
@@ -96,10 +95,8 @@ data StatusProc = ProcNone
 data SOHandle = SOHandle
                 { soApplication :: Application
                 , soProcess                            -- async process
-                            :: -- TVar StatusProc         -- kill switch
                                TMVar ProcessId         -- holder for CH process ID
                             -> (WorkerRole,CellConfig) -- configuration
-                            -- -> MVar (IO ())            -- for JVM task
                             -> IO ThreadId             -- worker thread spawned inside
                 }
               deriving (Generic, NFData)
@@ -107,9 +104,11 @@ data SOHandle = SOHandle
 -- global variables: needed to ensure a unique instance of JVM
 
 {-# NOINLINE javaProc #-}
+-- | insertible process into Java thread
 javaProc :: MVar (IO ())
 javaProc = unsafePerformIO newEmptyMVar
 
 {-# NOINLINE javaProcStatus #-}
+-- | kill switch
 javaProcStatus :: TVar StatusProc
 javaProcStatus = unsafePerformIO (newTVarIO ProcNone)
