@@ -75,7 +75,7 @@ import Data.Typeable (Typeable)
 import           GHC.Generics             ( Generic )
 import           GHC.StaticPtr            ( StaticPtr )
 ------
-import           CloudHaskell.Closure     ( capply', capture' )
+import           CloudHaskell.Closure     ( Dict(..), apply, reifiedSDict )
 import           CloudHaskell.QueryQueue  ( QQVar
                                           , emptyQQ
                                           , handleQuery
@@ -105,26 +105,6 @@ instance Default StateCloud where
   def = StateCloud []
 
 
-data Dict c = c => Dict
-  deriving Typeable
-
-
-genReifiedSDict :: Typeable a => Static (Dict (Serializable a) -> SerializableDict a)
-genReifiedSDict = staticPtr (static (\Dict -> SerializableDict))
-
-
-reifiedSDict :: forall a. Typeable a => StaticPtr (Dict (Serializable a)) -> Static (SerializableDict a)
-reifiedSDict dict = staticApply genReifiedSDict (staticPtr dict)
-
-
-capply'' ::
-  forall a b.
-     (Serializable a)
-  => StaticPtr (Dict (Serializable a))
-  -> Closure (a -> b)
-  -> a
-  -> Closure b
-capply'' dict c = closureApply c . capture' (reifiedSDict dict)
 
 
 -- | Entry point of main CH process.
@@ -143,8 +123,8 @@ main rCloud rQQ = do
   tellLog ("got a slave: " ++ show slave)
   let slaveNode = processNodeId slave
   let process =
-        capply'' @(Static (TVar StatusProc)) (static Dict)
-          (capply'' @(Static (MVar (IO ()))) (static Dict)
+        apply @(Static (TVar StatusProc)) (static Dict)
+          (apply @(Static (MVar (IO ()))) (static Dict)
             (staticClosure (staticPtr (static daemonSemanticParser)))
             (staticPtr (static javaProc))
           )
@@ -155,7 +135,7 @@ main rCloud rQQ = do
       slaveNode
       process
 
-  spawn slaveNode (capply'' @Int (static Dict) (staticClosure (staticPtr (static myExperiment))) 3)
+  spawn slaveNode (apply @Int (static Dict) (staticClosure (staticPtr (static myExperiment))) 3)
 
 
 
