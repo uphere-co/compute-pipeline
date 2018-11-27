@@ -6,7 +6,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module Compute.Task where
 
-import           Control.Concurrent (threadDelay)
+import           Control.Concurrent                  ( threadDelay )
+import           Control.Concurrent.STM              ( newTVarIO )
 import           Control.Distributed.Process         (Process,RemoteTable
                                                      ,SendPort,ReceivePort
                                                      ,sendChan,receiveChan)
@@ -28,7 +29,7 @@ import           Task.SemanticParser                 ( ComputeQuery(..)
                                                      , ComputeResult(..)
                                                      , runSRLQueryDaemon
                                                      )
-
+import           Worker.Type                         ( StatusProc(..) )
 
 
 mkRemoteDaemon ::
@@ -63,8 +64,9 @@ remoteDaemonSemanticParser ::
    -> SendPort ComputeResult
    -> ReceivePort ComputeQuery
    -> Process ()
-remoteDaemonSemanticParser (bypassNER,bypassTEXTNER) lcfg =
-  mkRemoteDaemon (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+remoteDaemonSemanticParser (bypassNER,bypassTEXTNER) lcfg sStat sR rQ = do
+  rProc <- liftIO $ newTVarIO ProcNone
+  mkRemoteDaemon (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg rProc) sStat sR rQ
 
 
 remoteDaemonCoreNLP ::

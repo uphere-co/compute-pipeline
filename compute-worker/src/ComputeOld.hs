@@ -46,6 +46,7 @@ import           CloudHaskell.Util                         (RequestDuplex
 import           Network.Transport.UpHere                  (DualHostPortPair(..))
 import           Task.CoreNLP                              (QCoreNLP(..),RCoreNLP(..))
 import           Task.SemanticParser                       ( runSRLQueryDaemon )
+import           Worker.Type                               ( StatusProc(..) )
 ----- this package
 import           Compute.Handler                           ( requestHandler )
 import           Compute.Task                              ( remoteDaemonCoreNLP
@@ -143,8 +144,9 @@ initDaemonAndServer :: TVar Status -> TCPPort -> (Bool,Bool) -> FilePath -> Proc
 initDaemonAndServer ref port (bypassNER,bypassTEXTNER) lcfg = do
   -- SRL processing
   -- TODO: This will be converted to a remote process later.
-  ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) ->
-    ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg)
+  ((sq,rr),_) <- spawnChannelLocalDuplex $ \(rq,sr) -> do
+    rProc <- liftIO $ newTVarIO ProcNone
+    ioWorker (rq,sr) (runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg rProc)
   -- CoreNLP parsing processing
   ((sqcorenlp,rrcorenlp),_) <- spawnChannelLocalDuplex $ \(rqcorenlp,srcorenlp) ->
     forever $ do

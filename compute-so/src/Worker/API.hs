@@ -10,9 +10,10 @@ import           Data.Proxy               ( Proxy(..) )
 import           Data.Text                ( Text )
 import           Servant.API              ( (:>), JSON, Post, ReqBody )
 ------
-import           Task.CoreNLP             ( RCoreNLP )
+-- import           Task.CoreNLP             ( RCoreNLP )
+import           Task.SemanticParser      ( ComputeResult )
 
-type SOAPI = "corenlp" :> ReqBody '[JSON] Text :> Post '[JSON] RCoreNLP
+type SOAPI = "semantic" :> ReqBody '[JSON] Text :> Post '[JSON] ComputeResult
 
 soAPI :: Proxy SOAPI
 soAPI = Proxy
