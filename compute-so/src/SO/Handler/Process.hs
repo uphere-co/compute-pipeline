@@ -5,6 +5,7 @@
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 --
 -- Module for cloud haskell process entry points.
 -- This module provides main and remote table.
@@ -72,6 +73,9 @@ import           Task.CoreNLP             ( QCoreNLP(..)
                                           , RCoreNLP(..)
                                           , queryCoreNLP
                                           )
+import           Task.SemanticParser      ( ComputeQuery(..), ComputeResult(..)
+                                          , runSRLQueryDaemon
+                                          )
 import           Worker.Type              ( StatusProc, javaProc, javaProcStatus )
 
 
@@ -91,7 +95,7 @@ instance Default StateCloud where
 --
 main ::
      TVar StateCloud
-  -> QQVar QCoreNLP RCoreNLP
+  -> QQVar ComputeQuery ComputeResult -- QCoreNLP RCoreNLP
   -> Pipeline ()
 main rCloud rQQ = do
   tellLog "start mainProcess"
@@ -106,13 +110,13 @@ main rCloud rQQ = do
           (staticPtr (static (SerializableDict @(Static (TVar StatusProc)))))
           (capply'
             (staticPtr (static (SerializableDict @(Static (MVar (IO ()))))))
-            (staticClosure (staticPtr (static daemonCoreNLP)))
+            (staticClosure (staticPtr (static daemonSemanticParser)))
             (staticPtr (static javaProc))
           )
           (staticPtr (static javaProcStatus))
   sQ <-
     spawnChannel
-      (staticPtr (static (SerializableDict @(QCoreNLP,SendPort RCoreNLP))))
+      (staticPtr (static (SerializableDict @(ComputeQuery,SendPort ComputeResult))))
       slaveNode
       process
 
@@ -130,9 +134,9 @@ main rCloud rQQ = do
 --         pointer, with an intent to make the process explicit.
 rtable :: RemoteTable
 rtable =
-  registerStatic
-    "$daemonCoreNLP"
-    (toDynamic (staticPtr (static daemonCoreNLP)))
+    registerStatic
+    "$daemonSemanticParser"
+    (toDynamic (staticPtr (static daemonSemanticParser)))
   $ registerStatic
     "$javaProc"
     (toDynamic (staticPtr (static javaProc)))
@@ -141,14 +145,13 @@ rtable =
     (toDynamic (staticPtr (static javaProcStatus)))
   $ initRemoteTable
 
+
 daemonCoreNLP ::
      Static (MVar (IO ()))
   -> Static (TVar StatusProc)
   -> ReceivePort (QCoreNLP, SendPort RCoreNLP)
   -> Process ()
 daemonCoreNLP pJProc pJProcStatus rQ = do
-  liftIO $ putStrLn "echo program is launched."
-
   rQQ <- liftIO $ newTVarIO emptyQQ
   -- query request handler thread, this signals query to worker thread.
   spawnLocal $ do
@@ -166,6 +169,38 @@ daemonCoreNLP pJProc pJProcStatus rQ = do
   -- idling.
   () <- expect
   pure ()
+
+
+daemonSemanticParser ::
+     Static (MVar (IO ()))
+  -> Static (TVar StatusProc)
+  -> ReceivePort (ComputeQuery, SendPort ComputeResult)
+  -> Process ()
+daemonSemanticParser pJProc pJProcStatus rQ = do
+  rQQ <- liftIO $ newTVarIO emptyQQ
+  -- query request handler thread, this signals query to worker thread.
+  spawnLocal $ do
+    forever $ do
+      -- receive query
+      (q,sR) <- receiveChan rQ
+      -- process query
+      r <- liftIO $ singleQuery rQQ q
+      -- send answer
+      sendChan sR r
+  -- insert process into main worker thread
+  jproc <- unStatic pJProc
+  jprocStatus <- unStatic pJProcStatus
+  liftIO $
+    putMVar jproc $
+      runSRLQueryDaemon
+        (True,True)
+        "/home/wavewave/repo/srcp/uphere-ops/api-dev-2/lang-config.json.mark"
+        jprocStatus
+        rQQ
+  -- idling.
+  () <- expect
+  pure ()
+
 
 
 mainSlave :: Pipeline ()

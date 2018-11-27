@@ -37,7 +37,8 @@ import           CloudHaskell.Util        ( expectSafe
                                           )
 import           CloudHaskell.Type        ( Pipeline )
 import           Network.Transport.UpHere ( DualHostPortPair(..) )
-import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
+-- import           Task.CoreNLP             ( QCoreNLP, RCoreNLP )
+import           Task.SemanticParser      ( ComputeQuery, ComputeResult )
 import           Worker.Type              ( CellConfig(..)
                                           , NetworkConfig(..)
                                           , WorkerRole(..)
@@ -56,7 +57,7 @@ import           SO.Handler.Process       ( StateCloud
 
 master ::
      TVar StateCloud
-  -> QQVar QCoreNLP RCoreNLP
+  -> QQVar ComputeQuery ComputeResult -- QCoreNLP RCoreNLP
   -> TMVar ProcessId
   -> Pipeline ()
 master rCloud rQQ ref = do
@@ -99,7 +100,7 @@ killLocalNode ref_node = do
 -- NOTE: This should be asynchronous task, i.e. it forks a thread
 --       and return the id of the thread.
 workerMain ::
-     QQVar QCoreNLP RCoreNLP
+     QQVar ComputeQuery ComputeResult -- QCoreNLP RCoreNLP
   -> TMVar ProcessId
   -> (WorkerRole,CellConfig)
   -> IO ThreadId

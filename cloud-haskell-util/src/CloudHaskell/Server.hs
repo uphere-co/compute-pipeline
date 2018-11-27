@@ -47,7 +47,7 @@ withHeartBeat them_ping finalizer mainProcess = do
   them_main :: ProcessId <- expectSafe
   tellLog ("got client main pid : " ++ show them_main)
   sendChan sthem_main them_main
-  whileJust_ (expectTimeout (10*onesecond)) $
+  whileJust_ (expectTimeout (100*onesecond)) $
     \(HB n) -> do
       tellLog $ "heartbeat: " ++ show n
       -- NOTE: heartbeating until it fails.

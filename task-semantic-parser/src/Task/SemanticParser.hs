@@ -53,9 +53,14 @@ import           SRL.Analyze.Type               ( AnalyzePredata
                                                 )
 import           WikiEL.Type                    ( EntityMention )
 ------ compute-pipeline
-import           CloudHaskell.QueryQueue        ( QQVar, handleQueryInterrupted )
+import           CloudHaskell.QueryQueue        ( QQVar
+                                                , handleQuery
+                                                , handleQueryInterrupted
+                                                )
 import           Task.Reuters                   ( loadExistingMG )
 import           Worker.Type           ( StatusProc(..) )
+
+type Pipeline = J.J ('J.Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
 
 
 data ComputeQuery = CQ_Sentence Text
@@ -111,6 +116,53 @@ runSRL sdat sent = do
 
   pure (tokenss,mgs,cout)
 
+
+prepareAndProcess :: (Pipeline -> IO ()) -> IO ()
+prepareAndProcess action = do
+  pp <- prepare (def & (tokenizer .~ True)
+                     . (words2sentences .~ True)
+                     . (postagger .~ True)
+                     . (lemma .~ True)
+                     . (sutime .~ True)
+                     . (constituency .~ True)
+                     . (ner .~ True)
+                )
+  action pp
+
+-- TODO: use ExceptT
+runSRLQueryDaemon0 ::
+      (Bool,Bool)
+    -> FilePath
+    -> QQVar ComputeQuery ComputeResult
+    -> IO ()
+runSRLQueryDaemon0 (bypassNER,bypassTEXTNER) lcfg rQQ = do
+  let acfg  = Analyze.Config False False bypassNER bypassTEXTNER lcfg
+  cfg <- do e <- eitherDecode' @SRLConfig <$> BL.readFile (acfg ^. Analyze.configFile)
+            case e of
+              Left err -> error err
+              Right x -> return x
+  (apdat,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg
+  clspath <- getEnv "CLASSPATH"
+  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
+    prepareAndProcess $ \pp -> do
+      let sdat = SRLData { _aconfig = acfg
+                         , _pipeline = pp
+                         , _apredata = apdat
+                         , _netagger = ntggr
+                         , _forest = frst
+                         , _companyMap = cmap
+                         }
+      handleQuery rQQ $ \case
+        CQ_Sentence txt -> do
+          (tokenss,mgs,cout) <- runSRL sdat txt
+          pure $ CR_Sentence (ResultSentence txt tokenss mgs cout)
+        CQ_Reuters n -> do
+          -- TODO: no more testPathConfig
+          lst <- catMaybes <$> loadExistingMG testPathConfig n
+          print (length lst)
+          pure $ CR_Reuters (ResultReuters n lst)
+
+
 -- TODO: use ExceptT
 runSRLQueryDaemon ::
       (Bool,Bool)
@@ -125,17 +177,9 @@ runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg rProc rQQ = do
               Left err -> error err
               Right x -> return x
   (apdat,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg
-  clspath <- getEnv "CLASSPATH"
-  J.withJVM [ B.pack ("-Djava.class.path=" ++ clspath) ] $ do
-    pp <- prepare (def & (tokenizer .~ True)
-                       . (words2sentences .~ True)
-                       . (postagger .~ True)
-                       . (lemma .~ True)
-                       . (sutime .~ True)
-                       . (constituency .~ True)
-                       . (ner .~ True)
-                  )
 
+  prepareAndProcess $ \pp -> do
+    putStrLn "pipeline ready"
     let sdat = SRLData { _aconfig = acfg
                        , _pipeline = pp
                        , _apredata = apdat
