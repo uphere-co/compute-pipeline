@@ -61,7 +61,9 @@ import           Control.Monad.IO.Class   ( liftIO )
 import           Data.Default             ( Default(..) )
 import           Data.Maybe               ( maybe )
 import           Data.Rank1Dynamic        ( toDynamic )
+import           Data.Typeable            ( Typeable )
 import           GHC.Generics             ( Generic )
+import           GHC.StaticPtr            ( StaticPtr )
 ------
 import           CloudHaskell.Closure     ( capply' )
 import           CloudHaskell.QueryQueue  ( QQVar
@@ -130,24 +132,26 @@ main rCloud rQQ = do
     pure r
 
 
+
+registerStatic_ ::
+     (Typeable a)
+  => String
+  -> StaticPtr a
+  -> RemoteTable
+  -> RemoteTable
+registerStatic_ name ptr =
+  registerStatic name (toDynamic (staticPtr ptr))
+
 -- | Global remote table.
 --
 --   NOTE: Registering mechanism in CH here is manual with static
 --         pointer, with an intent to make the process explicit.
 rtable :: RemoteTable
 rtable =
-    registerStatic
-    "$daemonSemanticParser"
-    (toDynamic (staticPtr (static daemonSemanticParser)))
-  $ registerStatic
-    "$daemonCoreNLP"
-    (toDynamic (staticPtr (static daemonCoreNLP)))
-  $ registerStatic
-    "$javaProc"
-    (toDynamic (staticPtr (static javaProc)))
-  $ registerStatic
-    "$javaProcStatus"
-    (toDynamic (staticPtr (static javaProcStatus)))
+    registerStatic_ "$daemonSemanticParser" (static daemonSemanticParser)
+  $ registerStatic_ "$daemonCoreNLP"        (static daemonCoreNLP)
+  $ registerStatic_ "$javaProc"             (static javaProc)
+  $ registerStatic_ "$javaProcStatus"       (static javaProcStatus)
   $ initRemoteTable
 
 
