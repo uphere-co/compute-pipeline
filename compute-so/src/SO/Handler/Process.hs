@@ -1,15 +1,14 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE MonoLocalBinds      #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 --
 -- Module for cloud haskell process entry points.
 -- This module provides main and remote table.
---
 --
 module SO.Handler.Process
   ( -- * Types and Lenses
@@ -45,7 +44,10 @@ import           Control.Distributed.Process.Lifted
                                           )
 import           Control.Distributed.Process.Node.Lifted
                                           ( initRemoteTable )
-import           Control.Distributed.Process.Serializable ( SerializableDict(..) )
+import           Control.Distributed.Process.Serializable
+                                          ( Serializable
+                                          , SerializableDict(..)
+                                          )
 import           Control.Distributed.Static
                                           ( Static
                                           , registerStatic
@@ -95,7 +97,7 @@ instance Default StateCloud where
 --
 main ::
      TVar StateCloud
-  -> QQVar ComputeQuery ComputeResult -- QCoreNLP RCoreNLP
+  -> QQVar ComputeQuery ComputeResult
   -> Pipeline ()
 main rCloud rQQ = do
   tellLog "start mainProcess"
@@ -138,6 +140,9 @@ rtable =
     "$daemonSemanticParser"
     (toDynamic (staticPtr (static daemonSemanticParser)))
   $ registerStatic
+    "$daemonCoreNLP"
+    (toDynamic (staticPtr (static daemonCoreNLP)))
+  $ registerStatic
     "$javaProc"
     (toDynamic (staticPtr (static javaProc)))
   $ registerStatic
@@ -146,60 +151,51 @@ rtable =
   $ initRemoteTable
 
 
+-- | Make a remote daemon process from local IO daemon
+daemon ::
+     (Serializable q, Serializable r)
+  => (TVar StatusProc -> QQVar q r -> IO ())
+  -> Static (MVar (IO ()))
+  -> Static (TVar StatusProc)
+  -> ReceivePort (q, SendPort r)
+  -> Process ()
+daemon queryHandler pJProc pJProcStatus rQ = do
+  rQQ <- liftIO $ newTVarIO emptyQQ
+  -- query request handler thread, this signals query to worker thread.
+  spawnLocal $ do
+    forever $ do
+      -- receive query
+      (q,sR) <- receiveChan rQ
+      -- process query
+      r <- liftIO $ singleQuery rQQ q
+      -- send answer
+      sendChan sR r
+  -- insert process into main worker thread
+  jproc <- unStatic pJProc
+  jprocStatus <- unStatic pJProcStatus
+  liftIO $ putMVar jproc (queryHandler jprocStatus rQQ)
+  -- idling.
+  () <- expect
+  pure ()
+
+
+-- | CoreNLP daemon
 daemonCoreNLP ::
      Static (MVar (IO ()))
   -> Static (TVar StatusProc)
   -> ReceivePort (QCoreNLP, SendPort RCoreNLP)
   -> Process ()
-daemonCoreNLP pJProc pJProcStatus rQ = do
-  rQQ <- liftIO $ newTVarIO emptyQQ
-  -- query request handler thread, this signals query to worker thread.
-  spawnLocal $ do
-    forever $ do
-      -- receive query
-      (q,sR) <- receiveChan rQ
-      -- process query
-      r <- liftIO $ singleQuery rQQ q
-      -- send answer
-      sendChan sR r
-  -- insert process into main worker thread
-  jproc <- unStatic pJProc
-  jprocStatus <- unStatic pJProcStatus
-  liftIO $ putMVar jproc (queryCoreNLP jprocStatus rQQ)
-  -- idling.
-  () <- expect
-  pure ()
+daemonCoreNLP = daemon queryCoreNLP
 
 
+-- | Semantic Parser daemon
 daemonSemanticParser ::
      Static (MVar (IO ()))
   -> Static (TVar StatusProc)
   -> ReceivePort (ComputeQuery, SendPort ComputeResult)
   -> Process ()
-daemonSemanticParser pJProc pJProcStatus rQ = do
-  rQQ <- liftIO $ newTVarIO emptyQQ
-  -- query request handler thread, this signals query to worker thread.
-  spawnLocal $ do
-    forever $ do
-      -- receive query
-      (q,sR) <- receiveChan rQ
-      -- process query
-      r <- liftIO $ singleQuery rQQ q
-      -- send answer
-      sendChan sR r
-  -- insert process into main worker thread
-  jproc <- unStatic pJProc
-  jprocStatus <- unStatic pJProcStatus
-  liftIO $
-    putMVar jproc $
-      runSRLQueryDaemon
-        (True,True)
-        "/home/wavewave/repo/srcp/uphere-ops/api-dev-2/lang-config.json.mark"
-        jprocStatus
-        rQQ
-  -- idling.
-  () <- expect
-  pure ()
+daemonSemanticParser =
+  daemon (runSRLQueryDaemon (True,True) "/home/wavewave/repo/srcp/uphere-ops/api-dev-2/lang-config.json.mark")
 
 
 
