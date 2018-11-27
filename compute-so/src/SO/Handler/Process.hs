@@ -75,7 +75,7 @@ import Data.Typeable (Typeable)
 import           GHC.Generics             ( Generic )
 import           GHC.StaticPtr            ( StaticPtr )
 ------
-import           CloudHaskell.Closure     ( Dict(..), apply, reifiedSDict )
+import           CloudHaskell.Closure     ( Dict(..), apply, reifiedSDict, spawnChannel_ )
 import           CloudHaskell.QueryQueue  ( QQVar
                                           , emptyQQ
                                           , handleQuery
@@ -130,14 +130,13 @@ main rCloud rQQ = do
           )
           (staticPtr (static javaProcStatus))
   sQ <-
-    spawnChannel
-      (reifiedSDict @(ComputeQuery,SendPort ComputeResult) (static Dict))
+    spawnChannel_ @(ComputeQuery, SendPort ComputeResult) (static Dict)
+
+      -- (reifiedSDict @(ComputeQuery,SendPort ComputeResult) (static Dict))
       slaveNode
       process
 
   spawn slaveNode (apply @Int (static Dict) (staticClosure (staticPtr (static myExperiment))) 3)
-
-
 
   handleQuery rQQ $ \q -> do
     (sR,rR) <- newChan

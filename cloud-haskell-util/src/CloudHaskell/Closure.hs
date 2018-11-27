@@ -52,3 +52,13 @@ apply ::
   -> a
   -> Closure b
 apply dict c = closureApply c . capture' (reifiedSDict dict)
+
+
+spawnChannel_ ::
+  forall a m.
+     (Serializable a, MonadProcess m)
+  => StaticPtr (Dict (Serializable a))
+  -> NodeId
+  -> Closure (ReceivePort a -> Process ())
+  -> m (SendPort a)
+spawnChannel_ dict = spawnChannel (reifiedSDict dict)
