@@ -9,6 +9,7 @@
 
 module Task.SemanticParser where
 
+import           Control.Concurrent.STM         ( TVar )
 import           Control.DeepSeq                ( NFData )
 import           Control.Lens                   ( (&), (^.), (^..), (.~)
                                                 , _Just, makeLenses
@@ -27,7 +28,7 @@ import           Data.Tree                      ( Forest )
 import           GHC.Generics                   ( Generic )
 import qualified Language.Java          as J
 import           System.Environment             ( getEnv )
---
+------ language-engine
 import           CoreNLP.Simple                 ( prepare )
 import           CoreNLP.Simple.Type            ( tokenizer, words2sentences, postagger
                                                 , lemma, sutime, constituency, ner
@@ -51,9 +52,10 @@ import           SRL.Analyze.Type               ( AnalyzePredata
                                                 , ss_tagged
                                                 )
 import           WikiEL.Type                    ( EntityMention )
---
-import           CloudHaskell.QueryQueue        ( QQVar, handleQuery )
+------ compute-pipeline
+import           CloudHaskell.QueryQueue        ( QQVar, handleQueryInterrupted )
 import           Task.Reuters                   ( loadExistingMG )
+import           Worker.Type           ( StatusProc(..) )
 
 
 data ComputeQuery = CQ_Sentence Text
@@ -113,9 +115,10 @@ runSRL sdat sent = do
 runSRLQueryDaemon ::
       (Bool,Bool)
     -> FilePath
+    -> TVar StatusProc
     -> QQVar ComputeQuery ComputeResult
     -> IO ()
-runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
+runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg rProc rQQ = do
   let acfg  = Analyze.Config False False bypassNER bypassTEXTNER lcfg
   cfg <- do e <- eitherDecode' @SRLConfig <$> BL.readFile (acfg ^. Analyze.configFile)
             case e of
@@ -140,7 +143,7 @@ runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg qqvar = do
                        , _forest = frst
                        , _companyMap = cmap
                        }
-    handleQuery qqvar $ \case
+    handleQueryInterrupted rProc rQQ $ \case
       CQ_Sentence txt -> do
         (tokenss,mgs,cout) <- runSRL sdat txt
         pure $ CR_Sentence (ResultSentence txt tokenss mgs cout)
