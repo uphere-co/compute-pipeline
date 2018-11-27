@@ -6,6 +6,12 @@
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# OPTIONS_GHC -w #-}
+
+{-# LANGUAGE ConstraintKinds     #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ExistentialQuantification #-}
+
 --
 -- Module for cloud haskell process entry points.
 -- This module provides main and remote table.
@@ -49,7 +55,9 @@ import           Control.Distributed.Process.Serializable
                                           , SerializableDict(..)
                                           )
 import           Control.Distributed.Static
-                                          ( Static
+                                          ( Closure
+                                          , Static
+                                          , staticApply
                                           , staticClosure
                                           , staticPtr
                                           )
@@ -57,9 +65,12 @@ import           Control.Error.Safe       ( headZ )
 import           Control.Lens             ( (^.), makeLenses, to )
 import           Control.Monad            ( forever )
 import           Control.Monad.IO.Class   ( liftIO )
+import Data.Binary (Binary)
 import           Data.Default             ( Default(..) )
 import           Data.Maybe               ( maybe )
+import Data.Typeable (Typeable)
 import           GHC.Generics             ( Generic )
+import           GHC.StaticPtr            ( StaticPtr )
 ------
 import           CloudHaskell.Closure     ( capply' )
 import           CloudHaskell.QueryQueue  ( QQVar
@@ -79,7 +90,7 @@ import           Task.SemanticParser      ( ComputeQuery(..), ComputeResult(..)
                                           )
 import           Worker.Type              ( StatusProc, javaProc, javaProcStatus )
 
-
+import Data.Proxy
 
 -- | State that keeps the current available slaves.
 data StateCloud = StateCloud { _cloudSlaves :: [ProcessId] }
@@ -90,6 +101,54 @@ makeLenses ''StateCloud
 instance Default StateCloud where
   def = StateCloud []
 
+{-
+sdict ::
+     forall a. (Serializable a, Binary a)
+  => Static (SerializableDict a)
+sdict = staticPtr undefined -- (static (SerializableDict :: SerializableDict a))
+-}
+{-
+sdict :: (Typeable a, Serializable a) => StaticPtr ((Binary a) => (SerializableDict a))
+sdict = static SerializableDict
+-}
+
+-- closure :: Typeable a => StaticPtr a -> Closure a
+-- closure ptr = staticClosure (staticPtr ptr)
+
+
+p_id :: Typeable a => StaticPtr (a -> a)
+p_id = static id
+
+-- sdict :: (Serializable a) => StaticPtr a -> SerializableDict a
+-- sdict = SerializableDict
+
+data Proxy1 a = Proxy1
+
+-- s :: (Binary a,Typeable a) => Proxy a -> StaticPtr (SerializableDict a)
+-- s _ = [SerializableDict  ]
+
+data Dict c = c => Dict
+  deriving Typeable
+
+s :: StaticPtr (SerializableDict Int)
+s = static SerializableDict
+
+
+g1 :: Typeable a => Static (Dict (Serializable a) -> SerializableDict a)
+g1 = staticPtr (static (\Dict -> SerializableDict))
+
+-- g2 :: forall a. Serializable a => Static (SerializableDict a)
+g2 :: Static (SerializableDict Int)
+g2 = staticApply (g1 @Int) (staticPtr (static Dict))
+
+
+-- dict = Dict @(Serializable Int)
+
+
+g3 :: forall a. Typeable a => StaticPtr (Dict (Serializable a)) -> Static (SerializableDict a)
+g3 dict = staticApply g1 (staticPtr dict) -- (staticPtr (static -- (Dict @(Serializable a))))
+
+-- dict @a
 
 -- | Entry point of main CH process.
 --   All the tasks are done inside main by sending process to remote workers.
@@ -108,10 +167,12 @@ main rCloud rQQ = do
   let slaveNode = processNodeId slave
   let process =
         capply'
-          (staticPtr (static (SerializableDict @(Static (TVar StatusProc)))))
+          -- (staticPtr (static (SerializableDict @(Static (TVar StatusProc)))))
+          (g3 @(Static (TVar StatusProc)) (static Dict) )
           (capply'
             (staticPtr (static (SerializableDict @(Static (MVar (IO ()))))))
             (staticClosure (staticPtr (static daemonSemanticParser)))
+            -- (closure daemonSemanticParser)
             (staticPtr (static javaProc))
           )
           (staticPtr (static javaProcStatus))
