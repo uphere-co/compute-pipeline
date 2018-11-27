@@ -45,6 +45,7 @@ import           Control.Distributed.Process.Lifted
                                           , newChan
                                           , sendChan
                                           , receiveChan
+                                          , spawn
                                           , spawnChannel
                                           , spawnLocal
                                           , unStatic
@@ -103,48 +104,13 @@ makeLenses ''StateCloud
 instance Default StateCloud where
   def = StateCloud []
 
-{-
-sdict ::
-     forall a. (Serializable a, Binary a)
-  => Static (SerializableDict a)
-sdict = staticPtr undefined -- (static (SerializableDict :: SerializableDict a))
--}
-{-
-sdict :: (Typeable a, Serializable a) => StaticPtr ((Binary a) => (SerializableDict a))
-sdict = static SerializableDict
--}
-
--- closure :: Typeable a => StaticPtr a -> Closure a
--- closure ptr = staticClosure (staticPtr ptr)
-
-
--- p_id :: Typeable a => StaticPtr (a -> a)
--- p_id = static id
-
--- sdict :: (Serializable a) => StaticPtr a -> SerializableDict a
--- sdict = SerializableDict
-
--- data Proxy1 a = Proxy1
-
--- s :: (Binary a,Typeable a) => Proxy a -> StaticPtr (SerializableDict a)
--- s _ = [SerializableDict  ]
 
 data Dict c = c => Dict
   deriving Typeable
 
--- s :: StaticPtr (SerializableDict Int)
--- s = static SerializableDict
-
 
 genReifiedSDict :: Typeable a => Static (Dict (Serializable a) -> SerializableDict a)
 genReifiedSDict = staticPtr (static (\Dict -> SerializableDict))
-
--- g2 :: forall a. Serializable a => Static (SerializableDict a)
--- g2 :: Static (SerializableDict Int)
--- g2 = staticApply (g1 @Int) (staticPtr (static Dict))
-
-
--- dict = Dict @(Serializable Int)
 
 
 reifiedSDict :: forall a. Typeable a => StaticPtr (Dict (Serializable a)) -> Static (SerializableDict a)
@@ -185,9 +151,13 @@ main rCloud rQQ = do
           (staticPtr (static javaProcStatus))
   sQ <-
     spawnChannel
-      (staticPtr (static (SerializableDict @(ComputeQuery,SendPort ComputeResult))))
+      (reifiedSDict @(ComputeQuery,SendPort ComputeResult) (static Dict))
       slaveNode
       process
+
+  spawn slaveNode (capply'' @Int (static Dict) (staticClosure (staticPtr (static myExperiment))) 3)
+
+
 
   handleQuery rQQ $ \q -> do
     (sR,rR) <- newChan
@@ -197,19 +167,12 @@ main rCloud rQQ = do
     pure r
 
 
-
-
--- | Global remote table.
---
---   NOTE: Registering mechanism in CH here is manual with static
---         pointer, with an intent to make the process explicit.
 rtable :: RemoteTable
-rtable =
-    registerStatic_ "$daemonSemanticParser" (static daemonSemanticParser)
-  $ registerStatic_ "$daemonCoreNLP"        (static daemonCoreNLP)
-  $ registerStatic_ "$javaProc"             (static javaProc)
-  $ registerStatic_ "$javaProcStatus"       (static javaProcStatus)
-  $ initRemoteTable
+rtable = initRemoteTable
+
+myExperiment :: Int -> Process ()
+myExperiment n = do
+  liftIO $ putStrLn $ "myExperiment: " ++ show n
 
 
 -- | Make a remote daemon process from local IO daemon
