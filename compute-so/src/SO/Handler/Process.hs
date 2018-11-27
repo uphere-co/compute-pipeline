@@ -50,7 +50,6 @@ import           Control.Distributed.Process.Serializable
                                           )
 import           Control.Distributed.Static
                                           ( Static
-                                          , registerStatic
                                           , staticClosure
                                           , staticPtr
                                           )
@@ -60,10 +59,7 @@ import           Control.Monad            ( forever )
 import           Control.Monad.IO.Class   ( liftIO )
 import           Data.Default             ( Default(..) )
 import           Data.Maybe               ( maybe )
-import           Data.Rank1Dynamic        ( toDynamic )
-import           Data.Typeable            ( Typeable )
 import           GHC.Generics             ( Generic )
-import           GHC.StaticPtr            ( StaticPtr )
 ------
 import           CloudHaskell.Closure     ( capply' )
 import           CloudHaskell.QueryQueue  ( QQVar
@@ -72,6 +68,7 @@ import           CloudHaskell.QueryQueue  ( QQVar
                                           , singleQuery
                                           )
 import           CloudHaskell.Util        ( tellLog )
+import           CloudHaskell.Util.Static ( registerStatic_ )
 import           CloudHaskell.Type        ( Pipeline )
 import           Task.CoreNLP             ( QCoreNLP(..)
                                           , RCoreNLP(..)
@@ -133,14 +130,6 @@ main rCloud rQQ = do
 
 
 
-registerStatic_ ::
-     (Typeable a)
-  => String
-  -> StaticPtr a
-  -> RemoteTable
-  -> RemoteTable
-registerStatic_ name ptr =
-  registerStatic name (toDynamic (staticPtr ptr))
 
 -- | Global remote table.
 --
