@@ -6,11 +6,9 @@
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# OPTIONS_GHC -w #-}
-
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE ExistentialQuantification #-}
+-- {-# LANGUAGE ConstraintKinds     #-}
+-- {-# LANGUAGE FlexibleContexts    #-}
+-- {-# LANGUAGE ExistentialQuantification #-}
 
 --
 -- Module for cloud haskell process entry points.
@@ -25,6 +23,9 @@ module SO.Handler.Process
   , mainSlave -- slave
     -- * Remote table
   , rtable
+    -- * daemons
+  , daemonCoreNLP
+  , daemonSemanticParser
   ) where
 
 import           Control.Concurrent       ( MVar, putMVar )
@@ -45,22 +46,15 @@ import           Control.Distributed.Process.Lifted
                                           , newChan
                                           , sendChan
                                           , receiveChan
-                                          , spawn
-                                          , spawnChannel
                                           , spawnLocal
                                           , unStatic
                                           )
 import           Control.Distributed.Process.Node.Lifted
                                           ( initRemoteTable )
 import           Control.Distributed.Process.Serializable
-                                          ( Serializable
-                                          , SerializableDict(..)
-                                          )
+                                          ( Serializable )
 import           Control.Distributed.Static
-                                          ( Closure
-                                          , Static
-                                          , closureApply
-                                          , staticApply
+                                          ( Static
                                           , staticClosure
                                           , staticPtr
                                           )
@@ -68,21 +62,20 @@ import           Control.Error.Safe       ( headZ )
 import           Control.Lens             ( (^.), makeLenses, to )
 import           Control.Monad            ( forever )
 import           Control.Monad.IO.Class   ( liftIO )
-import Data.Binary (Binary)
 import           Data.Default             ( Default(..) )
 import           Data.Maybe               ( maybe )
-import Data.Typeable (Typeable)
 import           GHC.Generics             ( Generic )
-import           GHC.StaticPtr            ( StaticPtr )
 ------
-import           CloudHaskell.Closure     ( Dict(..), apply, reifiedSDict, spawnChannel_ )
+import           CloudHaskell.Closure     ( Dict(..)
+                                          , apply
+                                          , spawnChannel_
+                                          )
 import           CloudHaskell.QueryQueue  ( QQVar
                                           , emptyQQ
                                           , handleQuery
                                           , singleQuery
                                           )
 import           CloudHaskell.Util        ( tellLog )
-import           CloudHaskell.Util.Static ( registerStatic_ )
 import           CloudHaskell.Type        ( Pipeline )
 import           Task.CoreNLP             ( QCoreNLP(..)
                                           , RCoreNLP(..)
@@ -93,7 +86,6 @@ import           Task.SemanticParser      ( ComputeQuery(..), ComputeResult(..)
                                           )
 import           Worker.Type              ( StatusProc, javaProc, javaProcStatus )
 
-import Data.Proxy
 
 -- | State that keeps the current available slaves.
 data StateCloud = StateCloud { _cloudSlaves :: [ProcessId] }
@@ -103,8 +95,6 @@ makeLenses ''StateCloud
 
 instance Default StateCloud where
   def = StateCloud []
-
-
 
 
 -- | Entry point of main CH process.
@@ -131,12 +121,8 @@ main rCloud rQQ = do
           (staticPtr (static javaProcStatus))
   sQ <-
     spawnChannel_ @(ComputeQuery, SendPort ComputeResult) (static Dict)
-
-      -- (reifiedSDict @(ComputeQuery,SendPort ComputeResult) (static Dict))
       slaveNode
       process
-
-  spawn slaveNode (apply @Int (static Dict) (staticClosure (staticPtr (static myExperiment))) 3)
 
   handleQuery rQQ $ \q -> do
     (sR,rR) <- newChan
@@ -148,10 +134,6 @@ main rCloud rQQ = do
 
 rtable :: RemoteTable
 rtable = initRemoteTable
-
-myExperiment :: Int -> Process ()
-myExperiment n = do
-  liftIO $ putStrLn $ "myExperiment: " ++ show n
 
 
 -- | Make a remote daemon process from local IO daemon
