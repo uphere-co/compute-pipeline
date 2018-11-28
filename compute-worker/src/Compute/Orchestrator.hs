@@ -5,24 +5,23 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeOperators       #-}
-{-# OPTIONS_GHC -w #-}
---
--- Orchestrator and workers have websocket communictation.
---
--- Orchestrator has two APIs related to shared object update notification:
---
--- * `/update` post API and
--- * `/streaming` websocket API.
---
--- Each compute worker clients are supposed to connect `/streaming` websocket API when
--- they are initialized. They are initialized with the current state of shared object
--- path information retrieved from orchestrator via `/so` API.
---
--- By `/update`, a client (potential deployment script) will post a new path of share
--- object. Then, orchestrator broadcasts the update to all of its clients. Worker has
--- an event loop to be awakened by the push notification (using TVar retry-when-different
--- cycle), and then it reloads SO file.
+{-|
+  Orchestrator and workers have websocket communictation.
 
+  Orchestrator has two APIs related to shared object update notification:
+
+  * @/update@ post API and
+  * @/streaming@ websocket API.
+
+  Each compute worker clients are supposed to connect @/streaming@ websocket API when
+  they are initialized. They are initialized with the current state of shared object
+  path information retrieved from orchestrator via @/so@ API.
+
+  By @/update@, a client (potential deployment script) will post a new path of share
+  object. Then, orchestrator broadcasts the update to all of its clients. Worker has
+  an event loop to be awakened by the push notification (using TVar retry-when-different
+  cycle), and then it reloads SO file.
+-}
 module Compute.Orchestrator where
 
 import           Control.Concurrent.STM   ( TVar
@@ -36,9 +35,7 @@ import           Control.Concurrent.STM.TChan ( TChan, newBroadcastTChanIO
 import           Control.Distributed.Process ( ProcessId )
 import           Control.Error.Util       ( failWith )
 import           Control.Lens             ( (&), (^.), (.~), (%~)
-                                          , makeLenses, view
-                                          , _2
-                                          , _Just
+                                          , makeLenses, _2, _Just 
                                           )
 import           Control.Monad            ( forever, when )
 import           Control.Monad.IO.Class   ( liftIO )
@@ -47,7 +44,6 @@ import           Control.Monad.Trans.Except ( runExceptT, throwE )
 import           Data.List                ( find )
 import           Data.Text                ( Text )
 import qualified Data.Text as T
-import           Data.Traversable         ( for )
 import           Network.Wai.Handler.Warp ( runSettings, defaultSettings, setBeforeMainLoop, setPort )
 import           Network.WebSockets       ( Connection, forkPingThread, sendBinaryData )
 import           Servant                  ( Handler, Server, (:<|>)((:<|>))
@@ -160,8 +156,9 @@ getCell sref name = do
       pure r
 
 
+-- TODO: is this not unsafe?
 postProcess :: TVar OrcState -> Text -> ProcessId -> Handler ()
-postProcess sref name pid =
+postProcess sref _name pid =
   liftIO $ atomically $
     modifyTVar' sref $ (orcStateMasterWorker . _Just . _2) .~ Just pid
 

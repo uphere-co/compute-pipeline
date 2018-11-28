@@ -6,14 +6,13 @@
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
--- {-# LANGUAGE ConstraintKinds     #-}
--- {-# LANGUAGE FlexibleContexts    #-}
--- {-# LANGUAGE ExistentialQuantification #-}
 
---
--- Module for cloud haskell process entry points.
--- This module provides main and remote table.
---
+{-|
+
+  Module for cloud haskell process entry points.
+  This module provides main and remote table.
+
+-}
 module SO.Handler.Process
   ( -- * Types and Lenses
     StateCloud(..)
@@ -85,6 +84,8 @@ import           Task.SemanticParser      ( ComputeQuery(..), ComputeResult(..)
                                           , runSRLQueryDaemon
                                           )
 import           Worker.Type              ( StatusProc, javaProc, javaProcStatus )
+
+
 
 
 -- | State that keeps the current available slaves.

@@ -7,13 +7,11 @@ module Worker.API
   ) where
 
 import           Data.Proxy               ( Proxy(..) )
-import           Data.Text                ( Text )
 import           Servant.API              ( (:>), JSON, Post, ReqBody )
 ------
--- import           Task.CoreNLP             ( RCoreNLP )
-import           Task.SemanticParser      ( ComputeResult )
+import           Task.SemanticParser      ( ComputeQuery, ComputeResult )
 
-type SOAPI = "semantic" :> ReqBody '[JSON] Text :> Post '[JSON] ComputeResult
+type SOAPI = "semantic" :> ReqBody '[JSON] ComputeQuery :> Post '[JSON] ComputeResult
 
 soAPI :: Proxy SOAPI
 soAPI = Proxy
