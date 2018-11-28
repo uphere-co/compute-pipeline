@@ -6,14 +6,13 @@
 {-# LANGUAGE StaticPointers      #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
--- {-# LANGUAGE ConstraintKinds     #-}
--- {-# LANGUAGE FlexibleContexts    #-}
--- {-# LANGUAGE ExistentialQuantification #-}
 
---
--- Module for cloud haskell process entry points.
--- This module provides main and remote table.
---
+{-|
+
+  Module for cloud haskell process entry points.
+  This module provides main and remote table.
+
+-}
 module SO.Handler.Process
   ( -- * Types and Lenses
     StateCloud(..)
@@ -62,6 +61,8 @@ import           Control.Error.Safe       ( headZ )
 import           Control.Lens             ( (^.), makeLenses, to )
 import           Control.Monad            ( forever )
 import           Control.Monad.IO.Class   ( liftIO )
+import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default             ( Default(..) )
 import           Data.Maybe               ( maybe )
 import           GHC.Generics             ( Generic )
@@ -87,6 +88,8 @@ import           Task.SemanticParser      ( ComputeQuery(..), ComputeResult(..)
 import           Worker.Type              ( StatusProc, javaProc, javaProcStatus )
 
 
+
+
 -- | State that keeps the current available slaves.
 data StateCloud = StateCloud { _cloudSlaves :: [ProcessId] }
                 deriving (Show,Eq,Ord,Generic)
@@ -106,6 +109,7 @@ main ::
   -> Pipeline ()
 main rCloud rQQ = do
   tellLog "start mainProcess"
+  tellLog (BL.unpack (A.encode (CQ_Sentence "test")))
   slave <-
     liftIO $ atomically $ do
       cloud <- readTVar rCloud
