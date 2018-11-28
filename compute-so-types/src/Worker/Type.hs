@@ -72,10 +72,10 @@ instance A.ToJSON   ProcessId
 
 data WorkerRole =
     Master
-      Text       -- ^ name
+      Text       -- name
   | Slave
-      Text       -- ^ name
-      ProcessId  -- ^ master process id
+      Text       -- name
+      ProcessId  -- master process id
   deriving (Show,Eq,Ord,Generic,NFData,A.FromJSON,A.ToJSON)
 
 -- | Status of process. ProcKilled status works as
