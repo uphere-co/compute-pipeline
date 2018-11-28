@@ -32,6 +32,7 @@ library
                    , mtl
                    , network-simple
                    , network-transport
+                   , rank1dynamic
                    , stm
                    , text
                    , transformers
@@ -48,6 +49,7 @@ library
                      CloudHaskell.Socket
                      CloudHaskell.Type
                      CloudHaskell.Util
+                     CloudHaskell.Util.Static
   other-extensions:  TemplateHaskell
   ghc-prof-options:  -fprof-auto
   ghc-options:       -threaded
@@ -58,4 +60,3 @@ library
                      -funbox-strict-fields
                      -fno-warn-orphans
                      -O2
-
