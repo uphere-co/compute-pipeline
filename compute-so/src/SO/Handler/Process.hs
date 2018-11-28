@@ -61,8 +61,6 @@ import           Control.Error.Safe       ( headZ )
 import           Control.Lens             ( (^.), makeLenses, to )
 import           Control.Monad            ( forever )
 import           Control.Monad.IO.Class   ( liftIO )
-import qualified Data.Aeson as A
-import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Default             ( Default(..) )
 import           Data.Maybe               ( maybe )
 import           GHC.Generics             ( Generic )
@@ -109,7 +107,6 @@ main ::
   -> Pipeline ()
 main rCloud rQQ = do
   tellLog "start mainProcess"
-  tellLog (BL.unpack (A.encode (CQ_Sentence "test")))
   slave <-
     liftIO $ atomically $ do
       cloud <- readTVar rCloud

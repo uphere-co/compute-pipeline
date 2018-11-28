@@ -7,7 +7,6 @@ module Worker.API
   ) where
 
 import           Data.Proxy               ( Proxy(..) )
--- import           Data.Text                ( Text )
 import           Servant.API              ( (:>), JSON, Post, ReqBody )
 ------
 import           Task.SemanticParser      ( ComputeQuery, ComputeResult )

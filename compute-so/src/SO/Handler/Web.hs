@@ -6,7 +6,6 @@ module SO.Handler.Web
   ) where
 
 import           Control.Monad.IO.Class   ( liftIO )
--- import           Data.Text                ( Text )
 import           Network.Wai              ( Application )
 import           Servant                  ( Handler, Server, serve )
 ------
@@ -17,7 +16,7 @@ import           Worker.API               ( type SOAPI, soAPI )
 
 getSemantic :: QQVar ComputeQuery ComputeResult -> ComputeQuery -> Handler ComputeResult
 getSemantic rQQ query = do
-  liftIO $ singleQuery rQQ query -- (CQ_Sentence txt)
+  liftIO $ singleQuery rQQ query
 
 
 server :: QQVar ComputeQuery ComputeResult -> Server SOAPI
