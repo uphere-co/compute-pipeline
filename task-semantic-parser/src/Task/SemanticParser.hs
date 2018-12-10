@@ -36,22 +36,21 @@ import           CoreNLP.Simple.Type            ( tokenizer, words2sentences, po
 import           NER.Type                       ( CompanyInfo )
 import           NLP.Shared.Type                ( PathConfig(..) )
 import           NLP.Syntax.Type.XBar           ( lemmaList )
-import           NLP.Type.CoreNLP               ( Sentence )
 import           SRL.Analyze                    ( loadConfig, consoleOutput )
 import           SRL.Analyze.Config             ( SRLConfig )
 import qualified SRL.Analyze.Config as Analyze
 import           SRL.Analyze.CoreNLP            ( runParser )
 import           SRL.Analyze.Match.MeaningGraph ( meaningGraph, tagMG )
 import           SRL.Analyze.SentenceStructure  ( docStructure, mkWikiList )
-import           SRL.Analyze.Type               ( AnalyzePredata
-                                                , ConsoleOutput
+import           SRL.Analyze.Type               ( ConsoleOutput
                                                 , DocStructure
                                                 , MeaningGraph
-                                                , analyze_framedb
+                                                , srldata_framedb
                                                 , ds_mtokenss, ds_sentStructures
                                                 , ss_tagged
                                                 )
-import           WikiEL.Type                    ( EntityMention )
+import qualified SRL.Analyze.Type as Analyze    ( SRLData )
+import           WikiEL.Type                    ( NETagger )
 ------ compute-pipeline
 import           CloudHaskell.QueryQueue        ( QQVar
                                                 , handleQuery
@@ -85,34 +84,37 @@ data ComputeResult = CR_Sentence ResultSentence
 
 
 
-data SRLData = SRLData { _aconfig :: Analyze.Config
-                       , _pipeline :: J.J ('J.Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
-                       , _apredata :: AnalyzePredata
-                       , _netagger :: ([Sentence] -> [EntityMention Text])
-                       , _forest :: Forest (Either Int Text)
+data SRLData = SRLData { _aconfig    :: Analyze.Config
+                       , _pipeline   :: J.J ('J.Class "edu.stanford.nlp.pipeline.AnnotationPipeline")
+                       , _srldata    :: Analyze.SRLData
+                       , _netagger   :: NETagger
+                       , _forest     :: Forest (Either Int Text)
                        , _companyMap :: IntMap CompanyInfo
                        }
 
 makeLenses ''SRLData
 
-allMeaningGraphs :: AnalyzePredata -> IntMap CompanyInfo -> DocStructure -> [MeaningGraph]
-allMeaningGraphs apdat cmap dstr =
+allMeaningGraphs ::
+     Analyze.SRLData
+  -> IntMap CompanyInfo
+  -> DocStructure
+  -> [MeaningGraph]
+allMeaningGraphs sdata cmap dstr =
   let sstrs1 = catMaybes (dstr^.ds_sentStructures)
       mtokss = (dstr ^. ds_mtokenss)
-      mgs = map (\sstr -> (sstr,meaningGraph apdat sstr)) sstrs1
+      mgs = map (\sstr -> (sstr,meaningGraph sdata sstr)) sstrs1
   in flip map (zip mtokss (zip ([1..] :: [Int]) mgs)) $ \(_mtks,(_i,(sstr,mg))) ->
        let wikilst = mkWikiList cmap sstr
        in tagMG mg wikilst
 
-
 runSRL :: SRLData -> Text -> IO ([[(Int,Text)]],[MeaningGraph],ConsoleOutput)
 runSRL sdat sent = do
   dainput <- runParser (sdat^.pipeline) sent
-  dstr <- docStructure (sdat^.apredata) (sdat^.netagger) (sdat^.forest,sdat^.companyMap) dainput
+  dstr <- docStructure (sdat^.srldata) (sdat^.netagger) (sdat^.forest,sdat^.companyMap) dainput
   let sstrs = dstr ^.. ds_sentStructures . traverse . _Just
       tokenss = map (map (\(x,(_,y)) -> (x,y))) $ sstrs ^.. traverse . ss_tagged . lemmaList
-      mgs = allMeaningGraphs (sdat^.apredata) (sdat^.companyMap) dstr
-      cout = consoleOutput (sdat^.apredata.analyze_framedb) dstr
+      mgs = allMeaningGraphs (sdat^.srldata) (sdat^.companyMap) dstr
+      cout = consoleOutput (sdat^.srldata.srldata_framedb) dstr
 
   pure (tokenss,mgs,cout)
 
@@ -147,7 +149,7 @@ runSRLQueryDaemon0 (bypassNER,bypassTEXTNER) lcfg rQQ = do
     prepareAndProcess $ \pp -> do
       let sdat = SRLData { _aconfig = acfg
                          , _pipeline = pp
-                         , _apredata = apdat
+                         , _srldata = apdat
                          , _netagger = ntggr
                          , _forest = frst
                          , _companyMap = cmap
@@ -176,13 +178,13 @@ runSRLQueryDaemon (bypassNER,bypassTEXTNER) lcfg rProc rQQ = do
             case e of
               Left err -> error err
               Right x -> return x
-  (apdat,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg
+  (sdata,ntggr,frst,cmap) <- SRL.Analyze.loadConfig (acfg^.Analyze.bypassNER,acfg^.Analyze.bypassTEXTNER) cfg
 
   prepareAndProcess $ \pp -> do
     putStrLn "pipeline ready"
     let sdat = SRLData { _aconfig = acfg
                        , _pipeline = pp
-                       , _apredata = apdat
+                       , _srldata = sdata
                        , _netagger = ntggr
                        , _forest = frst
                        , _companyMap = cmap
