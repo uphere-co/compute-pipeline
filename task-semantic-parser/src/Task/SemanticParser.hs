@@ -45,6 +45,7 @@ import           SRL.Analyze.Type               ( AnalysisData
                                                 , ConsoleOutput
                                                 , DocStructure
                                                 , MeaningGraph
+                                                , SRLData
                                                 , analysis_SRLData
                                                 , analysis_CompanyMap
                                                 , cmap_map
@@ -52,7 +53,6 @@ import           SRL.Analyze.Type               ( AnalysisData
                                                 , ds_mtokenss, ds_sentStructures
                                                 , ss_tagged
                                                 )
-import qualified SRL.Analyze.Type as Analyze    ( SRLData )
 ------ compute-pipeline
 import           CloudHaskell.QueryQueue        ( QQVar
                                                 , handleQuery
@@ -100,7 +100,7 @@ makeLenses ''SemanticParserModel
 
 
 allMeaningGraphs ::
-     Analyze.SRLData
+     SRLData
   -> IntMap CompanyInfo
   -> DocStructure
   -> [MeaningGraph]
